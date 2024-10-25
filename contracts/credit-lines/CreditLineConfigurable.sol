@@ -44,11 +44,14 @@ contract CreditLineConfigurable is AccessControlExtUpgradeable, PausableUpgradea
     CreditLineConfig internal _config;
 
     /// @dev The mapping of borrower to borrower configuration.
-    mapping(address => BorrowerConfig) internal _borrowers;
+    mapping(address => BorrowerConfig) internal _borrowerConfigs;
+
+    /// @dev The mapping of a borrower to the borrower state.
+    mapping(address => BorrowerState) internal _borrowerStates;
 
     /// @dev This empty reserved space is put in place to allow future versions
     /// to add new variables without shifting down storage in the inheritance chain.
-    uint256[46] private __gap;
+    uint256[45] private __gap;
 
     // -------------------------------------------- //
     //  Errors                                      //
@@ -65,6 +68,12 @@ contract CreditLineConfigurable is AccessControlExtUpgradeable, PausableUpgradea
 
     /// @dev Thrown when the loan duration is out of range.
     error LoanDurationOutOfRange();
+
+    /// @dev Thrown when another loan is requested by an account but only one active loan is allowed.
+    error SingleActiveLoanRuleViolation();
+
+    /// @dev Thrown when // TODO
+    error TotalActiveLoanAmountExcess(uint256 newTotalActiveLoanAmount);
 
     // -------------------------------------------- //
     //  Modifiers                                   //
@@ -218,16 +227,7 @@ contract CreditLineConfigurable is AccessControlExtUpgradeable, PausableUpgradea
     /// @inheritdoc ICreditLine
     function onBeforeLoanTaken(uint256 loanId) external whenNotPaused onlyMarket returns (bool) {
         Loan.State memory loan = ILendingMarket(_market).getLoanState(loanId);
-        BorrowerConfig storage borrowerConfig = _borrowers[loan.borrower];
-
-        if (borrowerConfig.borrowPolicy == BorrowPolicy.Keep) {
-            // Do nothing to the borrower's max borrow amount configuration
-        } else if (borrowerConfig.borrowPolicy == BorrowPolicy.Decrease || borrowerConfig.borrowPolicy == BorrowPolicy.Iterate) {
-            borrowerConfig.maxBorrowAmount -= loan.borrowAmount;
-        } else { // borrowerConfig.borrowPolicy == BorrowPolicy.Reset
-            borrowerConfig.maxBorrowAmount = 0;
-        }
-
+        _openLoan(loan);
         return true;
     }
 
@@ -236,10 +236,7 @@ contract CreditLineConfigurable is AccessControlExtUpgradeable, PausableUpgradea
 
         Loan.State memory loan = ILendingMarket(_market).getLoanState(loanId);
         if (loan.trackedBalance == 0) {
-            BorrowerConfig storage borrowerConfig = _borrowers[loan.borrower];
-            if (borrowerConfig.borrowPolicy == BorrowPolicy.Iterate) {
-                borrowerConfig.maxBorrowAmount += loan.borrowAmount;
-            }
+            _closeLoan(loan);
         }
 
         return true;
@@ -247,11 +244,7 @@ contract CreditLineConfigurable is AccessControlExtUpgradeable, PausableUpgradea
 
     function onAfterLoanRevocation(uint256 loanId) external whenNotPaused onlyMarket returns (bool) {
         Loan.State memory loan = ILendingMarket(_market).getLoanState(loanId);
-        BorrowerConfig storage borrowerConfig = _borrowers[loan.borrower];
-        if (borrowerConfig.borrowPolicy == BorrowPolicy.Iterate) {
-            borrowerConfig.maxBorrowAmount += loan.borrowAmount;
-        }
-
+        _closeLoan(loan);
         return true;
     }
 
@@ -272,7 +265,7 @@ contract CreditLineConfigurable is AccessControlExtUpgradeable, PausableUpgradea
             revert Error.InvalidAmount();
         }
 
-        BorrowerConfig storage borrowerConfig = _borrowers[borrower];
+        BorrowerConfig storage borrowerConfig = _borrowerConfigs[borrower];
 
         if (_blockTimestamp() > borrowerConfig.expiration) {
             revert BorrowerConfigurationExpired();
@@ -305,7 +298,7 @@ contract CreditLineConfigurable is AccessControlExtUpgradeable, PausableUpgradea
 
     /// @inheritdoc ICreditLineConfigurable
     function getBorrowerConfiguration(address borrower) external view override returns (BorrowerConfig memory) {
-        return _borrowers[borrower];
+        return _borrowerConfigs[borrower];
     }
 
     /// @inheritdoc ICreditLineConfigurable
@@ -415,7 +408,7 @@ contract CreditLineConfigurable is AccessControlExtUpgradeable, PausableUpgradea
             revert InvalidBorrowerConfiguration();
         }
 
-        _borrowers[borrower] = config;
+        _borrowerConfigs[borrower] = config;
 
         emit BorrowerConfigured(address(this), borrower);
     }
@@ -423,5 +416,34 @@ contract CreditLineConfigurable is AccessControlExtUpgradeable, PausableUpgradea
     /// @dev Returns the current block timestamp with the time offset applied.
     function _blockTimestamp() private view returns (uint256) {
         return block.timestamp - Constants.NEGATIVE_TIME_OFFSET;
+    }
+
+    /// @dev TODO
+    function _openLoan(Loan.State memory loan) internal {
+        BorrowerConfig storage borrowerConfig = _borrowerConfigs[loan.borrower];
+        BorrowerState storage borrowerState = _borrowerStates[loan.borrower];
+
+        if (borrowerConfig.borrowPolicy == BorrowPolicy.SingleActiveLoan) {
+            if (borrowerState.activeLoanCount > 0) {
+                revert SingleActiveLoanRuleViolation();
+            }
+        } else if (borrowerConfig.borrowPolicy == BorrowPolicy.TotalAmountLimit) {
+            uint256 newTotalActiveLoanAmount = loan.borrowAmount + borrowerState.totalActiveLoanAmount;
+            if (newTotalActiveLoanAmount > borrowerConfig.maxBorrowAmount) {
+                revert TotalActiveLoanAmountExcess(newTotalActiveLoanAmount);
+            }
+        } // else borrowerConfig.borrowPolicy == BorrowPolicy.MultipleActiveLoans
+
+        borrowerState.activeLoanCount += 1;
+        borrowerState.totalActiveLoanAmount += loan.borrowAmount;
+    }
+
+    /// @dev TODO
+    function _closeLoan(Loan.State memory loan) internal {
+        BorrowerState storage borrowerState = _borrowerStates[loan.borrower];
+        borrowerState.activeLoanCount -= 1;
+        borrowerState.closedLoanCount += 1;
+        borrowerState.totalActiveLoanAmount -= loan.borrowAmount;
+        borrowerState.totalClosedLoanAmount += loan.borrowAmount;
     }
 }
