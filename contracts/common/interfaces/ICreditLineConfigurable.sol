@@ -59,6 +59,7 @@ interface ICreditLineConfigurable is ICreditLine {
         uint32 interestRateSecondary;     // The secondary interest rate to be applied to the loan.
         uint32 addonFixedRate;            // The fixed rate for the loan addon calculation (extra charges or fees).
         uint32 addonPeriodRate;           // The period rate for the loan addon calculation (extra charges or fees).
+        uint64 borrowAllowance;           // TODO
     }
 
     // -------------------------------------------- //

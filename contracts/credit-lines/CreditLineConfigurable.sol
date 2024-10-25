@@ -66,6 +66,9 @@ contract CreditLineConfigurable is AccessControlExtUpgradeable, PausableUpgradea
     /// @dev Thrown when the loan duration is out of range.
     error LoanDurationOutOfRange();
 
+    /// @dev TODO
+    error BorrowAllowanceDecreasingUnderflow();
+
     // -------------------------------------------- //
     //  Modifiers                                   //
     // -------------------------------------------- //
@@ -221,11 +224,14 @@ contract CreditLineConfigurable is AccessControlExtUpgradeable, PausableUpgradea
         BorrowerConfig storage borrowerConfig = _borrowers[loan.borrower];
 
         if (borrowerConfig.borrowPolicy == BorrowPolicy.Keep) {
-            // Do nothing to the borrower's max borrow amount configuration
-        } else if (borrowerConfig.borrowPolicy == BorrowPolicy.Decrease || borrowerConfig.borrowPolicy == BorrowPolicy.Iterate) {
-            borrowerConfig.maxBorrowAmount -= loan.borrowAmount;
+            // Do nothing to the borrow allowance configuration
+        } else if (
+            borrowerConfig.borrowPolicy == BorrowPolicy.Decrease ||
+            borrowerConfig.borrowPolicy == BorrowPolicy.Iterate
+        ) {
+            borrowerConfig.borrowAllowance -= loan.borrowAmount;
         } else { // borrowerConfig.borrowPolicy == BorrowPolicy.Reset
-            borrowerConfig.maxBorrowAmount = 0;
+            borrowerConfig.borrowAllowance = 0;
         }
 
         return true;
@@ -238,7 +244,7 @@ contract CreditLineConfigurable is AccessControlExtUpgradeable, PausableUpgradea
         if (loan.trackedBalance == 0) {
             BorrowerConfig storage borrowerConfig = _borrowers[loan.borrower];
             if (borrowerConfig.borrowPolicy == BorrowPolicy.Iterate) {
-                borrowerConfig.maxBorrowAmount += loan.borrowAmount;
+                borrowerConfig.borrowAllowance += loan.borrowAmount;
             }
         }
 
@@ -249,7 +255,7 @@ contract CreditLineConfigurable is AccessControlExtUpgradeable, PausableUpgradea
         Loan.State memory loan = ILendingMarket(_market).getLoanState(loanId);
         BorrowerConfig storage borrowerConfig = _borrowers[loan.borrower];
         if (borrowerConfig.borrowPolicy == BorrowPolicy.Iterate) {
-            borrowerConfig.maxBorrowAmount += loan.borrowAmount;
+            borrowerConfig.borrowAllowance += loan.borrowAmount;
         }
 
         return true;
@@ -278,6 +284,9 @@ contract CreditLineConfigurable is AccessControlExtUpgradeable, PausableUpgradea
             revert BorrowerConfigurationExpired();
         }
         if (borrowAmount > borrowerConfig.maxBorrowAmount) {
+            revert Error.InvalidAmount();
+        }
+        if (borrowAmount > borrowerConfig.borrowAllowance) {
             revert Error.InvalidAmount();
         }
         if (borrowAmount < borrowerConfig.minBorrowAmount) {
@@ -376,6 +385,14 @@ contract CreditLineConfigurable is AccessControlExtUpgradeable, PausableUpgradea
         if (config.maxBorrowAmount > _config.maxBorrowAmount) {
             revert InvalidBorrowerConfiguration();
         }
+        if (config.borrowAllowance != type(uint64).max) {
+            if (config.borrowAllowance < config.minBorrowAmount) {
+                revert InvalidBorrowerConfiguration();
+            }
+            if (config.borrowAllowance > config.maxBorrowAmount) {
+                revert InvalidBorrowerConfiguration();
+            }
+        }
 
         if (config.minDurationInPeriods > config.maxDurationInPeriods) {
             revert InvalidBorrowerConfiguration();
@@ -413,6 +430,23 @@ contract CreditLineConfigurable is AccessControlExtUpgradeable, PausableUpgradea
         }
         if (config.addonPeriodRate > _config.maxAddonPeriodRate) {
             revert InvalidBorrowerConfiguration();
+        }
+
+        if (config.borrowAllowance == type(uint64).max) {
+            BorrowerConfig storage curBorrowConfig = _borrowers[borrower];
+            uint256 curMaxBorrowAmount = curBorrowConfig.maxBorrowAmount;
+            uint256 borrowAllowance = curBorrowConfig.borrowAllowance;
+            if (config.maxBorrowAmount >= curMaxBorrowAmount) {
+                borrowAllowance += config.maxBorrowAmount - curMaxBorrowAmount;
+            } else {
+                uint256 diff = curMaxBorrowAmount - config.maxBorrowAmount;
+                if (diff > borrowAllowance) {
+                    revert BorrowAllowanceDecreasingUnderflow();
+                } else {
+                    borrowAllowance -= diff;
+                }
+            }
+            config.borrowAllowance = borrowAllowance.toUint64();
         }
 
         _borrowers[borrower] = config;
