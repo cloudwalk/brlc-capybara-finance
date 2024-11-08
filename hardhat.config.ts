@@ -1,5 +1,4 @@
 import { HardhatUserConfig } from "hardhat/config";
-
 import "@nomicfoundation/hardhat-toolbox";
 import "@openzeppelin/hardhat-upgrades";
 import "hardhat-contract-sizer";
@@ -49,6 +48,9 @@ const config: HardhatUserConfig = {
   },
   gasReporter: {
     enabled: process.env.GAS_REPORTER_ENABLED === "true"
+  },
+  contractSizer: {
+    runOnCompile: process.env.CONTRACT_SIZER_ENABLED === "true"
   }
 };
 

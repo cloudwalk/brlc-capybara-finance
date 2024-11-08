@@ -47,6 +47,14 @@ interface LoanPreview {
   [key: string]: number; // Index signature
 }
 
+interface Version {
+  major: number;
+  minor: number;
+  patch: number;
+
+  [key: string]: number; // Indexing signature to ensure that fields are iterated over in a key-value style
+}
+
 enum PayerKind {
   Borrower = 0,
   LiquidityPool = 1,
@@ -114,6 +122,11 @@ const DEFAULT_PROGRAM_ID = 1;
 const NEGATIVE_TIME_OFFSET = 10800; // 3 hours
 const ACCURACY_FACTOR = 10000;
 const COOLDOWN_IN_PERIODS = 3;
+const EXPECTED_VERSION: Version = {
+  major: 1,
+  minor: 0,
+  patch: 0
+};
 
 describe("Contract 'LendingMarket': base tests", async () => {
   let lendingMarketFactory: ContractFactory;
@@ -339,6 +352,14 @@ describe("Contract 'LendingMarket': base tests", async () => {
 
       await expect(market.initialize(owner.address))
         .to.be.revertedWithCustomError(market, ERROR_NAME_ALREADY_INITIALIZED);
+    });
+  });
+
+  describe("Function '$__VERSION()'", async () => {
+    it("Returns expected values", async () => {
+      const { market } = await setUpFixture(deployLendingMarket);
+      const marketVersion = await market.$__VERSION();
+      checkEquality(marketVersion, EXPECTED_VERSION);
     });
   });
 

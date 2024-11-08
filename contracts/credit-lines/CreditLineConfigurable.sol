@@ -14,11 +14,17 @@ import { ICreditLine } from "../common/interfaces/core/ICreditLine.sol";
 import { ILendingMarket } from "../common/interfaces/core/ILendingMarket.sol";
 import { ICreditLineConfigurable } from "../common/interfaces/ICreditLineConfigurable.sol";
 import { AccessControlExtUpgradeable } from "../common/AccessControlExtUpgradeable.sol";
+import { Versionable } from "../common/Versionable.sol";
 
 /// @title CreditLineConfigurable contract
 /// @author CloudWalk Inc. (See https://cloudwalk.io)
 /// @dev Implementation of the configurable credit line contract.
-contract CreditLineConfigurable is AccessControlExtUpgradeable, PausableUpgradeable, ICreditLineConfigurable {
+contract CreditLineConfigurable is
+    AccessControlExtUpgradeable,
+    PausableUpgradeable,
+    ICreditLineConfigurable,
+    Versionable
+{
     using SafeCast for uint256;
 
     /// @dev The role of this contract owner.

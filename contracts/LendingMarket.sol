@@ -14,6 +14,7 @@ import { Round } from "./common/libraries/Round.sol";
 import { Constants } from "./common/libraries/Constants.sol";
 import { InterestMath } from "./common/libraries/InterestMath.sol";
 import { SafeCast } from "./common/libraries/SafeCast.sol";
+import { Versionable } from "./common/Versionable.sol";
 
 import { ILendingMarket } from "./common/interfaces/core/ILendingMarket.sol";
 import { ILiquidityPool } from "./common/interfaces/core/ILiquidityPool.sol";
@@ -29,7 +30,8 @@ contract LendingMarket is
     Initializable,
     AccessControlUpgradeable,
     PausableUpgradeable,
-    ILendingMarket
+    ILendingMarket,
+    Versionable
 {
     using SafeERC20 for IERC20;
     using SafeCast for uint256;

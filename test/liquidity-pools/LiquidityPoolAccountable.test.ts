@@ -3,7 +3,7 @@ import { expect } from "chai";
 import { Contract, ContractFactory, TransactionResponse } from "ethers";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import { connect, getAddress, proveTx } from "../../test-utils/eth";
-import { setUpFixture } from "../../test-utils/common";
+import { checkEquality, setUpFixture } from "../../test-utils/common";
 
 interface LoanState {
   programId: number;
@@ -19,6 +19,14 @@ interface LoanState {
   trackedBalance: number;
   trackedTimestamp: number;
   freezeTimestamp: number;
+}
+
+interface Version {
+  major: number;
+  minor: number;
+  patch: number;
+
+  [key: string]: number; // Indexing signature to ensure that fields are iterated over in a key-value style
 }
 
 const ERROR_NAME_ALREADY_INITIALIZED = "InvalidInitialization";
@@ -54,6 +62,11 @@ const DEFAULT_ADDON_AMOUNT = 10;
 const DEFAULT_REPAY_AMOUNT = 322;
 const AUTO_REPAY_LOAN_IDS = [1, 2, 3];
 const AUTO_REPAY_AMOUNTS = [4, 5, 6];
+const EXPECTED_VERSION: Version = {
+  major: 1,
+  minor: 0,
+  patch: 0
+};
 
 describe("Contract 'LiquidityPoolAccountable'", async () => {
   let liquidityPoolFactory: ContractFactory;
@@ -176,6 +189,14 @@ describe("Contract 'LiquidityPoolAccountable'", async () => {
 
       await expect(liquidityPool.initialize(marketAddress, lender.address, tokenAddress))
         .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_ALREADY_INITIALIZED);
+    });
+  });
+
+  describe("Function '$__VERSION()'", async () => {
+    it("Returns expected values", async () => {
+      const { liquidityPool } = await setUpFixture(deployLiquidityPool);
+      const liquidityPoolVersion = await liquidityPool.$__VERSION();
+      checkEquality(liquidityPoolVersion, EXPECTED_VERSION);
     });
   });
 

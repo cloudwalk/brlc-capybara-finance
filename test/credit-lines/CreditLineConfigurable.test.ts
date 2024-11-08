@@ -82,6 +82,14 @@ interface LoanTerms {
   [key: string]: string | number; // Index signature
 }
 
+interface Version {
+  major: number;
+  minor: number;
+  patch: number;
+
+  [key: string]: number; // Indexing signature to ensure that fields are iterated over in a key-value style
+}
+
 enum BorrowPolicy {
   SingleActiveLoan = 0,
   MultipleActiveLoans = 1,
@@ -166,6 +174,11 @@ const BORROW_AMOUNT = 100_000;
 const DEFAULT_LOAN_ID = 123;
 const DEFAULT_ADDON_AMOUNT = 321;
 const DEFAULT_REPAY_AMOUNT = 322;
+const EXPECTED_VERSION: Version = {
+  major: 1,
+  minor: 0,
+  patch: 0
+};
 
 describe("Contract 'CreditLineConfigurable'", async () => {
   let creditLineFactory: ContractFactory;
@@ -382,6 +395,14 @@ describe("Contract 'CreditLineConfigurable'", async () => {
 
       await expect(creditLine.initialize(marketAddress, lender.address, token.address))
         .to.be.revertedWithCustomError(creditLine, ERROR_NAME_ALREADY_INITIALIZED);
+    });
+  });
+
+  describe("Function '$__VERSION()'", async () => {
+    it("Returns expected values", async () => {
+      const { creditLine } = await setUpFixture(deployCreditLine);
+      const creditLineVersion = await creditLine.$__VERSION();
+      checkEquality(creditLineVersion, EXPECTED_VERSION);
     });
   });
 

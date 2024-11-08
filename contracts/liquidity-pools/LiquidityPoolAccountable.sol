@@ -15,11 +15,17 @@ import { ILendingMarket } from "../common/interfaces/core/ILendingMarket.sol";
 import { ILiquidityPool } from "../common/interfaces/core/ILiquidityPool.sol";
 import { ILiquidityPoolAccountable } from "../common/interfaces/ILiquidityPoolAccountable.sol";
 import { AccessControlExtUpgradeable } from "../common/AccessControlExtUpgradeable.sol";
+import { Versionable } from "../common/Versionable.sol";
 
 /// @title LiquidityPoolAccountable contract
 /// @author CloudWalk Inc. (See https://cloudwalk.io)
 /// @dev Implementation of the accountable liquidity pool contract.
-contract LiquidityPoolAccountable is AccessControlExtUpgradeable, PausableUpgradeable, ILiquidityPoolAccountable {
+contract LiquidityPoolAccountable is
+    AccessControlExtUpgradeable,
+    PausableUpgradeable,
+    ILiquidityPoolAccountable,
+    Versionable
+{
     using SafeERC20 for IERC20;
     using SafeCast for uint256;
 
