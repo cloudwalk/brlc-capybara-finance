@@ -76,6 +76,8 @@ interface LoanState {
   trackedBalance: bigint;
   trackedTimestamp: bigint;
   freezeTimestamp: bigint;
+  firstInstallmentId: bigint;
+  instalmentCount: bigint;
 }
 
 interface Version {
@@ -146,7 +148,9 @@ const defaultLoanState: LoanState = {
   repaidAmount: 0n,
   trackedBalance: 0n,
   trackedTimestamp: 0n,
-  freezeTimestamp: 0n
+  freezeTimestamp: 0n,
+  firstInstallmentId: 0n,
+  instalmentCount: 0n
 };
 
 const ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED = "AccessControlUnauthorizedAccount";
@@ -200,7 +204,7 @@ const REPAY_AMOUNT = 12345678n;
 
 const EXPECTED_VERSION: Version = {
   major: 1,
-  minor: 3,
+  minor: 4,
   patch: 0
 };
 

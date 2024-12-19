@@ -3,7 +3,7 @@ import { network } from "hardhat";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 
 export function checkEquality<T extends Record<string, unknown>>(actualObject: T, expectedObject: T, index?: number) {
-  const indexString = !index ? "" : ` with index: ${index}`;
+  const indexString = index == null ? "" : ` with index: ${index}`;
   Object.keys(expectedObject).forEach(property => {
     const value = actualObject[property];
     if (typeof value === "undefined" || typeof value === "function") {

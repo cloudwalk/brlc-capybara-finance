@@ -67,10 +67,10 @@ interface ICreditLineConfigurable is ICreditLine {
     ///
     /// Fields:
     ///
-    /// activeLoanCount -- the number of active loans currently held by the borrower.
-    /// closedLoanCount -- the number of loans that have been closed, with or without a full repayment.
-    /// totalActiveLoanAmount -- the total amount borrowed across all active loans.
-    /// totalClosedLoanAmount -- the total amount that was borrowed across all closed loans.
+    /// - activeLoanCount -------- the number of active loans currently held by the borrower.
+    /// - closedLoanCount -------- the number of loans that have been closed, with or without a full repayment.
+    /// - totalActiveLoanAmount -- the total amount borrowed across all active loans.
+    /// - totalClosedLoanAmount -- the total amount that was borrowed across all closed loans.
     struct BorrowerState {
         // Slot 1
         uint16 activeLoanCount;

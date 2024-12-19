@@ -79,6 +79,23 @@ contract LendingMarketMock is ILendingMarket {
         revert Error.NotImplemented();
     }
 
+    function takeInstallmentLoanFor(
+        address borrower,
+        uint32 programId,
+        uint256[] calldata borrowAmounts,
+        uint256[] calldata addonAmounts,
+        uint256[] calldata durationsInPeriods
+    ) external pure returns (uint256 firstInstallmentId, uint256 installmentCount) {
+        borrower; // To prevent compiler warning about unused variable
+        programId; // To prevent compiler warning about unused variable
+        borrowAmounts; // To prevent compiler warning about unused variable
+        addonAmounts; // To prevent compiler warning about unused variable
+        durationsInPeriods; // To prevent compiler warning about unused variable
+        firstInstallmentId = 0;
+        installmentCount = 0;
+        revert Error.NotImplemented();
+    }
+
     function repayLoan(uint256 loanId, uint256 repayAmount) external {
         loanId; // To prevent compiler warning about unused variable
         repayAmount; // To prevent compiler warning about unused variable
@@ -97,6 +114,11 @@ contract LendingMarketMock is ILendingMarket {
     }
 
     function revokeLoan(uint256 loanId) external pure {
+        loanId; // To prevent compiler warning about unused variable
+        revert Error.NotImplemented();
+    }
+
+    function revokeInstallmentLoan(uint256 loanId) external pure {
         loanId; // To prevent compiler warning about unused variable
         revert Error.NotImplemented();
     }
@@ -154,7 +176,30 @@ contract LendingMarketMock is ILendingMarket {
         return _loanStates[loanId];
     }
 
+    function getLoanStateBatch(uint256[] calldata loanIds) external pure returns (Loan.State[] memory) {
+        loanIds; // To prevent compiler warning about unused variable
+        revert Error.NotImplemented();
+    }
+
     function getLoanPreview(uint256 loanId, uint256 timestamp) external pure returns (Loan.Preview memory) {
+        loanId; // To prevent compiler warning about unused variable
+        timestamp; // To prevent compiler warning about unused variable
+        revert Error.NotImplemented();
+    }
+
+    function getLoanPreviewBatch(
+        uint256[] calldata loanIds,
+        uint256 timestamp
+    ) external pure returns (Loan.Preview[] memory) {
+        loanIds; // To prevent compiler warning about unused variable
+        timestamp; // To prevent compiler warning about unused variable
+        revert Error.NotImplemented();
+    }
+
+    function getInstallmentLoanPreview(
+        uint256 loanId,
+        uint256 timestamp
+    ) external pure returns (Loan.InstallmentLoanPreview memory) {
         loanId; // To prevent compiler warning about unused variable
         timestamp; // To prevent compiler warning about unused variable
         revert Error.NotImplemented();
@@ -162,6 +207,12 @@ contract LendingMarketMock is ILendingMarket {
 
     function isLenderOrAlias(uint256 loanId, address account) external pure returns (bool) {
         loanId; // To prevent compiler warning about unused variable
+        account; // To prevent compiler warning about unused variable
+        revert Error.NotImplemented();
+    }
+
+    function isProgramLenderOrAlias(uint32 programId, address account) external pure returns (bool) {
+        programId; // To prevent compiler warning about unused variable
         account; // To prevent compiler warning about unused variable
         revert Error.NotImplemented();
     }

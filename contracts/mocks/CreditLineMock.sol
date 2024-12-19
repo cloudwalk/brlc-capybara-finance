@@ -26,7 +26,7 @@ contract CreditLineMock is ICreditLine {
 
     address private _tokenAddress;
 
-    mapping(address => mapping(uint256 => Loan.Terms)) private _loanTerms;
+    mapping(address => Loan.Terms) private _loanTerms;
 
     bool private _onBeforeLoanTakenResult;
 
@@ -58,8 +58,9 @@ contract CreditLineMock is ICreditLine {
         uint256 borrowAmount,
         uint256 durationInPeriods
     ) external view returns (Loan.Terms memory terms) {
-        durationInPeriods; // To prevent compiler warning about unused variable
-        return _loanTerms[borrower][borrowAmount];
+        borrowAmount; // To prevent compiler warning about unused variable
+        terms = _loanTerms[borrower];
+        terms.durationInPeriods = uint32(durationInPeriods);
     }
 
     function market() external pure returns (address) {
@@ -83,7 +84,8 @@ contract CreditLineMock is ICreditLine {
     }
 
     function mockLoanTerms(address borrower, uint256 amount, Loan.Terms memory terms) external {
-        _loanTerms[borrower][amount] = terms;
+        amount; // To prevent compiler warning about unused variable
+        _loanTerms[borrower] = terms;
     }
 
     function proveCreditLine() external pure {}
