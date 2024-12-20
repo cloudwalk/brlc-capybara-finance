@@ -904,7 +904,7 @@ contract LendingMarket is
     ) internal {
         Loan.State storage loan = _loans[loanId];
         loan.firstInstallmentId = uint40(firstInstallmentId); // Unchecked conversion is safe due to contract logic
-        loan.instalmentCount = uint16(installmentCount); // Unchecked conversion is safe due to contract logic
+        loan.instalmentCount = uint8(installmentCount); // Unchecked conversion is safe due to contract logic
     }
 
     /// @dev Validates that the loan ID is within the valid range.

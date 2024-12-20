@@ -39,8 +39,8 @@ library Loan {
         uint32 trackedTimestamp;      // The timestamp when the loan was last paid or its balance was updated.
         uint32 freezeTimestamp;       // The timestamp when the loan was frozen. Zero value for unfrozen loans.
         uint40 firstInstallmentId;    // The ID of the first installment for sub-loans or zero for ordinary loans.
-        uint16 instalmentCount;       // The total number of installments for sub-loans or zero for ordinary loans.
-        // uint8 __reserved;          // Reserved for future use.
+        uint8 instalmentCount;        // The total number of installments for sub-loans or zero for ordinary loans.
+        // uint16 __reserved;         // Reserved for future use.
     }
 
     /// @dev A struct that defines the terms of the loan.
