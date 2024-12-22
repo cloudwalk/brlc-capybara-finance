@@ -41,6 +41,8 @@ library Loan {
         uint40 firstInstallmentId;    // The ID of the first installment for sub-loans or zero for ordinary loans.
         uint8 instalmentCount;        // The total number of installments for sub-loans or zero for ordinary loans.
         // uint16 __reserved;         // Reserved for future use.
+        // Slot 5
+        uint64 lateFeeAmount;         // The late fee amount of the loan or zero if the loan is not defaulted.
     }
 
     /// @dev A struct that defines the terms of the loan.

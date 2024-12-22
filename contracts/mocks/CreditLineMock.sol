@@ -75,6 +75,10 @@ contract CreditLineMock is ICreditLine {
         return _tokenAddress;
     }
 
+    function lateFeeRate() external pure returns (uint256) {
+        revert Error.NotImplemented();
+    }
+
     // -------------------------------------------- //
     //  Mock functions                              //
     // -------------------------------------------- //

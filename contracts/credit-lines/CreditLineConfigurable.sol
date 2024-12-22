@@ -348,6 +348,11 @@ contract CreditLineConfigurable is
         return _token;
     }
 
+    /// @inheritdoc ICreditLine
+    function lateFeeRate() external view returns (uint256) {
+        return _config.lateFeeRate;
+    }
+
     /// @dev Calculates the amount of a loan addon (extra charges or fees).
     /// @param amount The initial principal amount of the loan.
     /// @param durationInPeriods The duration of the loan in periods.

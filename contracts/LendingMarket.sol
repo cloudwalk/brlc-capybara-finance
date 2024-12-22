@@ -19,6 +19,7 @@ import { Versionable } from "./common/Versionable.sol";
 import { ILendingMarket } from "./common/interfaces/core/ILendingMarket.sol";
 import { ILiquidityPool } from "./common/interfaces/core/ILiquidityPool.sol";
 import { ICreditLine } from "./common/interfaces/core/ICreditLine.sol";
+import { ICreditLineConfigurable } from "./common/interfaces/ICreditLineConfigurable.sol";
 
 import { LendingMarketStorage } from "./LendingMarketStorage.sol";
 
@@ -301,7 +302,8 @@ contract LendingMarket is
             freezeTimestamp: 0,
             addonAmount: terms.addonAmount,
             firstInstallmentId: 0,
-            instalmentCount: 0
+            instalmentCount: 0,
+            lateFeeAmount: 0
         });
 
         ICreditLine(creditLine).onBeforeLoanTaken(id);
@@ -321,7 +323,8 @@ contract LendingMarket is
         }
 
         Loan.State storage loan = _loans[loanId];
-        (uint256 outstandingBalance, ) = _outstandingBalance(loan, _blockTimestamp());
+        (uint256 outstandingBalance, uint256 lateFeeAmount, ) = _outstandingBalance(loan, _blockTimestamp());
+        _updateStoredLateFee(lateFeeAmount, loan);
 
         // Full repayment
         if (repayAmount == type(uint256).max) {
@@ -503,7 +506,8 @@ contract LendingMarket is
         }
 
         uint256 blockTimestamp = _blockTimestamp();
-        (uint256 outstandingBalance, ) = _outstandingBalance(loan, blockTimestamp);
+        (uint256 outstandingBalance, uint256 lateFeeAmount, ) = _outstandingBalance(loan, blockTimestamp);
+        _updateStoredLateFee(lateFeeAmount, loan);
         uint256 currentPeriodIndex = _periodIndex(blockTimestamp, Constants.PERIOD_IN_SECONDS);
         uint256 freezePeriodIndex = _periodIndex(loan.freezeTimestamp, Constants.PERIOD_IN_SECONDS);
         uint256 frozenPeriods = currentPeriodIndex - freezePeriodIndex;
@@ -963,11 +967,12 @@ contract LendingMarket is
     /// @param loan The loan to calculate the outstanding balance for.
     /// @param timestamp The timestamp to calculate the outstanding balance at.
     /// @return outstandingBalance The outstanding balance of the loan at the specified timestamp.
+    /// @return lateFeeAmount The late fee amount or zero if the loan is not defaulted at the specified timestamp.
     /// @return periodIndex The period index that corresponds the provided timestamp.
     function _outstandingBalance(
         Loan.State storage loan,
         uint256 timestamp
-    ) internal view returns (uint256 outstandingBalance, uint256 periodIndex) {
+    ) internal view returns (uint256 outstandingBalance, uint256 lateFeeAmount, uint256 periodIndex) {
         outstandingBalance = loan.trackedBalance;
 
         if (loan.freezeTimestamp != 0) {
@@ -979,28 +984,23 @@ contract LendingMarket is
 
         if (periodIndex > trackedPeriodIndex) {
             uint256 duePeriodIndex = _getDuePeriodIndex(loan.startTimestamp, loan.durationInPeriods);
-            if (periodIndex < duePeriodIndex) {
-                outstandingBalance = InterestMath.calculateOutstandingBalance(
-                    outstandingBalance,
-                    periodIndex - trackedPeriodIndex,
-                    loan.interestRatePrimary,
-                    Constants.INTEREST_RATE_FACTOR
-                );
-            } else if (trackedPeriodIndex >= duePeriodIndex) {
-                outstandingBalance = InterestMath.calculateOutstandingBalance(
-                    outstandingBalance,
-                    periodIndex - trackedPeriodIndex,
-                    loan.interestRateSecondary,
-                    Constants.INTEREST_RATE_FACTOR
-                );
-            } else {
-                outstandingBalance = InterestMath.calculateOutstandingBalance(
-                    outstandingBalance,
-                    duePeriodIndex - trackedPeriodIndex,
-                    loan.interestRatePrimary,
-                    Constants.INTEREST_RATE_FACTOR
-                );
-                if (periodIndex > duePeriodIndex) {
+            if (trackedPeriodIndex <= duePeriodIndex) {
+                if (periodIndex <= duePeriodIndex) {
+                    outstandingBalance = InterestMath.calculateOutstandingBalance(
+                        outstandingBalance,
+                        periodIndex - trackedPeriodIndex,
+                        loan.interestRatePrimary,
+                        Constants.INTEREST_RATE_FACTOR
+                    );
+                } else {
+                    outstandingBalance = InterestMath.calculateOutstandingBalance(
+                        outstandingBalance,
+                        duePeriodIndex - trackedPeriodIndex,
+                        loan.interestRatePrimary,
+                        Constants.INTEREST_RATE_FACTOR
+                    );
+                    lateFeeAmount = _calculateLateFee(outstandingBalance, loan);
+                    outstandingBalance += lateFeeAmount;
                     outstandingBalance = InterestMath.calculateOutstandingBalance(
                         outstandingBalance,
                         periodIndex - duePeriodIndex,
@@ -1008,6 +1008,13 @@ contract LendingMarket is
                         Constants.INTEREST_RATE_FACTOR
                     );
                 }
+            } else {
+                outstandingBalance = InterestMath.calculateOutstandingBalance(
+                    outstandingBalance,
+                    periodIndex - trackedPeriodIndex,
+                    loan.interestRateSecondary,
+                    Constants.INTEREST_RATE_FACTOR
+                );
             }
         }
     }
@@ -1020,7 +1027,7 @@ contract LendingMarket is
         Loan.Preview memory preview;
         Loan.State storage loan = _loans[loanId];
 
-        (preview.trackedBalance, preview.periodIndex) = _outstandingBalance(loan, timestamp);
+        (preview.trackedBalance, /* skip the late fee */, preview.periodIndex) = _outstandingBalance(loan, timestamp);
         preview.outstandingBalance = Rounding.roundMath(preview.trackedBalance, Constants.ACCURACY_FACTOR);
 
         return preview;
@@ -1052,9 +1059,37 @@ contract LendingMarket is
         return block.timestamp - Constants.NEGATIVE_TIME_OFFSET;
     }
 
-    /// @dev
+    /// @dev Returns the maximum number of installments for a loan. Can be overridden for testing purposes.
     function _installmentCountMax() internal view virtual returns (uint256) {
         return Constants.INSTALLMENT_COUNT_MAX;
+    }
+
+    /// @dev Calculates the late fee amount for a loan.
+    /// @param outstandingBalance The outstanding balance of the loan.
+    /// @param loan The storage state of the loan.
+    /// @return The late fee amount.
+    function _calculateLateFee(
+        uint256 outstandingBalance,
+        Loan.State storage loan
+    ) internal view returns (uint256) {
+        address creditLine = _programCreditLines[loan.programId];
+        uint256 lateFeeRate = creditLine != address(0) ? ICreditLineConfigurable(creditLine).lateFeeRate() : 0;
+        uint256 product = outstandingBalance * lateFeeRate;
+        uint256 reminder = product % Constants.INTEREST_RATE_FACTOR;
+        uint256 result = product / Constants.INTEREST_RATE_FACTOR;
+        if (reminder >= (Constants.INTEREST_RATE_FACTOR / 2)) {
+            ++result;
+        }
+        return result;
+    }
+
+    /// @dev Updates the stored late fee amount for a loan.
+    /// @param lateFeeAmount The late fee amount to store.
+    /// @param loan The storage state of the loan.
+    function _updateStoredLateFee(uint256 lateFeeAmount, Loan.State storage loan) internal {
+        if (lateFeeAmount > 0) {
+            loan.lateFeeAmount = lateFeeAmount.toUint64();
+        }
     }
 
     /// @inheritdoc ILendingMarket
