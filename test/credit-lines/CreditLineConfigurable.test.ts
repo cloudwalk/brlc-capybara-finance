@@ -24,6 +24,7 @@ interface CreditLineConfig {
   maxAddonFixedRate: bigint;
   minAddonPeriodRate: bigint;
   maxAddonPeriodRate: bigint;
+  lateFeeRate: bigint;
 
   [key: string]: bigint; // Index signature
 }
@@ -78,6 +79,7 @@ interface LoanState {
   freezeTimestamp: bigint;
   firstInstallmentId: bigint;
   instalmentCount: bigint;
+  lateFeeAmount: bigint;
 }
 
 interface Version {
@@ -112,7 +114,8 @@ const defaultCreditLineConfig: CreditLineConfig = {
   minAddonFixedRate: 0n,
   maxAddonFixedRate: 0n,
   minAddonPeriodRate: 0n,
-  maxAddonPeriodRate: 0n
+  maxAddonPeriodRate: 0n,
+  lateFeeRate: 0n
 };
 
 const defaultBorrowerConfig: BorrowerConfig = {
@@ -150,7 +153,8 @@ const defaultLoanState: LoanState = {
   trackedTimestamp: 0n,
   freezeTimestamp: 0n,
   firstInstallmentId: 0n,
-  instalmentCount: 0n
+  instalmentCount: 0n,
+  lateFeeAmount: 0n
 };
 
 const ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED = "AccessControlUnauthorizedAccount";
@@ -201,6 +205,7 @@ const BORROW_AMOUNT = 1234_567_890n;
 const LOAN_ID = 123n;
 const ADDON_AMOUNT = 123456789n;
 const REPAY_AMOUNT = 12345678n;
+const LATE_FEE_RATE = 987654321n;
 
 const EXPECTED_VERSION: Version = {
   major: 1,
@@ -304,7 +309,8 @@ describe("Contract 'CreditLineConfigurable'", async () => {
       minAddonFixedRate: MIN_ADDON_FIXED_RATE,
       maxAddonFixedRate: MAX_ADDON_FIXED_RATE,
       minAddonPeriodRate: MIN_ADDON_PERIOD_RATE,
-      maxAddonPeriodRate: MAX_ADDON_PERIOD_RATE
+      maxAddonPeriodRate: MAX_ADDON_PERIOD_RATE,
+      lateFeeRate: LATE_FEE_RATE
     };
   }
 
@@ -1174,6 +1180,15 @@ describe("Contract 'CreditLineConfigurable'", async () => {
         creditLine,
         ERROR_NAME_LIMIT_VIOLATION_ON_TOTAL_ACTIVE_LOAN_AMOUNT
       ).withArgs(borrowerState.totalActiveLoanAmount + BigInt(BORROW_AMOUNT));
+    });
+  });
+
+  describe("Function 'lateFeeRate()'", async () => {
+    it("Returns the expected value", async () => {
+      const { creditLine } = await setUpFixture(deployAndConfigureContractsWithBorrower);
+
+      const actualValue = await creditLine.lateFeeRate();
+      expect(actualValue).to.equal(LATE_FEE_RATE);
     });
   });
 
