@@ -89,7 +89,7 @@ library Loan {
     /// 2. The `totalOutstandingBalance` fields calculates as the sum of rounded tracked balances
     ///    of all installments according to the `ACCURACY_FACTOR` constant.
     struct InstallmentLoanPreview {
-        uint256 firstInstallmentId;      
+        uint256 firstInstallmentId;
         uint256 instalmentCount;
         uint256 periodIndex;
         uint256 totalTrackedBalance;

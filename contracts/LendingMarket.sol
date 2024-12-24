@@ -1022,7 +1022,7 @@ contract LendingMarket is
         Loan.Preview memory preview;
         Loan.State storage loan = _loans[loanId];
 
-        (preview.trackedBalance, /* skip the late fee */, preview.periodIndex) = _outstandingBalance(loan, timestamp);
+        (preview.trackedBalance /* skip the late fee */, , preview.periodIndex) = _outstandingBalance(loan, timestamp);
         preview.outstandingBalance = Rounding.roundMath(preview.trackedBalance, Constants.ACCURACY_FACTOR);
 
         return preview;
@@ -1064,7 +1064,7 @@ contract LendingMarket is
     /// @param loan The storage state of the loan.
     /// @return The late fee amount.
     function _calculateLateFee(
-        uint256 outstandingBalance,
+        uint256 outstandingBalance, // Tools: this comment prevents Prettier from formatting into a single line.
         Loan.State storage loan
     ) internal view returns (uint256) {
         address creditLine = _programCreditLines[loan.programId];
