@@ -287,24 +287,19 @@ contract LendingMarket is
         uint256 principalAmount = borrowAmount + terms.addonAmount;
         uint32 blockTimestamp = _blockTimestamp().toUint32();
 
-        _loans[id] = Loan.State({
-            token: terms.token,
-            borrower: borrower,
-            programId: programId,
-            startTimestamp: blockTimestamp,
-            durationInPeriods: terms.durationInPeriods,
-            interestRatePrimary: terms.interestRatePrimary,
-            interestRateSecondary: terms.interestRateSecondary,
-            borrowAmount: borrowAmount.toUint64(),
-            trackedBalance: principalAmount.toUint64(),
-            repaidAmount: 0,
-            trackedTimestamp: blockTimestamp,
-            freezeTimestamp: 0,
-            addonAmount: terms.addonAmount,
-            firstInstallmentId: 0,
-            instalmentCount: 0,
-            lateFeeAmount: 0
-        });
+        Loan.State storage loan = _loans[id];
+        loan.token = terms.token;
+        loan.borrower = borrower;
+        loan.programId = programId;
+        loan.startTimestamp = blockTimestamp;
+        loan.durationInPeriods = terms.durationInPeriods;
+        loan.interestRatePrimary = terms.interestRatePrimary;
+        loan.interestRateSecondary = terms.interestRateSecondary;
+        loan.borrowAmount = borrowAmount.toUint64();
+        loan.trackedBalance = principalAmount.toUint64();
+        loan.trackedTimestamp = blockTimestamp;
+        loan.addonAmount = terms.addonAmount;
+        // Other loan fields are zero: repaidAmount, repaidAmount, firstInstallmentId, lateFeeAmount
 
         ICreditLine(creditLine).onBeforeLoanTaken(id);
         ILiquidityPool(liquidityPool).onBeforeLoanTaken(id);
