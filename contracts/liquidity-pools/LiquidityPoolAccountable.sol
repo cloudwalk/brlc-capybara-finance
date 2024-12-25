@@ -309,7 +309,7 @@ contract LiquidityPoolAccountable is
         return _token;
     }
 
-    /// @dev ILiquidityPool
+    /// @inheritdoc ILiquidityPool
     function addonTreasury() external view returns (address) {
         return _addonTreasury;
     }

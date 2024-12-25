@@ -81,12 +81,4 @@ interface ILiquidityPoolAccountable is ILiquidityPool {
     /// @param account The address of the account to check.
     /// @return True if the account is configured as an admin.
     function isAdmin(address account) external view returns (bool);
-
-    /// @dev Returns the addon treasury address.
-    ///
-    /// If the address is zero the addon amount of a loan is retained in the pool.
-    /// Otherwise the addon amount transfers to that treasury when a loan is taken and back when a loan is revoked.
-    ///
-    /// @return The current address of the addon treasury.
-    function addonTreasury() external view returns (address);
 }
