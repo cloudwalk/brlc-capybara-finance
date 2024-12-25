@@ -19,7 +19,6 @@ import { Versionable } from "./common/Versionable.sol";
 import { ILendingMarket } from "./common/interfaces/core/ILendingMarket.sol";
 import { ILiquidityPool } from "./common/interfaces/core/ILiquidityPool.sol";
 import { ICreditLine } from "./common/interfaces/core/ICreditLine.sol";
-import { ICreditLineConfigurable } from "./common/interfaces/ICreditLineConfigurable.sol";
 
 import { LendingMarketStorage } from "./LendingMarketStorage.sol";
 
@@ -1068,7 +1067,7 @@ contract LendingMarket is
         Loan.State storage loan
     ) internal view returns (uint256) {
         address creditLine = _programCreditLines[loan.programId];
-        uint256 lateFeeRate = creditLine != address(0) ? ICreditLineConfigurable(creditLine).lateFeeRate() : 0;
+        uint256 lateFeeRate = creditLine != address(0) ? ICreditLine(creditLine).lateFeeRate() : 0;
         uint256 product = outstandingBalance * lateFeeRate;
         uint256 reminder = product % Constants.INTEREST_RATE_FACTOR;
         uint256 result = product / Constants.INTEREST_RATE_FACTOR;
