@@ -1010,7 +1010,10 @@ contract LendingMarket is
         return preview;
     }
 
-    /// @dev TODO
+    /// @dev Calculates the installment loan preview.
+    /// @param loanId The ID of the loan.
+    /// @param timestamp The timestamp to calculate the preview at.
+    /// @return The installment loan preview.
     function _getInstallmentLoanPreview(
         uint256 loanId,
         uint256 timestamp
@@ -1104,6 +1107,10 @@ contract LendingMarket is
         }
     }
 
+    /// @dev Transfers tokens from the liquidity pool to the borrower and the addon treasury.
+    /// @param loanId The ID of the loan.
+    /// @param borrowAmount The amount of tokens to borrow.
+    /// @param addonAmount The addon amount of the loan.
     function _transferTokensOnLoanTaking(uint256 loanId, uint256 borrowAmount, uint256 addonAmount) internal {
         Loan.State storage loan = _loans[loanId];
         address liquidityPool = _programLiquidityPools[loan.programId];
@@ -1115,6 +1122,11 @@ contract LendingMarket is
         }
     }
 
+    /// @dev Transfers tokens from the borrower and the addon treasury back to the liquidity pool.
+    /// @param loan The storage state of the loan.
+    /// @param borrowAmount The amount of tokens to borrow.
+    /// @param addonAmount The addon amount of the loan.
+    /// @param repaidAmount The repaid amount of the loan.
     function _transferTokensOnLoanRevocation(
         Loan.State storage loan,
         uint256 borrowAmount,
