@@ -196,6 +196,15 @@ contract LendingMarketMock is ILendingMarket {
         revert Error.NotImplemented();
     }
 
+    function getLoanPreviewExtendedBatch(
+        uint256[] calldata loanIds,
+        uint256 timestamp
+    ) external pure returns (Loan.PreviewExtended[] memory) {
+        loanIds; // To prevent compiler warning about unused variable
+        timestamp; // To prevent compiler warning about unused variable
+        revert Error.NotImplemented();
+    }
+
     function getInstallmentLoanPreview(
         uint256 loanId,
         uint256 timestamp

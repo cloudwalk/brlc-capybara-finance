@@ -45,7 +45,7 @@ library Loan {
         uint64 lateFeeAmount;         // The late fee amount of the loan or zero if the loan is not defaulted.
     }
 
-    /// @dev A struct that defines the terms of the loan.
+    /// @dev A struct that defines the terms of a loan.
     struct Terms {
         // Slot 1
         address token;                // The address of the token to be used for the loan.
@@ -63,6 +63,48 @@ library Loan {
         uint256 outstandingBalance; // The outstanding balance of the loan at the previewed period.
     }
 
+    /// @dev A struct that defines the extended preview of a loan.
+    ///
+    /// Fields:
+    /// - periodIndex ------------ The period index that matches the preview timestamp.
+    /// - trackedBalance --------- The tracked balance of the loan at the previewed period.
+    /// - outstandingBalance ----- The outstanding balance of the loan at the previewed period.
+    /// - borrowAmount ----------- The borrow amount of the loan at the previewed period.
+    /// - addonAmount ------------ The addon amount of the loan at the previewed period.
+    /// - repaidAmount ----------- The repaid amount of the loan at the previewed period.
+    /// - lateFeeAmount ---------- The late fee amount of the loan at the previewed period.
+    /// - programId -------------- The program ID of the loan.
+    /// - borrower --------------- The borrower of the loan.
+    /// - previewTimestamp ------- The preview timestamp.
+    /// - startTimestamp --------- The start timestamp of the loan.
+    /// - trackedTimestamp ------- The tracked timestamp of the loan.
+    /// - freezeTimestamp -------- The freeze timestamp of the loan.
+    /// - durationInPeriods ------ The duration in periods of the loan.
+    /// - interestRatePrimary ---- The primary interest rate of the loan.
+    /// - interestRateSecondary -- The secondary interest rate of the loan.
+    /// - firstInstallmentId ----- The ID of the first installment for sub-loans or zero for ordinary loans.
+    /// - installmentCount ------- The total number of installments for sub-loans or zero for ordinary loans.    
+    struct PreviewExtended {
+        uint256 periodIndex;
+        uint256 trackedBalance;
+        uint256 outstandingBalance;
+        uint256 borrowAmount;
+        uint256 addonAmount;
+        uint256 repaidAmount;
+        uint256 lateFeeAmount;
+        uint256 programId;
+        address borrower;
+        uint256 previewTimestamp;
+        uint256 startTimestamp;
+        uint256 trackedTimestamp;
+        uint256 freezeTimestamp;
+        uint256 durationInPeriods;
+        uint256 interestRatePrimary;
+        uint256 interestRateSecondary;
+        uint256 firstInstallmentId;
+        uint256 installmentCount;
+    }
+
     /// @dev A struct that defines the preview of an installment loan.
     ///
     /// The structure can be returned for both ordinary and installment loans.
@@ -77,6 +119,8 @@ library Loan {
     /// - totalBorrowAmount -------- The total borrow amount of all installments.
     /// - totalAddonAmount --------- The total addon amount of all installments.
     /// - totalRepaidAmount -------- The total repaid amount of all installments.
+    /// - totalLateFeeAmount ------- The total late fee amount of all installments.
+    /// - installmentPreviews ------ The extended previews of all installments.
     ///
     /// The purpose of the fields in the case of ordinary loans:
     ///
@@ -88,7 +132,9 @@ library Loan {
     /// - totalBorrowAmount -------- The borrow amount of the loan.
     /// - totalAddonAmount --------- The addon amount of the loan.
     /// - totalRepaidAmount -------- The repaid amount of the loan.
-    ///
+    /// - totalLateFeeAmount ------- The late fee amount of the loan.
+    /// - installmentPreviews ------ The extended preview of the loan as a single item array.
+
     /// Notes:
     ///
     /// 1. The `totalTrackedBalance` fields calculates as the sum of tracked balances of all installments.
@@ -103,5 +149,7 @@ library Loan {
         uint256 totalBorrowAmount;
         uint256 totalAddonAmount;
         uint256 totalRepaidAmount;
+        uint256 totalLateFeeAmount;
+        PreviewExtended[] installmentPreviews;
     }
 }

@@ -338,6 +338,15 @@ interface ILendingMarket {
         uint256 timestamp
     ) external view returns (Loan.Preview[] memory);
 
+    /// @dev Gets the loan extended preview at a specific timestamp for a batch of ordinary loans or sub-loans.
+    /// @param loanIds The unique identifiers of the loans to check.
+    /// @param timestamp The timestamp to get the loan preview for. If 0, the current timestamp is used.
+    /// @return The extended previews of the loans (see the `Loan.PreviewExtended` struct).
+    function getLoanPreviewExtendedBatch(
+        uint256[] calldata loanIds,
+        uint256 timestamp
+    ) external view returns (Loan.PreviewExtended[] memory);
+
     /// @dev Gets the preview of an installment loan at a specific timestamp.
     ///
     /// This function can be called for an ordinary loan as well, but the resulting data will be slightly different.

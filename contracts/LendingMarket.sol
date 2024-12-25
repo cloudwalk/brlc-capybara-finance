@@ -720,6 +720,24 @@ contract LendingMarket is
     }
 
     /// @inheritdoc ILendingMarket
+    function getLoanPreviewExtendedBatch(
+        uint256[] calldata loanIds,
+        uint256 timestamp
+    ) external view returns (Loan.PreviewExtended[] memory) {
+        if (timestamp == 0) {
+            timestamp = _blockTimestamp();
+        }
+
+        uint256 len = loanIds.length;
+        Loan.PreviewExtended[] memory previews = new Loan.PreviewExtended[](len);
+        for (uint256 i = 0; i < len; ++i) {
+            previews[i] = _getLoanPreviewExtended(loanIds[i], timestamp);
+        }
+
+        return previews;
+    }
+
+    /// @inheritdoc ILendingMarket
     function getInstallmentLoanPreview(
         uint256 loanId,
         uint256 timestamp
@@ -1010,6 +1028,35 @@ contract LendingMarket is
         return preview;
     }
 
+    /// @dev Calculates the loan extended preview.
+    /// @param loanId The ID of the loan.
+    /// @param timestamp The timestamp to calculate the preview at.
+    /// @return The loan extended preview.
+    function _getLoanPreviewExtended(uint256 loanId, uint256 timestamp) internal view returns (Loan.PreviewExtended memory) {
+        Loan.PreviewExtended memory preview;
+        Loan.State storage loan = _loans[loanId];
+
+        (preview.trackedBalance, preview.lateFeeAmount, preview.periodIndex) = _outstandingBalance(loan, timestamp);
+        preview.outstandingBalance = Rounding.roundMath(preview.trackedBalance, Constants.ACCURACY_FACTOR);
+        preview.borrowAmount = loan.borrowAmount;
+        preview.addonAmount = loan.addonAmount;
+        preview.repaidAmount = loan.repaidAmount;
+        preview.lateFeeAmount += loan.lateFeeAmount;
+        preview.programId = loan.programId;
+        preview.borrower = loan.borrower;
+        preview.previewTimestamp = timestamp;
+        preview.startTimestamp = loan.startTimestamp;
+        preview.trackedTimestamp = loan.trackedTimestamp;
+        preview.freezeTimestamp = loan.freezeTimestamp;
+        preview.durationInPeriods = loan.durationInPeriods;
+        preview.interestRatePrimary = loan.interestRatePrimary;
+        preview.interestRateSecondary = loan.interestRateSecondary;
+        preview.firstInstallmentId = loan.firstInstallmentId;
+        preview.installmentCount = loan.instalmentCount;
+
+        return preview;
+    }
+
     /// @dev Calculates the installment loan preview.
     /// @param loanId The ID of the loan.
     /// @param timestamp The timestamp to calculate the preview at.
@@ -1024,26 +1071,29 @@ contract LendingMarket is
         Loan.State storage loan = _loans[loanId];
         Loan.InstallmentLoanPreview memory preview;
         preview.instalmentCount = loan.instalmentCount;
-        uint256 lastInstallmentId = loanId;
+        uint256 loanCount = 1;
         if (preview.instalmentCount > 0) {
             loanId = loan.firstInstallmentId;
             preview.firstInstallmentId = loanId;
-            lastInstallmentId = loanId + preview.instalmentCount - 1;
+            loanCount = preview.instalmentCount;
         } else {
             preview.firstInstallmentId = loanId;
         }
+        preview.installmentPreviews = new Loan.PreviewExtended[](loanCount);
 
-        for (; loanId <= lastInstallmentId; ++loanId) {
-            Loan.Preview memory singleLoanPreview = _getLoanPreview(loanId, timestamp);
-            preview.periodIndex = singleLoanPreview.periodIndex;
+        Loan.PreviewExtended memory singleLoanPreview;
+        for (uint256 i = 0; i < loanCount; ++i) {
+            singleLoanPreview = _getLoanPreviewExtended(loanId, timestamp);
             preview.totalTrackedBalance += singleLoanPreview.trackedBalance;
             preview.totalOutstandingBalance += singleLoanPreview.outstandingBalance;
-
-            loan = _loans[loanId];
-            preview.totalBorrowAmount += loan.borrowAmount;
-            preview.totalAddonAmount += loan.addonAmount;
-            preview.totalRepaidAmount += loan.repaidAmount;
+            preview.totalBorrowAmount += singleLoanPreview.borrowAmount;
+            preview.totalAddonAmount += singleLoanPreview.addonAmount;
+            preview.totalRepaidAmount += singleLoanPreview.repaidAmount;
+            preview.totalLateFeeAmount += singleLoanPreview.lateFeeAmount;
+            preview.installmentPreviews[i] = singleLoanPreview;
+            ++loanId;
         }
+        preview.periodIndex = singleLoanPreview.periodIndex;
 
         return preview;
     }
