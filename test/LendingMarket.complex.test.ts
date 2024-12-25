@@ -241,7 +241,7 @@ describe("Contract 'LendingMarket': complex tests", async () => {
     await proveTx(lendingMarket.createProgram(creditLineAddress, liquidityPoolAddress));
 
     // Configure addon treasure
-    await proveTx(connect(token, addonTreasury).approve(liquidityPoolAddress, MAX_ALLOWANCE));
+    await proveTx(connect(token, addonTreasury).approve(lendingMarketAddress, MAX_ALLOWANCE));
     await proveTx(liquidityPool.setAddonTreasury(addonTreasury.address));
 
     // Mint token
