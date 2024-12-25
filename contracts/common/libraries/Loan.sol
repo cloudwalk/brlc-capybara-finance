@@ -73,7 +73,10 @@ library Loan {
     /// - instalmentCount ---------- The total number of installments.
     /// - periodIndex -------------- The period index that matches the preview timestamp.
     /// - totalTrackedBalance ------ The total tracked balance of all installments.
-    /// - totalOutstandingBalance -- The total outstanding balance of all installments.
+    /// - totalOutstandingBalance -- The total outstanding balance of all installments
+    /// - totalBorrowAmount -------- The total borrow amount of all installments.
+    /// - totalAddonAmount --------- The total addon amount of all installments.
+    /// - totalRepaidAmount -------- The total repaid amount of all installments.
     ///
     /// The purpose of the fields in the case of ordinary loans:
     ///
@@ -82,6 +85,9 @@ library Loan {
     /// - periodIndex -------------- The period index that matches the preview timestamp.
     /// - totalTrackedBalance ------ The tracked balance of the loan.
     /// - totalOutstandingBalance -- The outstanding balance of the loan.
+    /// - totalBorrowAmount -------- The borrow amount of the loan.
+    /// - totalAddonAmount --------- The addon amount of the loan.
+    /// - totalRepaidAmount -------- The repaid amount of the loan.
     ///
     /// Notes:
     ///
@@ -94,5 +100,8 @@ library Loan {
         uint256 periodIndex;
         uint256 totalTrackedBalance;
         uint256 totalOutstandingBalance;
+        uint256 totalBorrowAmount;
+        uint256 totalAddonAmount;
+        uint256 totalRepaidAmount;
     }
 }

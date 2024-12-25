@@ -172,14 +172,15 @@ contract LendingMarket is
     ) external whenNotPaused returns (uint256) {
         address borrower = msg.sender;
         _checkMainLoanParameters(borrower, programId, borrowAmount, 0);
-        return
-            _takeLoan(
-                borrower,
-                programId,
-                borrowAmount,
-                -1, // addonAmount -- calculate internally
-                durationInPeriods
-            );
+        uint256 loanId = _takeLoan(
+            borrower,
+            programId,
+            borrowAmount,
+            -1, // addonAmount -- calculate internally
+            durationInPeriods
+        );
+        _transferTokensOnLoanTaking(loanId, borrowAmount, _loans[loanId].addonAmount);
+        return loanId;
     }
 
     /// @inheritdoc ILendingMarket
@@ -192,14 +193,15 @@ contract LendingMarket is
     ) external whenNotPaused returns (uint256) {
         _checkSender(msg.sender, programId);
         _checkMainLoanParameters(borrower, programId, borrowAmount, addonAmount);
-        return
-            _takeLoan(
-                borrower, // Tools: this comment prevents Prettier from formatting into a single line.
-                programId,
-                borrowAmount,
-                int256(addonAmount),
-                durationInPeriods
-            );
+        uint256 loanId = _takeLoan(
+            borrower, // Tools: this comment prevents Prettier from formatting into a single line.
+            programId,
+            borrowAmount,
+            int256(addonAmount),
+            durationInPeriods
+        );
+        _transferTokensOnLoanTaking(loanId, borrowAmount, addonAmount);
+        return loanId;
     }
 
     /// @inheritdoc ILendingMarket
@@ -245,6 +247,8 @@ contract LendingMarket is
             totalBorrowAmount,
             totalAddonAmount
         );
+
+        _transferTokensOnLoanTaking(firstInstallmentId, totalBorrowAmount, totalAddonAmount);
     }
 
     /// @dev Takes a loan for a provided account internally.
@@ -302,8 +306,6 @@ contract LendingMarket is
 
         ICreditLine(creditLine).onBeforeLoanTaken(id);
         ILiquidityPool(liquidityPool).onBeforeLoanTaken(id);
-
-        IERC20(terms.token).safeTransferFrom(liquidityPool, borrower, borrowAmount);
 
         emit LoanTaken(id, borrower, principalAmount, terms.durationInPeriods);
 
@@ -587,6 +589,7 @@ contract LendingMarket is
         Loan.State storage loan = _loans[loanId];
         _checkLoanType(loan, uint256(Loan.Type.Ordinary));
         _revokeLoan(loanId, loan);
+        _transferTokensOnLoanRevocation(loan, loan.borrowAmount, loan.addonAmount, loan.repaidAmount);
     }
 
     /// @inheritdoc ILendingMarket
@@ -598,6 +601,7 @@ contract LendingMarket is
         loanId = loan.firstInstallmentId;
         uint256 lastLoanId = loanId + loan.instalmentCount - 1;
         uint256 ongoingSubLoanCount = 0;
+        Loan.InstallmentLoanPreview memory installmentLoanPreview = _getInstallmentLoanPreview(loanId, 0);
 
         for (; loanId <= lastLoanId; ++loanId) {
             loan = _loans[loanId];
@@ -616,6 +620,13 @@ contract LendingMarket is
             loan.firstInstallmentId, // Tools: this comment prevents Prettier from formatting into a single line.
             loan.instalmentCount
         );
+
+        _transferTokensOnLoanRevocation(
+            loan,
+            installmentLoanPreview.totalBorrowAmount,
+            installmentLoanPreview.totalAddonAmount,
+            installmentLoanPreview.totalRepaidAmount
+        );
     }
 
     /// @dev Updates the loan state and makes the necessary transfers when revoking a loan.
@@ -629,12 +640,6 @@ contract LendingMarket is
 
         loan.trackedBalance = 0;
         loan.trackedTimestamp = _blockTimestamp().toUint32();
-
-        if (loan.repaidAmount < loan.borrowAmount) {
-            IERC20(loan.token).safeTransferFrom(loan.borrower, liquidityPool, loan.borrowAmount - loan.repaidAmount);
-        } else if (loan.repaidAmount != loan.borrowAmount) {
-            IERC20(loan.token).safeTransferFrom(liquidityPool, loan.borrower, loan.repaidAmount - loan.borrowAmount);
-        }
 
         ILiquidityPool(liquidityPool).onAfterLoanRevocation(loanId);
         ICreditLine(creditLine).onAfterLoanRevocation(loanId);
@@ -719,29 +724,7 @@ contract LendingMarket is
         uint256 loanId,
         uint256 timestamp
     ) external view returns (Loan.InstallmentLoanPreview memory) {
-        if (timestamp == 0) {
-            timestamp = _blockTimestamp();
-        }
-        Loan.State storage loan = _loans[loanId];
-        Loan.InstallmentLoanPreview memory preview;
-        preview.instalmentCount = loan.instalmentCount;
-        uint256 lastInstallmentId = loanId;
-        if (preview.instalmentCount > 0) {
-            loanId = loan.firstInstallmentId;
-            preview.firstInstallmentId = loanId;
-            lastInstallmentId = loanId + preview.instalmentCount - 1;
-        } else {
-            preview.firstInstallmentId = loanId;
-        }
-
-        for (; loanId <= lastInstallmentId; ++loanId) {
-            Loan.Preview memory singleLoanPreview = _getLoanPreview(loanId, timestamp);
-            preview.periodIndex = singleLoanPreview.periodIndex;
-            preview.totalTrackedBalance += singleLoanPreview.trackedBalance;
-            preview.totalOutstandingBalance += singleLoanPreview.outstandingBalance;
-        }
-
-        return preview;
+        return _getInstallmentLoanPreview(loanId, timestamp);
     }
 
     /// @inheritdoc ILendingMarket
@@ -1027,6 +1010,41 @@ contract LendingMarket is
         return preview;
     }
 
+    /// @dev TODO
+    function _getInstallmentLoanPreview(
+        uint256 loanId,
+        uint256 timestamp
+    ) internal view returns (Loan.InstallmentLoanPreview memory) {
+        if (timestamp == 0) {
+            timestamp = _blockTimestamp();
+        }
+        Loan.State storage loan = _loans[loanId];
+        Loan.InstallmentLoanPreview memory preview;
+        preview.instalmentCount = loan.instalmentCount;
+        uint256 lastInstallmentId = loanId;
+        if (preview.instalmentCount > 0) {
+            loanId = loan.firstInstallmentId;
+            preview.firstInstallmentId = loanId;
+            lastInstallmentId = loanId + preview.instalmentCount - 1;
+        } else {
+            preview.firstInstallmentId = loanId;
+        }
+
+        for (; loanId <= lastInstallmentId; ++loanId) {
+            Loan.Preview memory singleLoanPreview = _getLoanPreview(loanId, timestamp);
+            preview.periodIndex = singleLoanPreview.periodIndex;
+            preview.totalTrackedBalance += singleLoanPreview.trackedBalance;
+            preview.totalOutstandingBalance += singleLoanPreview.outstandingBalance;
+
+            loan = _loans[loanId];
+            preview.totalBorrowAmount += loan.borrowAmount;
+            preview.totalAddonAmount += loan.addonAmount;
+            preview.totalRepaidAmount += loan.repaidAmount;
+        }
+
+        return preview;
+    }
+
     /// @dev Calculates the due period index for a loan.
     /// @param startTimestamp The start timestamp of the loan.
     /// @param durationInPeriods The duration of the loan in periods.
@@ -1083,6 +1101,37 @@ contract LendingMarket is
     function _updateStoredLateFee(uint256 lateFeeAmount, Loan.State storage loan) internal {
         if (lateFeeAmount > 0) {
             loan.lateFeeAmount = lateFeeAmount.toUint64();
+        }
+    }
+
+    function _transferTokensOnLoanTaking(uint256 loanId, uint256 borrowAmount, uint256 addonAmount) internal {
+        Loan.State storage loan = _loans[loanId];
+        address liquidityPool = _programLiquidityPools[loan.programId];
+        address token = loan.token;
+        address addonTreasury = ILiquidityPool(liquidityPool).addonTreasury();
+        IERC20(token).safeTransferFrom(liquidityPool, loan.borrower, borrowAmount);
+        if (addonTreasury != address(0)) {
+            IERC20(token).safeTransferFrom(liquidityPool, addonTreasury, addonAmount);
+        }
+    }
+
+    function _transferTokensOnLoanRevocation(
+        Loan.State storage loan,
+        uint256 borrowAmount,
+        uint256 addonAmount,
+        uint256 repaidAmount
+    ) internal {
+        address liquidityPool = _programLiquidityPools[loan.programId];
+        address token = loan.token;
+        address addonTreasury = ILiquidityPool(liquidityPool).addonTreasury();
+
+        if (repaidAmount < borrowAmount) {
+            IERC20(loan.token).safeTransferFrom(loan.borrower, liquidityPool, borrowAmount - repaidAmount);
+        } else if (repaidAmount != borrowAmount) {
+            IERC20(loan.token).safeTransferFrom(liquidityPool, loan.borrower, repaidAmount - borrowAmount);
+        }
+        if (addonTreasury != address(0)) {
+            IERC20(token).safeTransferFrom(addonTreasury, liquidityPool, addonAmount);
         }
     }
 

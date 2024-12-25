@@ -79,8 +79,8 @@ contract LiquidityPoolAccountable is
     /// an incorrect value of the `_addonsBalance` variable, or a reversion if `_addonsBalance == 0`.
     error AddonTreasuryAddressZeroingProhibited();
 
-    /// @dev Thrown when the addon treasury has not provided an allowance for the pool contract to transfer its tokens.
-    error AddonTreasuryZeroAllowance();
+    /// @dev Thrown when the addon treasury has not provided an allowance for the lending market to transfer its tokens.
+    error AddonTreasuryZeroAllowanceForMarket();
 
     /// @dev Thrown when the token source balance is insufficient.
     error InsufficientBalance();
@@ -334,8 +334,8 @@ contract LiquidityPoolAccountable is
         if (newTreasury == address(0)) {
             revert AddonTreasuryAddressZeroingProhibited();
         }
-        if (IERC20(_token).allowance(newTreasury, address(this)) == 0) {
-            revert AddonTreasuryZeroAllowance();
+        if (IERC20(_token).allowance(newTreasury, _market) == 0) {
+            revert AddonTreasuryZeroAllowanceForMarket();
         }
         emit AddonTreasuryChanged(newTreasury, oldTreasury);
         _addonTreasury = newTreasury;
@@ -345,11 +345,8 @@ contract LiquidityPoolAccountable is
     ///
     /// See the comments of the {_addonTreasury} storage variable for more details.
     function _collectLoanAddon(uint64 addonAmount) internal {
-        address addonTreasury_ = _addonTreasury;
-        if (addonTreasury_ == address(0)) {
+        if (_addonTreasury == address(0)) {
             _addonsBalance += addonAmount;
-        } else {
-            IERC20(_token).safeTransfer(addonTreasury_, addonAmount);
         }
     }
 
@@ -357,11 +354,8 @@ contract LiquidityPoolAccountable is
     ///
     /// See the comments of the {_addonTreasury} storage variable for more details.
     function _revokeLoanAddon(uint64 addonAmount) internal {
-        address addonTreasury_ = _addonTreasury;
-        if (addonTreasury_ == address(0)) {
+        if (_addonTreasury == address(0)) {
             _addonsBalance -= addonAmount;
-        } else {
-            IERC20(_token).safeTransferFrom(addonTreasury_, address(this), addonAmount);
         }
     }
 }
