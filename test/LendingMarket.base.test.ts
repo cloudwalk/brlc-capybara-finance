@@ -1763,7 +1763,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
         ).to.be.revertedWithCustomError(marketUnderLender, ERROR_NAME_INVALID_AMOUNT);
       });
 
-      it("The durations in the input array are not an ascending series", async () => {
+      it("The durations in the input array do not correspond to a non-decreasing sequence", async () => {
         const { market, marketUnderLender } = await setUpFixture(deployLendingMarketAndConfigureItForLoan);
         const wrongDurations = [...DURATIONS_IN_PERIODS];
         wrongDurations[INSTALLMENT_COUNT - 1] = wrongDurations[INSTALLMENT_COUNT - 2] - 1;
@@ -2183,41 +2183,43 @@ describe("Contract 'LendingMarket': base tests", async () => {
       });
     });
 
-    it("Is reverted if the contract is paused", async () => {
-      const { market, ordinaryLoan: loan } = await setUpFixture(deployLendingMarketAndTakeLoans);
-      await proveTx(market.pause());
+    describe("Is reverted if", async () => {
+      it("The contract is paused", async () => {
+        const { market, ordinaryLoan: loan } = await setUpFixture(deployLendingMarketAndTakeLoans);
+        await proveTx(market.pause());
 
-      await expect(market.unfreeze(loan.id)).to.be.revertedWithCustomError(market, ERROR_NAME_ENFORCED_PAUSED);
-    });
+        await expect(market.unfreeze(loan.id)).to.be.revertedWithCustomError(market, ERROR_NAME_ENFORCED_PAUSED);
+      });
 
-    it("Is reverted if the loan does not exist", async () => {
-      const { market, ordinaryLoan: loan } = await setUpFixture(deployLendingMarketAndTakeLoans);
-      const wrongLoanId = loan.id + 123;
+      it("The loan does not exist", async () => {
+        const { market, ordinaryLoan: loan } = await setUpFixture(deployLendingMarketAndTakeLoans);
+        const wrongLoanId = loan.id + 123;
 
-      await expect(market.unfreeze(wrongLoanId))
-        .to.be.revertedWithCustomError(market, ERROR_NAME_LOAN_NOT_EXIST);
-    });
+        await expect(market.unfreeze(wrongLoanId))
+          .to.be.revertedWithCustomError(market, ERROR_NAME_LOAN_NOT_EXIST);
+      });
 
-    it("Is reverted if the loan is already repaid", async () => {
-      const { market, ordinaryLoan: loan } = await setUpFixture(deployLendingMarketAndTakeLoans);
-      await proveTx(connect(market, borrower).repayLoan(loan.id, FULL_REPAYMENT_AMOUNT));
+      it("The loan is already repaid", async () => {
+        const { market, ordinaryLoan: loan } = await setUpFixture(deployLendingMarketAndTakeLoans);
+        await proveTx(connect(market, borrower).repayLoan(loan.id, FULL_REPAYMENT_AMOUNT));
 
-      await expect(connect(market, lender).unfreeze(loan.id))
-        .to.be.revertedWithCustomError(market, ERROR_NAME_LOAN_ALREADY_REPAID);
-    });
+        await expect(connect(market, lender).unfreeze(loan.id))
+          .to.be.revertedWithCustomError(market, ERROR_NAME_LOAN_ALREADY_REPAID);
+      });
 
-    it("Is reverted if the caller is not the lender or an alias", async () => {
-      const { market, ordinaryLoan: loan } = await setUpFixture(deployLendingMarketAndTakeLoans);
+      it("The caller is not the lender or an alias", async () => {
+        const { market, ordinaryLoan: loan } = await setUpFixture(deployLendingMarketAndTakeLoans);
 
-      await expect(connect(market, attacker).unfreeze(loan.id))
-        .to.be.revertedWithCustomError(market, ERROR_NAME_UNAUTHORIZED);
-    });
+        await expect(connect(market, attacker).unfreeze(loan.id))
+          .to.be.revertedWithCustomError(market, ERROR_NAME_UNAUTHORIZED);
+      });
 
-    it("Is reverted if the loan is not frozen", async () => {
-      const { marketUnderLender, ordinaryLoan: loan } = await setUpFixture(deployLendingMarketAndTakeLoans);
+      it("The loan is not frozen", async () => {
+        const { marketUnderLender, ordinaryLoan: loan } = await setUpFixture(deployLendingMarketAndTakeLoans);
 
-      await expect(marketUnderLender.unfreeze(loan.id))
-        .to.be.revertedWithCustomError(marketUnderLender, ERROR_NAME_LOAN_NOT_FROZEN);
+        await expect(marketUnderLender.unfreeze(loan.id))
+          .to.be.revertedWithCustomError(marketUnderLender, ERROR_NAME_LOAN_NOT_FROZEN);
+      });
     });
   });
 
