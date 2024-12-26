@@ -83,7 +83,7 @@ library Loan {
     /// - interestRatePrimary ---- The primary interest rate of the loan.
     /// - interestRateSecondary -- The secondary interest rate of the loan.
     /// - firstInstallmentId ----- The ID of the first installment for sub-loans or zero for ordinary loans.
-    /// - installmentCount ------- The total number of installments for sub-loans or zero for ordinary loans.    
+    /// - installmentCount ------- The total number of installments for sub-loans or zero for ordinary loans.
     struct PreviewExtended {
         uint256 periodIndex;
         uint256 trackedBalance;

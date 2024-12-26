@@ -1003,7 +1003,10 @@ contract LendingMarket is
     /// @param loanId The ID of the loan.
     /// @param timestamp The timestamp to calculate the preview at.
     /// @return The loan extended preview.
-    function _getLoanPreviewExtended(uint256 loanId, uint256 timestamp) internal view returns (Loan.PreviewExtended memory) {
+    function _getLoanPreviewExtended(
+        uint256 loanId,
+        uint256 timestamp
+    ) internal view returns (Loan.PreviewExtended memory) {
         Loan.PreviewExtended memory preview;
         Loan.State storage loan = _loans[loanId];
 
