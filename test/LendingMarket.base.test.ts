@@ -6,7 +6,8 @@ import {
   connect,
   getAddress,
   getBlockTimestamp,
-  getLatestBlockTimestamp, getNumberOfEvents,
+  getLatestBlockTimestamp,
+  getNumberOfEvents,
   getTxTimestamp,
   increaseBlockTimestampTo,
   proveTx
@@ -94,8 +95,13 @@ interface InstallmentLoanPreview {
   periodIndex: number;
   totalTrackedBalance: number;
   totalOutstandingBalance: number;
+  totalBorrowAmount: number;
+  totalAddonAmount: number;
+  totalRepaidAmount: number;
+  totalLateFeeAmount: number;
+  installmentPreviews: LoanPreviewExtended[];
 
-  [key: string]: number; // Index signature
+  [key: string]: number | LoanPreviewExtended[]; // Index signature
 }
 
 interface Fixture {
@@ -255,6 +261,22 @@ async function getLoanStates(contract: Contract, lonaIds: number[]): Promise<Loa
     loanStatePromises.push(contract.getLoanState(loanId));
   }
   return Promise.all(loanStatePromises);
+}
+
+function checkInstallmentLoanPreviewEquality(
+  actualPreview: InstallmentLoanPreview,
+  expectedPreview: InstallmentLoanPreview
+) {
+  checkEquality(
+    actualPreview,
+    expectedPreview,
+    undefined, // index
+    { ignoreObjects: true }
+  );
+  expect(actualPreview.installmentPreviews.length).to.eq(expectedPreview.installmentPreviews.length);
+  for (let i = 0; i < expectedPreview.installmentPreviews.length; i++) {
+    checkEquality(actualPreview.installmentPreviews[i], expectedPreview.installmentPreviews[i], i);
+  }
 }
 
 describe("Contract 'LendingMarket': base tests", async () => {
@@ -447,7 +469,8 @@ describe("Contract 'LendingMarket': base tests", async () => {
     const startPeriodIndex = calculatePeriodIndex(loan.state.startTimestamp);
     const duePeriodIndex = startPeriodIndex + loan.state.durationInPeriods;
     const numberOfPeriods = periodIndex - trackedPeriodIndex;
-    const numberOfPeriodsWithSecondaryRate = periodIndex - duePeriodIndex;
+    const numberOfPeriodsWithSecondaryRate =
+      trackedPeriodIndex > duePeriodIndex ? numberOfPeriods : periodIndex - duePeriodIndex;
     const numberOfPeriodsWithPrimaryRate =
       numberOfPeriodsWithSecondaryRate > 0 ? numberOfPeriods - numberOfPeriodsWithSecondaryRate : numberOfPeriods;
 
@@ -475,12 +498,12 @@ describe("Contract 'LendingMarket': base tests", async () => {
   }
 
   function determineLoanPreviewExtended(loan: Loan, timestamp: number): LoanPreviewExtended {
-    const loanPreviews: LoanPreview = determineLoanPreview(loan, timestamp);
+    const loanPreview: LoanPreview = determineLoanPreview(loan, timestamp);
     const lateFeeAmount = determineLateFeeAmount(loan, timestamp);
     return {
-      periodIndex: loanPreviews.periodIndex,
-      trackedBalance: loanPreviews.trackedBalance,
-      outstandingBalance: loanPreviews.outstandingBalance,
+      periodIndex: loanPreview.periodIndex,
+      trackedBalance: loanPreview.trackedBalance,
+      outstandingBalance: loanPreview.outstandingBalance,
       borrowAmount: loan.state.borrowAmount,
       addonAmount: loan.state.addonAmount,
       repaidAmount: loan.state.repaidAmount,
@@ -496,7 +519,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       interestRateSecondary: loan.state.interestRateSecondary,
       firstInstallmentId: loan.state.firstInstallmentId,
       installmentCount: loan.state.instalmentCount
-    }
+    };
   }
 
   function defineInstallmentLoanPreview(loans: Loan[], timestamp: number): InstallmentLoanPreview {
@@ -510,7 +533,12 @@ describe("Contract 'LendingMarket': base tests", async () => {
         .reduce((sum, amount) => sum + amount),
       totalOutstandingBalance: loanPreviews
         .map(preview => preview.outstandingBalance)
-        .reduce((sum, amount) => sum + amount)
+        .reduce((sum, amount) => sum + amount),
+      totalBorrowAmount: loans.map(loan => loan.state.borrowAmount).reduce((sum, amount) => sum + amount),
+      totalAddonAmount: loans.map(loan => loan.state.addonAmount).reduce((sum, amount) => sum + amount),
+      totalRepaidAmount: loans.map(loan => loan.state.repaidAmount).reduce((sum, amount) => sum + amount),
+      totalLateFeeAmount: loanPreviews.map(preview => preview.lateFeeAmount).reduce((sum, amount) => sum + amount),
+      installmentPreviews: loanPreviews
     };
   }
 
@@ -1457,7 +1485,10 @@ describe("Contract 'LendingMarket': base tests", async () => {
       }
     });
 
-    async function executeAndCheck(props: { isAddonTreasuryConfigured: boolean; installmentCount: number; }) {
+    async function executeAndCheck(props: {
+      isAddonTreasuryConfigured: boolean;
+      installmentCount: number;
+    }) {
       const { market } = await setUpFixture(deployLendingMarketAndConfigureItForLoan);
       const { installmentCount, isAddonTreasuryConfigured } = props;
 
@@ -2845,8 +2876,8 @@ describe("Contract 'LendingMarket': base tests", async () => {
       const { market } = fixture;
 
       const loans = [
-        fixture.ordinaryLoan,
-        fixture.installmentLoanParts[fixture.installmentLoanParts.length - 1]
+        clone(fixture.ordinaryLoan),
+        clone(fixture.installmentLoanParts[fixture.installmentLoanParts.length - 1])
       ];
       const loanIds = loans.map(loan => loan.id);
       const minDuration = Math.min(...loans.map(loan => loan.state.durationInPeriods));
@@ -2880,6 +2911,22 @@ describe("Contract 'LendingMarket': base tests", async () => {
       for (let i = 0; i < expectedLoanPreviews.length; ++i) {
         checkEquality(actualLoanPreviews[i], expectedLoanPreviews[i], i);
       }
+
+      // The loans are partially repaid after defaulting (checking the late fee preview logic)
+      const periodIndex = calculatePeriodIndex(loans[0].state.startTimestamp) + maxDuration + 1;
+      await increaseBlockTimestampToPeriodIndex(periodIndex);
+      for (const loan of loans) {
+        const tx = connect(market, borrower).repayLoan(loan.id, REPAYMENT_AMOUNT);
+        const repaymentTimestamp = await getTxTimestamp(tx);
+        processRepayment(loan, { repaymentTimestamp, repaymentAmount: REPAYMENT_AMOUNT });
+      }
+      timestamp = await getLatestBlockTimestamp() + 2 * PERIOD_IN_SECONDS + 1000;
+      expectedLoanPreviews = loans.map(loan => determineLoanPreviewExtended(loan, timestamp));
+      actualLoanPreviews = await market.getLoanPreviewExtendedBatch(loanIds, calculateTimestampWithOffset(timestamp));
+      expect(actualLoanPreviews.length).to.eq(expectedLoanPreviews.length);
+      for (let i = 0; i < expectedLoanPreviews.length; ++i) {
+        checkEquality(actualLoanPreviews[i], expectedLoanPreviews[i], i);
+      }
     });
 
     it("Function 'getInstallmentLoanPreview()' executes as expected for an ordinary loan", async () => {
@@ -2890,19 +2937,19 @@ describe("Contract 'LendingMarket': base tests", async () => {
       let timestamp = await getLatestBlockTimestamp();
       let expectedLoanPreview: InstallmentLoanPreview = defineInstallmentLoanPreview([loan], timestamp);
       let actualLoanPreview = await market.getInstallmentLoanPreview(loan.id, 0);
-      checkEquality(actualLoanPreview, expectedLoanPreview);
+      checkInstallmentLoanPreviewEquality(actualLoanPreview, expectedLoanPreview);
 
       // The loan at the middle of its duration
       timestamp += Math.floor(loan.state.durationInPeriods / 2) * PERIOD_IN_SECONDS;
       expectedLoanPreview = defineInstallmentLoanPreview([loan], timestamp);
       actualLoanPreview = await market.getInstallmentLoanPreview(loan.id, calculateTimestampWithOffset(timestamp));
-      checkEquality(actualLoanPreview, expectedLoanPreview);
+      checkInstallmentLoanPreviewEquality(actualLoanPreview, expectedLoanPreview);
 
       // The loan after defaulting
       timestamp += loan.state.durationInPeriods * PERIOD_IN_SECONDS;
       expectedLoanPreview = defineInstallmentLoanPreview([loan], timestamp);
       actualLoanPreview = await market.getInstallmentLoanPreview(loan.id, calculateTimestampWithOffset(timestamp));
-      checkEquality(actualLoanPreview, expectedLoanPreview);
+      checkInstallmentLoanPreviewEquality(actualLoanPreview, expectedLoanPreview);
     });
 
     it("Function 'getInstallmentLoanPreview()' executes as expected for an installment loan", async () => {
@@ -2917,19 +2964,19 @@ describe("Contract 'LendingMarket': base tests", async () => {
       let timestamp = await getLatestBlockTimestamp();
       let expectedLoanPreview: InstallmentLoanPreview = defineInstallmentLoanPreview(loans, timestamp);
       let actualLoanPreview = await market.getInstallmentLoanPreview(loan.id, 0);
-      checkEquality(actualLoanPreview, expectedLoanPreview);
+      checkInstallmentLoanPreviewEquality(actualLoanPreview, expectedLoanPreview);
 
       // The loan at the middle of its duration
       timestamp += Math.floor(maxDuration / 2) * PERIOD_IN_SECONDS;
       expectedLoanPreview = defineInstallmentLoanPreview(loans, timestamp);
       actualLoanPreview = await market.getInstallmentLoanPreview(loan.id, calculateTimestampWithOffset(timestamp));
-      checkEquality(actualLoanPreview, expectedLoanPreview);
+      checkInstallmentLoanPreviewEquality(actualLoanPreview, expectedLoanPreview);
 
       // The loan after defaulting
       timestamp += maxDuration * PERIOD_IN_SECONDS;
       expectedLoanPreview = defineInstallmentLoanPreview(loans, timestamp);
       actualLoanPreview = await market.getInstallmentLoanPreview(loan.id, calculateTimestampWithOffset(timestamp));
-      checkEquality(actualLoanPreview, expectedLoanPreview);
+      checkInstallmentLoanPreviewEquality(actualLoanPreview, expectedLoanPreview);
     });
   });
 
