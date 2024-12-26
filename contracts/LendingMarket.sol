@@ -599,7 +599,7 @@ contract LendingMarket is
         _checkLoanType(loan, uint256(Loan.Type.Installment));
 
         loanId = loan.firstInstallmentId;
-        uint256 lastLoanId = loanId + loan.instalmentCount - 1;
+        uint256 lastLoanId = loanId + loan.installmentCount - 1;
         uint256 ongoingSubLoanCount = 0;
         Loan.InstallmentLoanPreview memory installmentLoanPreview = _getInstallmentLoanPreview(loanId, 0);
 
@@ -618,7 +618,7 @@ contract LendingMarket is
 
         emit InstallmentLoanRevoked(
             loan.firstInstallmentId, // Tools: this comment prevents Prettier from formatting into a single line.
-            loan.instalmentCount
+            loan.installmentCount
         );
 
         _transferTokensOnLoanRevocation(
@@ -874,7 +874,7 @@ contract LendingMarket is
     ) internal {
         Loan.State storage loan = _loans[loanId];
         loan.firstInstallmentId = uint40(firstInstallmentId); // Unchecked conversion is safe due to contract logic
-        loan.instalmentCount = uint8(installmentCount); // Unchecked conversion is safe due to contract logic
+        loan.installmentCount = uint8(installmentCount); // Unchecked conversion is safe due to contract logic
     }
 
     /// @dev Validates that the loan ID is within the valid range.
@@ -912,7 +912,7 @@ contract LendingMarket is
     /// @param loan The storage state of the loan.
     /// @param expectedLoanType The expected type of the loan according to the `Loan.Type` enum.
     function _checkLoanType(Loan.State storage loan, uint256 expectedLoanType) internal view {
-        if (loan.instalmentCount == 0) {
+        if (loan.installmentCount == 0) {
             if (expectedLoanType != uint256(Loan.Type.Ordinary)) {
                 revert LoanTypeUnexpected(
                     Loan.Type.Ordinary, // actual
@@ -1026,7 +1026,7 @@ contract LendingMarket is
         preview.interestRatePrimary = loan.interestRatePrimary;
         preview.interestRateSecondary = loan.interestRateSecondary;
         preview.firstInstallmentId = loan.firstInstallmentId;
-        preview.installmentCount = loan.instalmentCount;
+        preview.installmentCount = loan.installmentCount;
 
         return preview;
     }
@@ -1044,12 +1044,12 @@ contract LendingMarket is
         }
         Loan.State storage loan = _loans[loanId];
         Loan.InstallmentLoanPreview memory preview;
-        preview.instalmentCount = loan.instalmentCount;
+        preview.installmentCount = loan.installmentCount;
         uint256 loanCount = 1;
-        if (preview.instalmentCount > 0) {
+        if (preview.installmentCount > 0) {
             loanId = loan.firstInstallmentId;
             preview.firstInstallmentId = loanId;
-            loanCount = preview.instalmentCount;
+            loanCount = preview.installmentCount;
         } else {
             preview.firstInstallmentId = loanId;
         }

@@ -46,7 +46,7 @@ interface LoanState {
   trackedTimestamp: number;
   freezeTimestamp: number;
   firstInstallmentId: number;
-  instalmentCount: number;
+  installmentCount: number;
   lateFeeAmount: number;
 
   [key: string]: string | number; // Index signature
@@ -91,7 +91,7 @@ interface LoanPreviewExtended {
 
 interface InstallmentLoanPreview {
   firstInstallmentId: number;
-  instalmentCount: number;
+  installmentCount: number;
   periodIndex: number;
   totalTrackedBalance: number;
   totalOutstandingBalance: number;
@@ -223,7 +223,7 @@ const defaultLoanState: LoanState = {
   trackedTimestamp: 0,
   freezeTimestamp: 0,
   firstInstallmentId: 0,
-  instalmentCount: 0,
+  installmentCount: 0,
   lateFeeAmount: 0
 };
 
@@ -403,7 +403,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
         trackedBalance: props.borrowAmounts[i] + props.addonAmounts[i],
         trackedTimestamp: timestampWithOffset,
         firstInstallmentId: props.firstInstallmentId,
-        instalmentCount: props.borrowAmounts.length
+        installmentCount: props.borrowAmounts.length
       };
       const loanConfig: LoanConfig = {
         ...defaultLoanConfig,
@@ -518,7 +518,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       interestRatePrimary: loan.state.interestRatePrimary,
       interestRateSecondary: loan.state.interestRateSecondary,
       firstInstallmentId: loan.state.firstInstallmentId,
-      installmentCount: loan.state.instalmentCount
+      installmentCount: loan.state.installmentCount
     };
   }
 
@@ -526,7 +526,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
     const loanPreviews: LoanPreviewExtended[] = loans.map(loan => determineLoanPreviewExtended(loan, timestamp));
     return {
       firstInstallmentId: loans[0].state.firstInstallmentId,
-      instalmentCount: loans[0].state.instalmentCount,
+      installmentCount: loans[0].state.installmentCount,
       periodIndex: loanPreviews[0].periodIndex,
       totalTrackedBalance: loanPreviews
         .map(preview => preview.trackedBalance)

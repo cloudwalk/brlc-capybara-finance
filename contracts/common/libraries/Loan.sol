@@ -39,7 +39,7 @@ library Loan {
         uint32 trackedTimestamp;      // The timestamp when the loan was last paid or its balance was updated.
         uint32 freezeTimestamp;       // The timestamp when the loan was frozen. Zero value for unfrozen loans.
         uint40 firstInstallmentId;    // The ID of the first installment for sub-loans or zero for ordinary loans.
-        uint8 instalmentCount;        // The total number of installments for sub-loans or zero for ordinary loans.
+        uint8 installmentCount;       // The total number of installments for sub-loans or zero for ordinary loans.
         // uint16 __reserved;         // Reserved for future use.
         // Slot 5
         uint64 lateFeeAmount;         // The late fee amount of the loan or zero if the loan is not defaulted.
@@ -112,7 +112,7 @@ library Loan {
     /// The purpose of the fields in the case of installment loans:
     ///
     /// - firstInstallmentId ------- The first installment ID.
-    /// - instalmentCount ---------- The total number of installments.
+    /// - installmentCount --------- The total number of installments.
     /// - periodIndex -------------- The period index that matches the preview timestamp.
     /// - totalTrackedBalance ------ The total tracked balance of all installments.
     /// - totalOutstandingBalance -- The total outstanding balance of all installments
@@ -125,7 +125,7 @@ library Loan {
     /// The purpose of the fields in the case of ordinary loans:
     ///
     /// - firstInstallmentId ------- The ID of the loan.
-    /// - instalmentCount ---------- The total number of installments that always equals zero.
+    /// - installmentCount --------- The total number of installments that always equals zero.
     /// - periodIndex -------------- The period index that matches the preview timestamp.
     /// - totalTrackedBalance ------ The tracked balance of the loan.
     /// - totalOutstandingBalance -- The outstanding balance of the loan.
@@ -142,7 +142,7 @@ library Loan {
     ///    of all installments according to the `ACCURACY_FACTOR` constant.
     struct InstallmentLoanPreview {
         uint256 firstInstallmentId;
-        uint256 instalmentCount;
+        uint256 installmentCount;
         uint256 periodIndex;
         uint256 totalTrackedBalance;
         uint256 totalOutstandingBalance;

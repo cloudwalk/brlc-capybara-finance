@@ -78,7 +78,7 @@ interface LoanState {
   trackedTimestamp: bigint;
   freezeTimestamp: bigint;
   firstInstallmentId: bigint;
-  instalmentCount: bigint;
+  installmentCount: bigint;
   lateFeeAmount: bigint;
 }
 
@@ -153,7 +153,7 @@ const defaultLoanState: LoanState = {
   trackedTimestamp: 0n,
   freezeTimestamp: 0n,
   firstInstallmentId: 0n,
-  instalmentCount: 0n,
+  installmentCount: 0n,
   lateFeeAmount: 0n
 };
 
