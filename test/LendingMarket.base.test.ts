@@ -65,6 +65,29 @@ interface LoanPreview {
   [key: string]: number; // Index signature
 }
 
+interface LoanPreviewExtended {
+  periodIndex: number;
+  trackedBalance: number;
+  outstandingBalance: number;
+  borrowAmount: number;
+  addonAmount: number;
+  repaidAmount: number;
+  lateFeeAmount: number;
+  programId: number;
+  borrower: string;
+  previewTimestamp: number;
+  startTimestamp: number;
+  trackedTimestamp: number;
+  freezeTimestamp: number;
+  durationInPeriods: number;
+  interestRatePrimary: number;
+  interestRateSecondary: number;
+  firstInstallmentId: number;
+  installmentCount: number;
+
+  [key: string]: number | string; // Index signature
+}
+
 interface InstallmentLoanPreview {
   firstInstallmentId: number;
   instalmentCount: number;
@@ -224,6 +247,14 @@ async function deployAndConnectContract(
   await contract.waitForDeployment();
   contract = connect(contract, account); // Explicitly specifying the initial account
   return contract;
+}
+
+async function getLoanStates(contract: Contract, lonaIds: number[]): Promise<LoanState[]> {
+  const loanStatePromises: Promise<LoanState>[] = [];
+  for (const loanId of lonaIds) {
+    loanStatePromises.push(contract.getLoanState(loanId));
+  }
+  return Promise.all(loanStatePromises);
 }
 
 describe("Contract 'LendingMarket': base tests", async () => {
@@ -443,8 +474,33 @@ describe("Contract 'LendingMarket': base tests", async () => {
     };
   }
 
+  function determineLoanPreviewExtended(loan: Loan, timestamp: number): LoanPreviewExtended {
+    const loanPreviews: LoanPreview = determineLoanPreview(loan, timestamp);
+    const lateFeeAmount = determineLateFeeAmount(loan, timestamp);
+    return {
+      periodIndex: loanPreviews.periodIndex,
+      trackedBalance: loanPreviews.trackedBalance,
+      outstandingBalance: loanPreviews.outstandingBalance,
+      borrowAmount: loan.state.borrowAmount,
+      addonAmount: loan.state.addonAmount,
+      repaidAmount: loan.state.repaidAmount,
+      lateFeeAmount: loan.state.lateFeeAmount + lateFeeAmount,
+      programId: loan.state.programId,
+      borrower: loan.state.borrower,
+      previewTimestamp: calculateTimestampWithOffset(timestamp),
+      startTimestamp: loan.state.startTimestamp,
+      trackedTimestamp: loan.state.trackedTimestamp,
+      freezeTimestamp: loan.state.freezeTimestamp,
+      durationInPeriods: loan.state.durationInPeriods,
+      interestRatePrimary: loan.state.interestRatePrimary,
+      interestRateSecondary: loan.state.interestRateSecondary,
+      firstInstallmentId: loan.state.firstInstallmentId,
+      installmentCount: loan.state.instalmentCount
+    }
+  }
+
   function defineInstallmentLoanPreview(loans: Loan[], timestamp: number): InstallmentLoanPreview {
-    const loanPreviews: LoanPreview[] = loans.map(loan => determineLoanPreview(loan, timestamp));
+    const loanPreviews: LoanPreviewExtended[] = loans.map(loan => determineLoanPreviewExtended(loan, timestamp));
     return {
       firstInstallmentId: loans[0].state.firstInstallmentId,
       instalmentCount: loans[0].state.instalmentCount,
@@ -1462,7 +1518,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
         durationsInPeriods
       );
       const timestamp = await getTxTimestamp(tx);
-      const actualLoanStates: LoanState[] = await market.getLoanStateBatch(expectedLoanIds);
+      const actualLoanStates: LoanState[] = await getLoanStates(market, expectedLoanIds);
       const expectedLoans: Loan[] = createInstallmentLoanParts({
         firstInstallmentId: expectedLoanIds[0],
         borrowAmounts,
@@ -2577,7 +2633,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       const tx: Promise<TransactionResponse> = connect(market, props.revoker).revokeInstallmentLoan(middleLoanId);
 
       const revocationTimestamp = calculateTimestampWithOffset(await getTxTimestamp(tx));
-      const actualLoanStates = await market.getLoanStateBatch(loanIds);
+      const actualLoanStates = await getLoanStates(market, loanIds);
       expectedLoans.forEach(loan => {
         loan.state.trackedBalance = 0;
         loan.state.trackedTimestamp = revocationTimestamp;
@@ -2784,7 +2840,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       }
     });
 
-    it("Function 'getLoanPreviewBatch()' executes as expected", async () => {
+    it("Function 'getLoanPreviewExtendedBatch()' executes as expected", async () => {
       const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
       const { market } = fixture;
 
@@ -2799,8 +2855,9 @@ describe("Contract 'LendingMarket': base tests", async () => {
 
       // The loans at the latest block timestamp
       let timestamp = await getLatestBlockTimestamp();
-      let expectedLoanPreviews: LoanPreview[] = loans.map(loan => determineLoanPreview(loan, timestamp));
-      let actualLoanPreviews = await market.getLoanPreviewBatch(loanIds, 0);
+      let expectedLoanPreviews: LoanPreviewExtended[] =
+        loans.map(loan => determineLoanPreviewExtended(loan, timestamp));
+      let actualLoanPreviews = await market.getLoanPreviewExtendedBatch(loanIds, 0);
       expect(actualLoanPreviews.length).to.eq(expectedLoanPreviews.length);
       for (let i = 0; i < expectedLoanPreviews.length; ++i) {
         checkEquality(actualLoanPreviews[i], expectedLoanPreviews[i], i);
@@ -2808,8 +2865,8 @@ describe("Contract 'LendingMarket': base tests", async () => {
 
       // The loans at the middle of its duration
       timestamp += Math.floor(minDuration / 2) * PERIOD_IN_SECONDS;
-      expectedLoanPreviews = loans.map(loan => determineLoanPreview(loan, timestamp));
-      actualLoanPreviews = await market.getLoanPreviewBatch(loanIds, calculateTimestampWithOffset(timestamp));
+      expectedLoanPreviews = loans.map(loan => determineLoanPreviewExtended(loan, timestamp));
+      actualLoanPreviews = await market.getLoanPreviewExtendedBatch(loanIds, calculateTimestampWithOffset(timestamp));
       expect(actualLoanPreviews.length).to.eq(expectedLoanPreviews.length);
       for (let i = 0; i < expectedLoanPreviews.length; ++i) {
         checkEquality(actualLoanPreviews[i], expectedLoanPreviews[i], i);
@@ -2817,8 +2874,8 @@ describe("Contract 'LendingMarket': base tests", async () => {
 
       // The loans after defaulting
       timestamp += maxDuration * PERIOD_IN_SECONDS;
-      expectedLoanPreviews = loans.map(loan => determineLoanPreview(loan, timestamp));
-      actualLoanPreviews = await market.getLoanPreviewBatch(loanIds, calculateTimestampWithOffset(timestamp));
+      expectedLoanPreviews = loans.map(loan => determineLoanPreviewExtended(loan, timestamp));
+      actualLoanPreviews = await market.getLoanPreviewExtendedBatch(loanIds, calculateTimestampWithOffset(timestamp));
       expect(actualLoanPreviews.length).to.eq(expectedLoanPreviews.length);
       for (let i = 0; i < expectedLoanPreviews.length; ++i) {
         checkEquality(actualLoanPreviews[i], expectedLoanPreviews[i], i);

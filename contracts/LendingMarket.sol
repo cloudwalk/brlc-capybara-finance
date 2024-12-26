@@ -682,41 +682,12 @@ contract LendingMarket is
     }
 
     /// @inheritdoc ILendingMarket
-    function getLoanStateBatch(uint256[] calldata loanIds) external view returns (Loan.State[] memory) {
-        uint256 len = loanIds.length;
-        Loan.State[] memory states = new Loan.State[](len);
-        for (uint256 i = 0; i < len; ++i) {
-            states[i] = _loans[loanIds[i]];
-        }
-
-        return states;
-    }
-
-    /// @inheritdoc ILendingMarket
     function getLoanPreview(uint256 loanId, uint256 timestamp) external view returns (Loan.Preview memory) {
         if (timestamp == 0) {
             timestamp = _blockTimestamp();
         }
 
         return _getLoanPreview(loanId, timestamp);
-    }
-
-    /// @inheritdoc ILendingMarket
-    function getLoanPreviewBatch(
-        uint256[] calldata loanIds,
-        uint256 timestamp
-    ) external view returns (Loan.Preview[] memory) {
-        if (timestamp == 0) {
-            timestamp = _blockTimestamp();
-        }
-
-        uint256 len = loanIds.length;
-        Loan.Preview[] memory previews = new Loan.Preview[](len);
-        for (uint256 i = 0; i < len; ++i) {
-            previews[i] = _getLoanPreview(loanIds[i], timestamp);
-        }
-
-        return previews;
     }
 
     /// @inheritdoc ILendingMarket
