@@ -91,6 +91,13 @@ describe("Contract 'LendingMarketMock'", async () => {
         .to.be.revertedWithCustomError(lendingMarket, ERROR_NAME_NOT_IMPLEMENTED);
     });
 
+    it("Function 'repayLoanForBatch()'", async () => {
+      const { lendingMarket } = await setUpFixture(deployLendingMarketMock);
+
+      await expect(lendingMarket.repayLoanForBatch([], [], MOCK_ADDRESS))
+        .to.be.revertedWithCustomError(lendingMarket, ERROR_NAME_NOT_IMPLEMENTED);
+    });
+
     it("Function 'freeze()'", async () => {
       const { lendingMarket } = await setUpFixture(deployLendingMarketMock);
 
