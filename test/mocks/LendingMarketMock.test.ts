@@ -182,13 +182,6 @@ describe("Contract 'LendingMarketMock'", async () => {
         .to.be.revertedWithCustomError(lendingMarket, ERROR_NAME_NOT_IMPLEMENTED);
     });
 
-    it("Function 'getLoanStateBatch()'", async () => {
-      const { lendingMarket } = await setUpFixture(deployLendingMarketMock);
-
-      await expect(lendingMarket.getLoanStateBatch([MOCK_LOAN_ID]))
-        .to.be.revertedWithCustomError(lendingMarket, ERROR_NAME_NOT_IMPLEMENTED);
-    });
-
     it("Function 'getLoanPreview()'", async () => {
       const { lendingMarket } = await setUpFixture(deployLendingMarketMock);
 
@@ -196,10 +189,10 @@ describe("Contract 'LendingMarketMock'", async () => {
         .to.be.revertedWithCustomError(lendingMarket, ERROR_NAME_NOT_IMPLEMENTED);
     });
 
-    it("Function 'getLoanPreviewBatch()'", async () => {
+    it("Function 'getLoanPreviewExtendedBatch()'", async () => {
       const { lendingMarket } = await setUpFixture(deployLendingMarketMock);
 
-      await expect(lendingMarket.getLoanPreviewBatch([MOCK_LOAN_ID], 0))
+      await expect(lendingMarket.getLoanPreviewExtendedBatch([MOCK_LOAN_ID], 0))
         .to.be.revertedWithCustomError(lendingMarket, ERROR_NAME_NOT_IMPLEMENTED);
     });
 

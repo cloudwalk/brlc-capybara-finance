@@ -29,6 +29,14 @@ interface ILiquidityPool {
     /// @dev Returns the address of the liquidity pool token.
     function token() external view returns (address);
 
+    /// @dev Returns the addon treasury address.
+    ///
+    /// If the address is zero the addon amount of a loan is retained in the pool.
+    /// Otherwise the addon amount transfers to that treasury when a loan is taken and back when a loan is revoked.
+    ///
+    /// @return The current address of the addon treasury.
+    function addonTreasury() external view returns (address);
+
     /// @dev Proves the contract is the liquidity pool one. A marker function.
     function proveLiquidityPool() external pure;
 }

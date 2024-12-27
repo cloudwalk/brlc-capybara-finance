@@ -318,25 +318,20 @@ interface ILendingMarket {
     /// @return The stored state of the loan (see the `Loan.State` struct).
     function getLoanState(uint256 loanId) external view returns (Loan.State memory);
 
-    /// @dev Gets the stored state of a batch of ordinary loans or sub-loans.
-    /// @param loanIds The unique identifiers of the loans to check.
-    /// @return The stored states of the loans (see the `Loan.State` struct).
-    function getLoanStateBatch(uint256[] calldata loanIds) external view returns (Loan.State[] memory);
-
     /// @dev Gets the preview of an ordinary loan or a sub-loan at a specific timestamp.
     /// @param loanId The unique identifier of the loan to check.
     /// @param timestamp The timestamp to get the loan preview for.
     /// @return The preview state of the loan (see the `Loan.Preview` struct).
     function getLoanPreview(uint256 loanId, uint256 timestamp) external view returns (Loan.Preview memory);
 
-    /// @dev Gets the loan preview at a specific timestamp for a batch of ordinary loans or sub-loans.
+    /// @dev Gets the loan extended preview at a specific timestamp for a batch of ordinary loans or sub-loans.
     /// @param loanIds The unique identifiers of the loans to check.
     /// @param timestamp The timestamp to get the loan preview for. If 0, the current timestamp is used.
-    /// @return The preview states of the loans (see the `Loan.Preview` struct).
-    function getLoanPreviewBatch(
+    /// @return The extended previews of the loans (see the `Loan.PreviewExtended` struct).
+    function getLoanPreviewExtendedBatch(
         uint256[] calldata loanIds,
         uint256 timestamp
-    ) external view returns (Loan.Preview[] memory);
+    ) external view returns (Loan.PreviewExtended[] memory);
 
     /// @dev Gets the preview of an installment loan at a specific timestamp.
     ///

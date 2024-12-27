@@ -20,7 +20,8 @@ interface LoanState {
   trackedTimestamp: bigint;
   freezeTimestamp: bigint;
   firstInstallmentId: bigint;
-  instalmentCount: bigint;
+  installmentCount: bigint;
+  lateFeeAmount: bigint;
 }
 
 interface Version {
@@ -32,7 +33,7 @@ interface Version {
 }
 
 const ERROR_NAME_ADDON_TREASURY_ADDRESS_ZEROING_PROHIBITED = "AddonTreasuryAddressZeroingProhibited";
-const ERROR_NAME_ADDON_TREASURY_ZERO_ALLOWANCE = "AddonTreasuryZeroAllowance";
+const ERROR_NAME_ADDON_TREASURY_ZERO_ALLOWANCE_FOR_MARKET = "AddonTreasuryZeroAllowanceForMarket";
 const ERROR_NAME_ALREADY_CONFIGURED = "AlreadyConfigured";
 const ERROR_NAME_ALREADY_INITIALIZED = "InvalidInitialization";
 const ERROR_NAME_ARRAY_LENGTH_MISMATCH = "ArrayLengthMismatch";
@@ -74,7 +75,7 @@ const AUTO_REPAY_LOAN_IDS = [123n, 234n, 345n, 123n];
 const AUTO_REPAY_AMOUNTS = [10_123_456n, 1n, maxUintForBits(256), 0n];
 const EXPECTED_VERSION: Version = {
   major: 1,
-  minor: 4,
+  minor: 5,
   patch: 0
 };
 
@@ -93,7 +94,8 @@ const defaultLoanState: LoanState = {
   trackedTimestamp: 0n,
   freezeTimestamp: 0n,
   firstInstallmentId: 0n,
-  instalmentCount: 0n
+  installmentCount: 0n,
+  lateFeeAmount: 0n
 };
 
 describe("Contract 'LiquidityPoolAccountable'", async () => {
@@ -148,7 +150,7 @@ describe("Contract 'LiquidityPoolAccountable'", async () => {
     liquidityPool = connect(liquidityPool, lender); // Explicitly specifying the initial account
 
     await proveTx(connect(token, lender).approve(getAddress(liquidityPool), MAX_ALLOWANCE));
-    await proveTx(connect(token, addonTreasury).approve(getAddress(liquidityPool), MAX_ALLOWANCE));
+    await proveTx(connect(token, addonTreasury).approve(getAddress(market), MAX_ALLOWANCE));
     return { liquidityPool };
   }
 
@@ -259,7 +261,7 @@ describe("Contract 'LiquidityPoolAccountable'", async () => {
     it("Executes as expected and emits the correct event", async () => {
       const { liquidityPool } = await setUpFixture(deployLiquidityPool);
       const allowance = 1; // This allowance should be enough
-      await proveTx(connect(token, addonTreasury).approve(getAddress(liquidityPool), allowance));
+      await proveTx(connect(token, addonTreasury).approve(getAddress(market), allowance));
 
       await expect(liquidityPool.setAddonTreasury(addonTreasury.address))
         .to.emit(liquidityPool, EVENT_NAME_ADDON_TREASURY_CHANGED)
@@ -306,10 +308,10 @@ describe("Contract 'LiquidityPoolAccountable'", async () => {
 
     it("Is reverted if the addon treasury has not provided an allowance for the pool", async () => {
       const { liquidityPool } = await setUpFixture(deployLiquidityPool);
-      await proveTx(connect(token, addonTreasury).approve(getAddress(liquidityPool), ZERO_ALLOWANCE));
+      await proveTx(connect(token, addonTreasury).approve(getAddress(market), ZERO_ALLOWANCE));
 
       await expect(liquidityPool.setAddonTreasury(addonTreasury.address))
-        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_ADDON_TREASURY_ZERO_ALLOWANCE);
+        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_ADDON_TREASURY_ZERO_ALLOWANCE_FOR_MARKET);
     });
   });
 
@@ -655,18 +657,8 @@ describe("Contract 'LiquidityPoolAccountable'", async () => {
       expect(actualBalances[0]).to.eq(DEPOSIT_AMOUNT - BORROW_AMOUNT - ADDON_AMOUNT);
       if (addonTreasuryAddress === ZERO_ADDRESS) {
         expect(actualBalances[1]).to.eq(ADDON_AMOUNT);
-        await expect(tx).to.changeTokenBalances(
-          token,
-          [liquidityPool, addonTreasury],
-          [0, 0]
-        );
       } else {
         expect(actualBalances[1]).to.eq(0);
-        await expect(tx).to.changeTokenBalances(
-          token,
-          [liquidityPool, addonTreasury],
-          [-ADDON_AMOUNT, ADDON_AMOUNT]
-        );
       }
     }
 
@@ -787,19 +779,9 @@ describe("Contract 'LiquidityPoolAccountable'", async () => {
       const actualBalancesAfter: bigint[] = await liquidityPool.getBalances();
 
       if (addonTreasuryAddress === ZERO_ADDRESS) {
-        await expect(tx).to.changeTokenBalances(
-          token,
-          [liquidityPool, addonTreasury],
-          [0, 0]
-        );
         expect(actualBalancesAfter[0]).to.eq(DEPOSIT_AMOUNT);
         expect(actualBalancesAfter[1]).to.eq(0n);
       } else {
-        await expect(tx).to.changeTokenBalances(
-          token,
-          [liquidityPool, addonTreasury],
-          [ADDON_AMOUNT, -ADDON_AMOUNT]
-        );
         expect(actualBalancesAfter[0]).to.eq(DEPOSIT_AMOUNT);
         expect(actualBalancesAfter[1]).to.eq(actualBalancesBefore[1]);
       }

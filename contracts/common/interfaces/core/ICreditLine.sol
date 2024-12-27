@@ -42,6 +42,9 @@ interface ICreditLine {
     /// @dev Returns the address of the credit line token.
     function token() external view returns (address);
 
+    /// @dev Returns the late fee rate to be applied to loans taken out with this credit line.
+    function lateFeeRate() external view returns (uint256);
+
     /// @dev Proves the contract is the credit line one. A marker function.
     function proveCreditLine() external pure;
 }
