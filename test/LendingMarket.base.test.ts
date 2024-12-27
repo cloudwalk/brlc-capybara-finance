@@ -1918,6 +1918,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
 
       // Check that the appropriate market hook functions are called
       await expect(tx).to.emit(liquidityPool, EVENT_NAME_ON_AFTER_LOAN_PAYMENT).withArgs(loan.id, repaymentAmount);
+      await expect(tx).to.emit(creditLine, EVENT_NAME_ON_AFTER_LOAN_PAYMENT).withArgs(loan.id, repaymentAmount);
 
       return expectedLoan;
     }
@@ -2068,6 +2069,9 @@ describe("Contract 'LendingMarket': base tests", async () => {
         // Check that the appropriate market hook functions are called
         await expect(tx)
           .to.emit(liquidityPool, EVENT_NAME_ON_AFTER_LOAN_PAYMENT)
+          .withArgs(expectedLoan.id, expectedRepaymentAmount);
+        await expect(tx)
+          .to.emit(creditLine, EVENT_NAME_ON_AFTER_LOAN_PAYMENT)
           .withArgs(expectedLoan.id, expectedRepaymentAmount);
 
         expectedRepaymentAmounts.push(expectedRepaymentAmount);
