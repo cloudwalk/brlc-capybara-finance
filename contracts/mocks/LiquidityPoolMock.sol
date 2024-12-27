@@ -33,6 +33,8 @@ contract LiquidityPoolMock is ILiquidityPool {
 
     bool private _onAfterLoanRevocationResult;
 
+    address private _addonTreasury;
+
     // -------------------------------------------- //
     //  ILiquidityPool functions                    //
     // -------------------------------------------- //
@@ -64,6 +66,10 @@ contract LiquidityPoolMock is ILiquidityPool {
         return _tokenAddress;
     }
 
+    function addonTreasury() external view returns (address) {
+        return _addonTreasury;
+    }
+
     // -------------------------------------------- //
     //  Mock functions                              //
     // -------------------------------------------- //
@@ -74,6 +80,10 @@ contract LiquidityPoolMock is ILiquidityPool {
 
     function approveMarket(address _market, address token_) external {
         IERC20(token_).approve(_market, type(uint56).max);
+    }
+
+    function mockAddonTreasury(address newTreasury) external {
+        _addonTreasury = newTreasury;
     }
 
     function proveLiquidityPool() external pure {}

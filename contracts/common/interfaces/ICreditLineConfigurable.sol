@@ -44,6 +44,7 @@ interface ICreditLineConfigurable is ICreditLine {
         uint32 maxAddonFixedRate;        // The maximum fixed rate for the loan addon calculation.
         uint32 minAddonPeriodRate;       // The minimum period rate for the loan addon calculation.
         uint32 maxAddonPeriodRate;       // The maximum period rate for the loan addon calculation.
+        uint32 lateFeeRate;              // The late fee rate to be applied to the loan.
     }
 
     /// @dev A struct that defines borrower configuration.

@@ -56,6 +56,7 @@ interface TestScenario {
   durationInPeriods: number;
   interestRatePrimary: number;
   interestRateSecondary: number;
+  lateFeeRate: number;
   iterationStep: number;
   relativePrecision: number;
   repaymentAmounts: number[];
@@ -90,6 +91,7 @@ interface CreditLineConfig {
   maxAddonFixedRate: number;
   minAddonPeriodRate: number;
   maxAddonPeriodRate: number;
+  lateFeeRate: number;
 
   [key: string]: number; // Index signature
 }
@@ -115,6 +117,7 @@ const testScenarioDefault: TestScenario = {
   durationInPeriods: 180,
   interestRatePrimary: 0,
   interestRateSecondary: 0,
+  lateFeeRate: 20_000_000, // 2 %
   iterationStep: 30,
   relativePrecision: 1e-7, // 0.00001% difference
   repaymentAmounts: [],
@@ -238,7 +241,7 @@ describe("Contract 'LendingMarket': complex tests", async () => {
     await proveTx(lendingMarket.createProgram(creditLineAddress, liquidityPoolAddress));
 
     // Configure addon treasure
-    await proveTx(connect(token, addonTreasury).approve(liquidityPoolAddress, MAX_ALLOWANCE));
+    await proveTx(connect(token, addonTreasury).approve(lendingMarketAddress, MAX_ALLOWANCE));
     await proveTx(liquidityPool.setAddonTreasury(addonTreasury.address));
 
     // Mint token
@@ -300,7 +303,8 @@ describe("Contract 'LendingMarket': complex tests", async () => {
       minAddonFixedRate: 0,
       maxAddonFixedRate: 0,
       minAddonPeriodRate: 0,
-      maxAddonPeriodRate: 0
+      maxAddonPeriodRate: 0,
+      lateFeeRate: scenario.lateFeeRate
     };
   }
 
@@ -534,7 +538,7 @@ describe("Contract 'LendingMarket': complex tests", async () => {
         // The numbers below are taken form spreadsheet:
         // https://docs.google.com/spreadsheets/d/148elvx9Yd0QuaDtc7AkaelIn3t5rvZCx5iG2ceVfpe8
         1085060000, 992900000, 892900000, 968850000, 1051260000, 956220000,
-        888040000, 811020000, 641020000, 471020000, 340010000, 192020000
+        905800000, 831090000, 661090000, 491090000, 362670000, 217620000
         /* eslint-enable @stylistic/array-element-newline*/
       ];
 
@@ -561,7 +565,7 @@ describe("Contract 'LendingMarket': complex tests", async () => {
 
       const repaymentAmounts: number[] = Array(12).fill(0); // 0 BRLC
       repaymentAmounts[10] = 1500_000_000; // 1500 BRLC
-      repaymentAmounts[11] = 962_030_000; // 962.03 BRLC
+      repaymentAmounts[11] = 1_015_150_000; // 1015.15 BRLC
 
       const frozenStepIndexes: number[] = [2, 3];
 
@@ -570,7 +574,7 @@ describe("Contract 'LendingMarket': complex tests", async () => {
         // The numbers below are taken form spreadsheet:
         // https://docs.google.com/spreadsheets/d/148elvx9Yd0QuaDtc7AkaelIn3t5rvZCx5iG2ceVfpe8
         1085060000, 1177360000, 1177360000, 1177360000, 1277510000, 1386180000,
-        1504090000, 1632030000, 1843380000, 2082090000, 2351730000, 962030000
+        1504090000, 1632030000, 1880240000, 2123740000, 2398760000, 1015150000
         /* eslint-enable @stylistic/array-element-newline*/
       ];
 
@@ -603,9 +607,9 @@ describe("Contract 'LendingMarket': complex tests", async () => {
         // The numbers below are taken form spreadsheet:
         // https://docs.google.com/spreadsheets/d/148elvx9Yd0QuaDtc7AkaelIn3t5rvZCx5iG2ceVfpe8
         1134642760000, 1287300730000, 1460512990000, 1657047030000, 1880042950000, 2133063660000,
-        2538189960000, 3020283270000, 3593965980000, 4276638520000, 5089007060000, 6055711610000,
-        7206073340000, 8574983950000, 10203963970000, 12142422090000, 14449153800000, 17194124750000,
-        20460592820000, 24347633470000, 28973144780000, 34477423440000, 41027420090000, 48821803090000
+        2588953760000, 3080691310000, 3665850520000, 4362179870000, 5190799790000, 6176843200000,
+        7350217850000, 8746513440000, 10408081090000, 12385317940000, 14738195680000, 17538079600000,
+        20869893150000, 24834693800000, 29552738180000, 35167129580000, 41848158500000, 49798467640000
         /* eslint-enable @stylistic/array-element-newline*/
       ];
 
@@ -631,7 +635,7 @@ describe("Contract 'LendingMarket': complex tests", async () => {
       const interestRateSecondary = 499_635; // 20 % annual
 
       const repaymentAmounts: number[] = Array(12).fill(90_000); // 0.09 BRLC
-      repaymentAmounts[repaymentAmounts.length - 1] = 70_000; // 0.07 BRLC
+      repaymentAmounts[repaymentAmounts.length - 1] = 80_000; // 0.08 BRLC
 
       const frozenStepIndexes: number[] = [];
 
@@ -640,7 +644,7 @@ describe("Contract 'LendingMarket': complex tests", async () => {
         // The numbers below are taken form spreadsheet:
         // https://docs.google.com/spreadsheets/d/148elvx9Yd0QuaDtc7AkaelIn3t5rvZCx5iG2ceVfpe8
         1010000, 930000, 840000, 760000, 670000, 590000,
-        500000, 420000, 340000, 250000, 160000, 70000
+        520000, 430000, 350000, 260000, 170000, 80000
         /* eslint-enable @stylistic/array-element-newline*/
       ];
 
