@@ -204,7 +204,7 @@ const DURATIONS_IN_PERIODS: number[] = [0, DURATION_IN_PERIODS / 2, DURATION_IN_
 
 const EXPECTED_VERSION: Version = {
   major: 1,
-  minor: 5,
+  minor: 6,
   patch: 0
 };
 
@@ -1918,6 +1918,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
 
       // Check that the appropriate market hook functions are called
       await expect(tx).to.emit(liquidityPool, EVENT_NAME_ON_AFTER_LOAN_PAYMENT).withArgs(loan.id, repaymentAmount);
+      await expect(tx).to.emit(creditLine, EVENT_NAME_ON_AFTER_LOAN_PAYMENT).withArgs(loan.id, repaymentAmount);
 
       return expectedLoan;
     }
@@ -2014,6 +2015,274 @@ describe("Contract 'LendingMarket': base tests", async () => {
 
         await expect(market.repayLoan(loan.id, wrongRepaymentAmount))
           .to.be.revertedWithCustomError(market, ERROR_NAME_INVALID_AMOUNT);
+      });
+    });
+  });
+
+  describe("Function 'repayLoanForBatch()'", async () => {
+    async function executeAndCheck(
+      fixture: Fixture,
+      currentLoans: Loan[],
+      repaymentAmounts: (number | bigint)[],
+      payerKind: PayerKind
+    ): Promise<Loan[]> {
+      const expectedLoans: Loan[] = currentLoans.map(loan => clone(loan));
+      const loanIds: number[] = expectedLoans.map(loan => loan.id);
+      const { marketUnderLender } = fixture;
+      let tx: Promise<TransactionResponse>;
+      let payer: HardhatEthersSigner;
+
+      switch (payerKind) {
+        case PayerKind.Borrower:
+          payer = borrower;
+          // Be sure the function can be called by an alias
+          connect(marketUnderLender, alias).repayLoanForBatch.staticCall(loanIds, repaymentAmounts, payer.address);
+          tx = marketUnderLender.repayLoanForBatch(loanIds, repaymentAmounts, payer.address);
+          break;
+        case PayerKind.LiquidityPool:
+          throw new Error("The liquidity pool is unable to call the function");
+        default:
+          payer = stranger;
+          // Be sure the function can be called by an alias
+          connect(marketUnderLender, alias).repayLoanForBatch.staticCall(loanIds, repaymentAmounts, payer.address);
+          tx = marketUnderLender.repayLoanForBatch(loanIds, repaymentAmounts, payer.address);
+      }
+
+      const repaidAmountsBefore = expectedLoans.map(loan => loan.state.repaidAmount);
+      const repaymentTimestamp = await getTxTimestamp(tx);
+      const expectedRepaymentAmounts: number[] = [];
+      for (let i = 0; i < expectedLoans.length; ++i) {
+        const expectedLoan = expectedLoans[i];
+        processRepayment(expectedLoan, { repaymentAmount: repaymentAmounts[i], repaymentTimestamp });
+        const expectedRepaymentAmount = expectedLoan.state.repaidAmount - repaidAmountsBefore[i];
+        const actualLoanStateAfterRepayment = await marketUnderLender.getLoanState(expectedLoan.id);
+        checkEquality(actualLoanStateAfterRepayment, expectedLoan.state);
+
+        await expect(tx).to.emit(marketUnderLender, EVENT_NAME_LOAN_REPAYMENT).withArgs(
+          expectedLoan.id,
+          payer.address,
+          borrower.address,
+          expectedRepaymentAmount,
+          expectedLoan.state.trackedBalance // outstanding balance
+        );
+
+        // Check that the appropriate market hook functions are called
+        await expect(tx)
+          .to.emit(liquidityPool, EVENT_NAME_ON_AFTER_LOAN_PAYMENT)
+          .withArgs(expectedLoan.id, expectedRepaymentAmount);
+        await expect(tx)
+          .to.emit(creditLine, EVENT_NAME_ON_AFTER_LOAN_PAYMENT)
+          .withArgs(expectedLoan.id, expectedRepaymentAmount);
+
+        expectedRepaymentAmounts.push(expectedRepaymentAmount);
+      }
+
+      const totalRepaymentAmount = expectedRepaymentAmounts.length > 0
+        ? expectedRepaymentAmounts.reduce((sum, amount) => sum + amount)
+        : 0;
+      await expect(tx).to.changeTokenBalances(
+        token,
+        [liquidityPool, payer, marketUnderLender],
+        [totalRepaymentAmount, -totalRepaymentAmount, 0]
+      );
+
+      return expectedLoans;
+    }
+
+    describe("Executes as expected if", async () => {
+      it("There are partial repayments from the borrower on the same period the loan is taken", async () => {
+        const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
+        const currentLoans: Loan[] = [
+          fixture.ordinaryLoan,
+          fixture.installmentLoanParts[fixture.installmentLoanParts.length - 1]
+        ];
+        const repaymentAmounts = [REPAYMENT_AMOUNT, REPAYMENT_AMOUNT / 2];
+        await executeAndCheck(fixture, currentLoans, repaymentAmounts, PayerKind.Borrower);
+      });
+
+      it("There are partial repayments from a stranger before the loan is defaulted", async () => {
+        const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
+        const currentLoans: Loan[] = [
+          fixture.ordinaryLoan,
+          fixture.installmentLoanParts[fixture.installmentLoanParts.length - 1]
+        ];
+        const repaymentAmounts = [REPAYMENT_AMOUNT, REPAYMENT_AMOUNT / 2];
+        const periodIndex = fixture.ordinaryLoanStartPeriod + fixture.ordinaryLoan.state.durationInPeriods / 2;
+        await increaseBlockTimestampToPeriodIndex(periodIndex);
+        await executeAndCheck(fixture, currentLoans, repaymentAmounts, PayerKind.Stranger);
+      });
+
+      it("There are partial repayment from the borrower at the due date and another one a day after", async () => {
+        const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
+        const periodIndex = fixture.ordinaryLoanStartPeriod + fixture.ordinaryLoan.state.durationInPeriods;
+        await increaseBlockTimestampToPeriodIndex(periodIndex);
+        let currentLoans: Loan[] = [
+          fixture.ordinaryLoan,
+          fixture.installmentLoanParts[fixture.installmentLoanParts.length - 1]
+        ];
+        const repaymentAmounts = [REPAYMENT_AMOUNT, REPAYMENT_AMOUNT / 2];
+        currentLoans = await executeAndCheck(fixture, currentLoans, repaymentAmounts, PayerKind.Borrower);
+        await increaseBlockTimestampToPeriodIndex(periodIndex + 1);
+        await executeAndCheck(fixture, currentLoans, repaymentAmounts, PayerKind.Borrower);
+      });
+
+      it("There is a full repayment through the amount matches the outstanding balance", async () => {
+        const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
+        const futureTimestamp = await increaseBlockTimestampToPeriodIndex(fixture.ordinaryLoanStartPeriod + 1);
+        const loanPreview: LoanPreview = determineLoanPreview(fixture.ordinaryLoan, futureTimestamp);
+        const currentLoans: Loan[] = [
+          fixture.ordinaryLoan,
+          fixture.installmentLoanParts[fixture.installmentLoanParts.length - 1]
+        ];
+        const repaymentAmounts = [loanPreview.outstandingBalance, REPAYMENT_AMOUNT];
+        await executeAndCheck(fixture, currentLoans, repaymentAmounts, PayerKind.Borrower);
+      });
+
+      it("There is a full repayment through the amount equals max uint256 value", async () => {
+        const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
+        const currentLoans: Loan[] = [
+          fixture.ordinaryLoan,
+          fixture.installmentLoanParts[fixture.installmentLoanParts.length - 1]
+        ];
+        const repaymentAmounts = [REPAYMENT_AMOUNT, FULL_REPAYMENT_AMOUNT];
+        await increaseBlockTimestampToPeriodIndex(fixture.installmentLoanStartPeriodIndex + 3);
+        await executeAndCheck(fixture, currentLoans, repaymentAmounts, PayerKind.Borrower);
+      });
+
+      it("There are empty input arrays", async () => {
+        const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
+        const currentLoans: Loan[] = [];
+        const repaymentAmounts: number[] = [];
+        await increaseBlockTimestampToPeriodIndex(fixture.installmentLoanStartPeriodIndex + 3);
+        await executeAndCheck(fixture, currentLoans, repaymentAmounts, PayerKind.Borrower);
+      });
+    });
+
+    describe("Is reverted if", async () => {
+      it("The contract is paused", async () => {
+        const { market, marketUnderLender } = await setUpFixture(deployLendingMarketAndTakeLoans);
+        await proveTx(market.pause());
+
+        await expect(marketUnderLender.repayLoanForBatch([], [], borrower.address))
+          .to.be.revertedWithCustomError(marketUnderLender, ERROR_NAME_ENFORCED_PAUSED);
+      });
+
+      it("The length of the input arrays does not match", async () => {
+        const { marketUnderLender, installmentLoanParts: loans } = await setUpFixture(deployLendingMarketAndTakeLoans);
+        const loanIds = loans.map(loan => loan.id);
+        const repaymentAmounts: number[] = Array(loans.length).fill(REPAYMENT_AMOUNT);
+
+        await expect(marketUnderLender.repayLoanForBatch(
+          [...loanIds, loanIds[0]],
+          repaymentAmounts,
+          borrower.address
+        )).to.be.revertedWithCustomError(marketUnderLender, ERROR_NAME_ARRAY_LENGTH_MISMATCH);
+
+        await expect(marketUnderLender.repayLoanForBatch(
+          loanIds,
+          [...repaymentAmounts, REPAYMENT_AMOUNT],
+          borrower.address
+        )).to.be.revertedWithCustomError(marketUnderLender, ERROR_NAME_ARRAY_LENGTH_MISMATCH);
+
+        await expect(marketUnderLender.repayLoanForBatch(
+          loanIds,
+          [],
+          borrower.address
+        )).to.be.revertedWithCustomError(marketUnderLender, ERROR_NAME_ARRAY_LENGTH_MISMATCH);
+
+        await expect(marketUnderLender.repayLoanForBatch(
+          [],
+          repaymentAmounts,
+          borrower.address
+        )).to.be.revertedWithCustomError(marketUnderLender, ERROR_NAME_ARRAY_LENGTH_MISMATCH);
+      });
+
+      it("The provided repayer address is zero", async () => {
+        const { marketUnderLender, installmentLoanParts: loans } = await setUpFixture(deployLendingMarketAndTakeLoans);
+        const loanIds = loans.map(loan => loan.id);
+        const repaymentAmounts: number[] = Array(loans.length).fill(REPAYMENT_AMOUNT);
+        const repayerAddress = (ZERO_ADDRESS);
+
+        await expect(
+          marketUnderLender.repayLoanForBatch(loanIds, repaymentAmounts, repayerAddress)
+        ).to.be.revertedWithCustomError(marketUnderLender, ERROR_NAME_ZERO_ADDRESS);
+      });
+
+      it("One of the loans does not exist", async () => {
+        const { marketUnderLender, installmentLoanParts: loans } = await setUpFixture(deployLendingMarketAndTakeLoans);
+        const loanIds = loans.map(loan => loan.id);
+        const repaymentAmounts: number[] = Array(loans.length).fill(REPAYMENT_AMOUNT);
+        loanIds[loanIds.length - 1] += 123;
+
+        await expect(
+          marketUnderLender.repayLoanForBatch(loanIds, repaymentAmounts, borrower.address)
+        ).to.be.revertedWithCustomError(marketUnderLender, ERROR_NAME_LOAN_NOT_EXIST);
+      });
+
+      it("One of the loans is already repaid", async () => {
+        const { marketUnderLender, installmentLoanParts: loans } = await setUpFixture(deployLendingMarketAndTakeLoans);
+        const loanIds = loans.map(loan => loan.id);
+        const repaymentAmounts: number[] = Array(loans.length).fill(REPAYMENT_AMOUNT);
+        await proveTx(marketUnderLender.repayLoanForBatch(
+          [loanIds[loanIds.length - 1]],
+          [FULL_REPAYMENT_AMOUNT],
+          borrower.address
+        ));
+
+        await expect(marketUnderLender.repayLoanForBatch(loanIds, repaymentAmounts, borrower.address))
+          .to.be.revertedWithCustomError(marketUnderLender, ERROR_NAME_LOAN_ALREADY_REPAID);
+      });
+
+      it("The caller is not the lender or an alias", async () => {
+        const { market, installmentLoanParts: loans } = await setUpFixture(deployLendingMarketAndTakeLoans);
+        const loanIds = loans.map(loan => loan.id);
+        const repaymentAmounts: number[] = Array(loans.length).fill(REPAYMENT_AMOUNT);
+
+        await expect(
+          connect(market, owner).repayLoanForBatch(loanIds, repaymentAmounts, borrower.address)
+        ).to.be.revertedWithCustomError(market, ERROR_NAME_UNAUTHORIZED);
+
+        await expect(
+          connect(market, borrower).repayLoanForBatch(loanIds, repaymentAmounts, borrower.address)
+        ).to.be.revertedWithCustomError(market, ERROR_NAME_UNAUTHORIZED);
+
+        await expect(
+          connect(market, stranger).repayLoanForBatch(loanIds, repaymentAmounts, borrower.address)
+        ).to.be.revertedWithCustomError(market, ERROR_NAME_UNAUTHORIZED);
+      });
+
+      it("One of the repayment amounts is zero", async () => {
+        const { marketUnderLender, installmentLoanParts: loans } = await setUpFixture(deployLendingMarketAndTakeLoans);
+        const loanIds = loans.map(loan => loan.id);
+        const repaymentAmounts: number[] = Array(loans.length).fill(REPAYMENT_AMOUNT);
+        repaymentAmounts[loans.length - 1] = 0;
+
+        await expect(marketUnderLender.repayLoanForBatch(loanIds, repaymentAmounts, borrower.address))
+          .to.be.revertedWithCustomError(marketUnderLender, ERROR_NAME_INVALID_AMOUNT);
+      });
+
+      it("One of the repayment amounts is not rounded according to the accuracy factor", async () => {
+        const { marketUnderLender, installmentLoanParts: loans } = await setUpFixture(deployLendingMarketAndTakeLoans);
+        const loanIds = loans.map(loan => loan.id);
+        const repaymentAmounts: number[] = Array(loans.length).fill(REPAYMENT_AMOUNT);
+        repaymentAmounts[loans.length - 1] = REPAYMENT_AMOUNT - 1;
+
+        await expect(marketUnderLender.repayLoanForBatch(loanIds, repaymentAmounts, borrower.address))
+          .to.be.revertedWithCustomError(marketUnderLender, ERROR_NAME_INVALID_AMOUNT);
+      });
+
+      it("One of the repayment amounts is bigger than outstanding balance", async () => {
+        const { marketUnderLender, installmentLoanParts: loans } = await setUpFixture(deployLendingMarketAndTakeLoans);
+        const loanIds = loans.map(loan => loan.id);
+        const repaymentAmounts: number[] = Array(loans.length).fill(REPAYMENT_AMOUNT);
+        const lastLoan = loans[loans.length - 1];
+        repaymentAmounts[loans.length - 1] = Number(roundMath(
+          lastLoan.state.borrowAmount + lastLoan.state.addonAmount,
+          ACCURACY_FACTOR
+        )) + ACCURACY_FACTOR;
+
+        await expect(marketUnderLender.repayLoanForBatch(loanIds, repaymentAmounts, borrower.address))
+          .to.be.revertedWithCustomError(marketUnderLender, ERROR_NAME_INVALID_AMOUNT);
       });
     });
   });
