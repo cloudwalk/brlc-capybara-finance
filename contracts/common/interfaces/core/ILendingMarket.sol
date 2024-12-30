@@ -61,7 +61,7 @@ interface ILendingMarket {
 
     /// @dev Emitted when a loan is repaid (fully or partially).
     /// @param loanId The unique identifier of the loan.
-    /// @param repayer The address of the repayer (borrower or third-party).
+    /// @param repayer The address of the token source for the repayment (borrower or third-party).
     /// @param borrower The address of the borrower of the loan.
     /// @param repayAmount The amount of the repayment.
     /// @param outstandingBalance The outstanding balance of the loan after the repayment.
@@ -220,6 +220,19 @@ interface ILendingMarket {
     /// @param loanId The unique identifier of the loan to repay.
     /// @param repayAmount The amount to repay or `type(uint256).max` to repay the remaining balance of the loan.
     function repayLoan(uint256 loanId, uint256 repayAmount) external;
+
+    /// @dev Repays a batch of loans.
+    ///
+    /// Can be called only by an account with a special role.
+    ///
+    /// @param loanIds The unique identifiers of the loans to repay.
+    /// @param repaymentAmounts The amounts to repay for each loan.
+    /// @param repayer The address of the token source for the repayments (borrower or third-party).
+    function repayLoanForBatch(
+        uint256[] calldata loanIds,
+        uint256[] calldata repaymentAmounts,
+        address repayer
+    ) external;
 
     // -------------------------------------------- //
     //  Lender functions                            //

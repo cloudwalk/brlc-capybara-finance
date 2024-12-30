@@ -108,11 +108,7 @@ contract LendingMarket is
     /// @dev Throws if the loan does not exist or has already been repaid.
     /// @param loanId The unique identifier of the loan to check.
     modifier onlyOngoingLoan(uint256 loanId) {
-        Loan.State storage loan = _loans[loanId];
-        _checkLoanExistence(loan);
-        if (_isRepaid(loan)) {
-            revert LoanAlreadyRepaid();
-        }
+        _checkIfLoanOngoing(loanId);
         _;
     }
 
@@ -314,68 +310,82 @@ contract LendingMarket is
 
     /// @inheritdoc ILendingMarket
     function repayLoan(uint256 loanId, uint256 repayAmount) external whenNotPaused onlyOngoingLoan(loanId) {
-        if (repayAmount == 0) {
-            revert Error.InvalidAmount();
+        _repayLoan(loanId, repayAmount, msg.sender);
+    }
+
+    /// @inheritdoc ILendingMarket
+    function repayLoanForBatch(
+        uint256[] calldata loanIds,
+        uint256[] calldata repaymentAmounts,
+        address repayer
+    ) external whenNotPaused {
+        uint256 len = loanIds.length;
+        if (len != repaymentAmounts.length) {
+            revert Error.ArrayLengthMismatch();
         }
-
-        Loan.State storage loan = _loans[loanId];
-        (uint256 outstandingBalance, uint256 lateFeeAmount, ) = _outstandingBalance(loan, _blockTimestamp());
-        _updateStoredLateFee(lateFeeAmount, loan);
-
-        // Full repayment
-        if (repayAmount == type(uint256).max) {
-            outstandingBalance = Rounding.roundMath(outstandingBalance, Constants.ACCURACY_FACTOR);
-            _repayLoan(loanId, loan, outstandingBalance, outstandingBalance);
-            return;
+        if (repayer == address(0)) {
+            revert Error.ZeroAddress();
         }
-
-        if (repayAmount != Rounding.roundMath(repayAmount, Constants.ACCURACY_FACTOR)) {
-            revert Error.InvalidAmount();
+        for (uint256 i = 0; i < len; ++i) {
+            uint256 loanId = loanIds[i];
+            _checkIfLoanOngoing(loanId);
+            _checkSender(msg.sender, _loans[loanId].programId);
+            _repayLoan(loanId, repaymentAmounts[i], repayer);
         }
-
-        // Full repayment
-        if (repayAmount == Rounding.roundMath(outstandingBalance, Constants.ACCURACY_FACTOR)) {
-            _repayLoan(loanId, loan, repayAmount, repayAmount);
-            return;
-        }
-
-        if (repayAmount > outstandingBalance) {
-            revert Error.InvalidAmount();
-        }
-
-        // Partial repayment
-        _repayLoan(loanId, loan, repayAmount, outstandingBalance);
     }
 
     /// @dev Updates the loan state and makes the necessary transfers when repaying a loan.
     /// @param loanId The unique identifier of the loan to repay.
-    /// @param loan The storage state of the loan to update.
-    /// @param repayAmount The amount to repay.
-    /// @param outstandingBalance The outstanding balance of the loan.
+    /// @param repaymentAmount The amount to repay.
+    /// @param repayer The token source for the repayment or zero if the source is the loan borrower themself.
     function _repayLoan(
-        uint256 loanId,
-        Loan.State storage loan,
-        uint256 repayAmount,
-        uint256 outstandingBalance
+        uint256 loanId, // Tools: this comment prevents Prettier from formatting into a single line.
+        uint256 repaymentAmount,
+        address repayer
     ) internal {
+        if (repaymentAmount == 0) {
+            revert Error.InvalidAmount();
+        }
+        Loan.State storage loan = _loans[loanId];
+        (uint256 oldOutstandingBalance, uint256 lateFeeAmount, ) = _outstandingBalance(loan, _blockTimestamp());
+        uint256 roundedOutstandingBalance = Rounding.roundMath(oldOutstandingBalance, Constants.ACCURACY_FACTOR);
+        uint256 newOutstandingBalance = 0; // Full repayment by default
+
+        if (repaymentAmount == type(uint256).max) {
+            repaymentAmount = roundedOutstandingBalance;
+        } else {
+            if (repaymentAmount != Rounding.roundMath(repaymentAmount, Constants.ACCURACY_FACTOR)) {
+                revert Error.InvalidAmount();
+            }
+            if (repaymentAmount > roundedOutstandingBalance) {
+                revert Error.InvalidAmount();
+            }
+            // Not a full repayment
+            if (repaymentAmount < roundedOutstandingBalance) {
+                newOutstandingBalance = oldOutstandingBalance - repaymentAmount;
+            }
+            // Else full repayment
+        }
+
         address creditLine = _programCreditLines[loan.programId];
         address liquidityPool = _programLiquidityPools[loan.programId];
 
         bool autoRepayment = _programLiquidityPools[loan.programId] == msg.sender;
-        address payer = autoRepayment ? loan.borrower : msg.sender;
+        if (autoRepayment) {
+            repayer = loan.borrower;
+        }
 
-        outstandingBalance -= repayAmount;
-
-        loan.repaidAmount += repayAmount.toUint64();
-        loan.trackedBalance = outstandingBalance.toUint64();
+        loan.repaidAmount += repaymentAmount.toUint64();
+        loan.trackedBalance = newOutstandingBalance.toUint64();
         loan.trackedTimestamp = _blockTimestamp().toUint32();
+        _updateStoredLateFee(lateFeeAmount, loan);
 
-        IERC20(loan.token).safeTransferFrom(payer, liquidityPool, repayAmount);
+        IERC20(loan.token).safeTransferFrom(repayer, liquidityPool, repaymentAmount);
 
-        ILiquidityPool(liquidityPool).onAfterLoanPayment(loanId, repayAmount);
-        ICreditLine(creditLine).onAfterLoanPayment(loanId, repayAmount);
+        ILiquidityPool(liquidityPool).onAfterLoanPayment(loanId, repaymentAmount);
+        ICreditLine(creditLine).onAfterLoanPayment(loanId, repaymentAmount);
 
-        emit LoanRepayment(loanId, payer, loan.borrower, repayAmount, outstandingBalance);
+        emit LoanRepayment(loanId, repayer, loan.borrower, repaymentAmount, newOutstandingBalance);
     }
 
     // -------------------------------------------- //
@@ -905,6 +915,16 @@ contract LendingMarket is
     function _checkLoanExistence(Loan.State storage loan) internal view {
         if (loan.token == address(0)) {
             revert LoanNotExist();
+        }
+    }
+
+    /// @dev Checks if a loan with the specified ID is ongoing.
+    /// @param loanId The ID of the loan.
+    function _checkIfLoanOngoing(uint256 loanId) internal view {
+        Loan.State storage loan = _loans[loanId];
+        _checkLoanExistence(loan);
+        if (_isRepaid(loan)) {
+            revert LoanAlreadyRepaid();
         }
     }
 
