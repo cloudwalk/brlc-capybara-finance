@@ -1125,6 +1125,11 @@ describe("Contract 'LendingMarket': base tests", async () => {
         );
       }
 
+      // Check that there is a transfer of principal form the liquidity pool to the borrower
+      await expect(tx)
+        .to.emit(token, EVENT_NAME_TRANSFER)
+        .withArgs(liquidityPoolAddress, borrower.address, principalAmount);
+
       await expect(tx)
         .to.emit(market, EVENT_NAME_LOAN_TAKEN)
         .withArgs(expectedLoanId, borrower.address, principalAmount, DURATION_IN_PERIODS);
@@ -1272,6 +1277,11 @@ describe("Contract 'LendingMarket': base tests", async () => {
           [-BORROW_AMOUNT, +BORROW_AMOUNT, 0, 0]
         );
       }
+
+      // Check that there is a transfer of principal form the liquidity pool to the borrower
+      await expect(tx)
+        .to.emit(token, EVENT_NAME_TRANSFER)
+        .withArgs(liquidityPoolAddress, borrower.address, principalAmount);
 
       await expect(tx)
         .to.emit(market, EVENT_NAME_LOAN_TAKEN)
@@ -1587,15 +1597,19 @@ describe("Contract 'LendingMarket': base tests", async () => {
           [liquidityPool, borrower, addonTreasury, market],
           [-totalPrincipal, +totalBorrowAmount, +totalAddonAmount, 0]
         );
-        expect(await getNumberOfEvents(tx, token, EVENT_NAME_TRANSFER)).to.eq(2);
       } else {
         await expect(tx).to.changeTokenBalances(
           token,
           [liquidityPool, borrower, addonTreasury, market],
           [-totalBorrowAmount, +totalBorrowAmount, 0, 0]
         );
-        expect(await getNumberOfEvents(tx, token, EVENT_NAME_TRANSFER)).to.eq(1);
       }
+      expect(await getNumberOfEvents(tx, token, EVENT_NAME_TRANSFER)).to.eq(2);
+
+      // Check that there is a transfer of principal form the liquidity pool to the borrower
+      await expect(tx)
+        .to.emit(token, EVENT_NAME_TRANSFER)
+        .withArgs(liquidityPoolAddress, borrower.address, totalPrincipal);
 
       // Check the returned value of the function for the second loan
       const nextActualLoanId: bigint = await connect(market, lender).takeLoanFor.staticCall(
