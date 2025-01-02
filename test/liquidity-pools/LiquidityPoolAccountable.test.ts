@@ -22,6 +22,7 @@ interface LoanState {
   firstInstallmentId: bigint;
   installmentCount: bigint;
   lateFeeAmount: bigint;
+  discountAmount: bigint;
 }
 
 interface Version {
@@ -95,7 +96,8 @@ const defaultLoanState: LoanState = {
   freezeTimestamp: 0n,
   firstInstallmentId: 0n,
   installmentCount: 0n,
-  lateFeeAmount: 0n
+  lateFeeAmount: 0n,
+  discountAmount: 0n
 };
 
 describe("Contract 'LiquidityPoolAccountable'", async () => {

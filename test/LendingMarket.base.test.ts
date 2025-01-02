@@ -2334,7 +2334,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
     });
   });
 
-  describe.only("Function 'discountLoanBatch()'", () => {
+  describe("Function 'discountLoanBatch()'", () => {
     async function executeAndCheck(fixture: Fixture, currentLoans: Loan[], discountAmounts: (number | bigint)[]): Promise<Loan[]> {
       const expectedLoans: Loan[] = currentLoans.map(loan => clone(loan));
       const loanIds: number[] = expectedLoans.map(loan => loan.id);
@@ -2363,7 +2363,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       return expectedLoans;
     }
 
-    describe.only("Executes as expected if", async () => {
+    describe("Executes as expected if", async () => {
       it("There are partial discounts on the same period the loan is taken", async () => {
         const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
         const loans = fixture.installmentLoanParts;
@@ -2387,7 +2387,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
         await executeAndCheck(fixture, currentLoans, discountAmounts);
       });
 
-      it.only("There is a full discount through the amount matches the outstanding balance", async () => {
+      it("There is a full discount through the amount matches the outstanding balance", async () => {
         const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
         const loans = fixture.installmentLoanParts;
 

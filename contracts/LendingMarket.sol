@@ -1087,6 +1087,7 @@ contract LendingMarket is
         preview.borrowAmount = loan.borrowAmount;
         preview.addonAmount = loan.addonAmount;
         preview.repaidAmount = loan.repaidAmount;
+        preview.discountAmount = loan.discountAmount;
         preview.lateFeeAmount += loan.lateFeeAmount;
         preview.programId = loan.programId;
         preview.borrower = loan.borrower;
@@ -1135,6 +1136,7 @@ contract LendingMarket is
             preview.totalBorrowAmount += singleLoanPreview.borrowAmount;
             preview.totalAddonAmount += singleLoanPreview.addonAmount;
             preview.totalRepaidAmount += singleLoanPreview.repaidAmount;
+            preview.totalDiscountAmount += singleLoanPreview.discountAmount;
             preview.totalLateFeeAmount += singleLoanPreview.lateFeeAmount;
             preview.installmentPreviews[i] = singleLoanPreview;
             ++loanId;
