@@ -48,6 +48,7 @@ interface LoanState {
   firstInstallmentId: number;
   installmentCount: number;
   lateFeeAmount: number;
+  discountAmount: number;
 
   [key: string]: string | number; // Index signature
 }
@@ -73,6 +74,7 @@ interface LoanPreviewExtended {
   borrowAmount: number;
   addonAmount: number;
   repaidAmount: number;
+  discountAmount: number;
   lateFeeAmount: number;
   programId: number;
   borrower: string;
@@ -98,6 +100,7 @@ interface InstallmentLoanPreview {
   totalBorrowAmount: number;
   totalAddonAmount: number;
   totalRepaidAmount: number;
+  totalDiscountAmount: number;
   totalLateFeeAmount: number;
   installmentPreviews: LoanPreviewExtended[];
 
@@ -164,6 +167,7 @@ const EVENT_NAME_LOAN_INTEREST_RATE_SECONDARY_UPDATED = "LoanInterestRateSeconda
 const EVENT_NAME_LOAN_DURATION_UPDATED = "LoanDurationUpdated";
 const EVENT_NAME_LOAN_FROZEN = "LoanFrozen";
 const EVENT_NAME_LOAN_REPAYMENT = "LoanRepayment";
+const EVENT_NAME_LOAN_DISCOUNTED = "LoanDiscounted";
 const EVENT_NAME_LOAN_TAKEN = "LoanTaken";
 const EVENT_NAME_INSTALLMENT_LOAN_TAKEN = "InstallmentLoanTaken";
 const EVENT_NAME_LOAN_UNFROZEN = "LoanUnfrozen";
@@ -184,6 +188,7 @@ const INITIAL_BALANCE = 1000_000_000_000;
 const BORROW_AMOUNT = 100_000_000_000;
 const ADDON_AMOUNT = 100_000;
 const REPAYMENT_AMOUNT = 50_000_000_000;
+const DISCOUNT_AMOUNT = 10_000_000_000;
 const FULL_REPAYMENT_AMOUNT = ethers.MaxUint256;
 const INTEREST_RATE_FACTOR = 10 ** 9;
 const INTEREST_RATE_PRIMARY = INTEREST_RATE_FACTOR / 10;
@@ -224,7 +229,8 @@ const defaultLoanState: LoanState = {
   freezeTimestamp: 0,
   firstInstallmentId: 0,
   installmentCount: 0,
-  lateFeeAmount: 0
+  lateFeeAmount: 0,
+  discountAmount: 0
 };
 
 const defaultLoanConfig: LoanConfig = {
@@ -507,6 +513,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       borrowAmount: loan.state.borrowAmount,
       addonAmount: loan.state.addonAmount,
       repaidAmount: loan.state.repaidAmount,
+      discountAmount: loan.state.discountAmount,
       lateFeeAmount: loan.state.lateFeeAmount + lateFeeAmount,
       programId: loan.state.programId,
       borrower: loan.state.borrower,
@@ -538,6 +545,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       totalAddonAmount: loans.map(loan => loan.state.addonAmount).reduce((sum, amount) => sum + amount),
       totalRepaidAmount: loans.map(loan => loan.state.repaidAmount).reduce((sum, amount) => sum + amount),
       totalLateFeeAmount: loanPreviews.map(preview => preview.lateFeeAmount).reduce((sum, amount) => sum + amount),
+      totalDiscountAmount: loanPreviews.map(preview => preview.discountAmount).reduce((sum, amount) => sum + amount),
       installmentPreviews: loanPreviews
     };
   }
@@ -565,6 +573,31 @@ describe("Contract 'LendingMarket': base tests", async () => {
       loan.state.repaidAmount += repaymentAmount;
     }
     loan.state.trackedTimestamp = repaymentTimestampWithOffset;
+  }
+
+  function processDiscount(loan: Loan, props: {
+    discountAmount: number | bigint;
+    discountTimestamp: number;
+  }) {
+    const discountTimestampWithOffset = calculateTimestampWithOffset(props.discountTimestamp);
+    if (loan.state.trackedTimestamp >= discountTimestampWithOffset) {
+      return;
+    }
+    let discountAmount = props.discountAmount;
+    const loanPreviewBeforeDiscount = determineLoanPreview(loan, props.discountTimestamp);
+    loan.state.lateFeeAmount = determineLateFeeAmount(loan, props.discountTimestamp);
+    if (loanPreviewBeforeDiscount.outstandingBalance === discountAmount) {
+      discountAmount = FULL_REPAYMENT_AMOUNT;
+    }
+    if (discountAmount === FULL_REPAYMENT_AMOUNT) {
+      loan.state.trackedBalance = 0;
+      loan.state.discountAmount += loanPreviewBeforeDiscount.outstandingBalance;
+    } else {
+      discountAmount = Number(discountAmount);
+      loan.state.trackedBalance = loanPreviewBeforeDiscount.trackedBalance - discountAmount;
+      loan.state.discountAmount += discountAmount;
+    }
+    loan.state.trackedTimestamp = discountTimestampWithOffset;
   }
 
   async function deployLendingMarket(): Promise<Fixture> {
@@ -2296,6 +2329,198 @@ describe("Contract 'LendingMarket': base tests", async () => {
         )) + ACCURACY_FACTOR;
 
         await expect(marketUnderLender.repayLoanForBatch(loanIds, repaymentAmounts, borrower.address))
+          .to.be.revertedWithCustomError(marketUnderLender, ERROR_NAME_INVALID_AMOUNT);
+      });
+    });
+  });
+
+  describe.only("Function 'discountLoanBatch()'", () => {
+    async function executeAndCheck(fixture: Fixture, currentLoans: Loan[], discountAmounts: (number | bigint)[]): Promise<Loan[]> {
+      const expectedLoans: Loan[] = currentLoans.map(loan => clone(loan));
+      const loanIds: number[] = expectedLoans.map(loan => loan.id);
+      const { marketUnderLender } = fixture;
+
+      connect(marketUnderLender, alias).discountLoanBatch.staticCall(loanIds, discountAmounts);
+      const tx = marketUnderLender.discountLoanBatch(loanIds, discountAmounts);
+
+      const discountAmountsBefore = expectedLoans.map(loan => loan.state.discountAmount);
+      const discountTimestamp = await getTxTimestamp(tx);
+
+      for (let i = 0; i < expectedLoans.length; ++i) {
+        const expectedLoan = expectedLoans[i];
+        processDiscount(expectedLoan, { discountAmount: discountAmounts[i], discountTimestamp: discountTimestamp });
+        const expectedDiscountAmount = expectedLoan.state.discountAmount - discountAmountsBefore[i];
+        const actualLoanStateAfterDiscount = await marketUnderLender.getLoanState(expectedLoan.id);
+        checkEquality(actualLoanStateAfterDiscount, expectedLoan.state);
+
+        await expect(tx).to.emit(marketUnderLender, EVENT_NAME_LOAN_DISCOUNTED).withArgs(
+          expectedLoan.id,
+          expectedDiscountAmount,
+          expectedLoan.state.trackedBalance // outstanding balance
+        );
+      }
+
+      return expectedLoans;
+    }
+
+    describe.only("Executes as expected if", async () => {
+      it("There are partial discounts on the same period the loan is taken", async () => {
+        const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
+        const loans = fixture.installmentLoanParts;
+        const discountAmounts = Array(loans.length).fill(DISCOUNT_AMOUNT);
+
+        await executeAndCheck(fixture, loans, discountAmounts);
+      });
+
+      it("There are partial discounts at the due date and another one a day after", async () => {
+        const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
+        const periodIndex = fixture.ordinaryLoanStartPeriod + fixture.ordinaryLoan.state.durationInPeriods;
+        await increaseBlockTimestampToPeriodIndex(periodIndex);
+        let currentLoans: Loan[] = [
+          fixture.ordinaryLoan,
+          fixture.installmentLoanParts[fixture.installmentLoanParts.length - 1]
+        ];
+        const discountAmounts = [DISCOUNT_AMOUNT, DISCOUNT_AMOUNT / 2];
+
+        currentLoans = await executeAndCheck(fixture, currentLoans, discountAmounts);
+        await increaseBlockTimestampToPeriodIndex(periodIndex + 1);
+        await executeAndCheck(fixture, currentLoans, discountAmounts);
+      });
+
+      it.only("There is a full discount through the amount matches the outstanding balance", async () => {
+        const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
+        const loans = fixture.installmentLoanParts;
+
+        const discountAmounts = await Promise.all(
+          loans.map(async loan => {
+            const preview = await fixture.marketUnderLender.getLoanPreview(loan.id, 0);
+            return preview.outstandingBalance;
+          })
+        );
+
+        console.log("discountAmounts", discountAmounts);
+
+        await executeAndCheck(fixture, loans, discountAmounts);
+      });
+
+      it("There is a full discount through the amount equals max uint256 value", async () => {
+        const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
+        const loans = fixture.installmentLoanParts;
+        const discountAmounts = Array(loans.length).fill(FULL_REPAYMENT_AMOUNT);
+
+        await executeAndCheck(fixture, loans, discountAmounts);
+      });
+
+      it("There are empty input arrays", async () => {
+        const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
+        await executeAndCheck(fixture, [], []);
+      });
+    });
+
+    describe("Is reverted if", () => {
+      it("The contract is paused", async () => {
+        const { market } = await setUpFixture(deployLendingMarketAndTakeLoans);
+        await proveTx(market.pause());
+
+        await expect(market.discountLoanBatch([], []))
+          .to.be.revertedWithCustomError(market, ERROR_NAME_ENFORCED_PAUSED);
+      });
+
+      it("The length of the input arrays does not match", async () => {
+        const { marketUnderLender, installmentLoanParts: loans } = await setUpFixture(deployLendingMarketAndTakeLoans);
+        const loanIds = loans.map(loan => loan.id);
+        const discountAmounts: number[] = Array(loans.length).fill(DISCOUNT_AMOUNT);
+
+        await expect(marketUnderLender.discountLoanBatch(
+          [...loanIds, loanIds[0]],
+          discountAmounts,
+        )).to.be.revertedWithCustomError(marketUnderLender, ERROR_NAME_ARRAY_LENGTH_MISMATCH);
+
+        await expect(marketUnderLender.discountLoanBatch(
+          loanIds,
+          [...discountAmounts, DISCOUNT_AMOUNT],
+        )).to.be.revertedWithCustomError(marketUnderLender, ERROR_NAME_ARRAY_LENGTH_MISMATCH);
+
+        await expect(marketUnderLender.discountLoanBatch(
+          loanIds,
+          [],
+        )).to.be.revertedWithCustomError(marketUnderLender, ERROR_NAME_ARRAY_LENGTH_MISMATCH);
+
+        await expect(marketUnderLender.discountLoanBatch(
+          [],
+          discountAmounts,
+        )).to.be.revertedWithCustomError(marketUnderLender, ERROR_NAME_ARRAY_LENGTH_MISMATCH);
+      });
+
+      it("One of the loans does not exist", async () => {
+        const { marketUnderLender, installmentLoanParts: loans } = await setUpFixture(deployLendingMarketAndTakeLoans);
+        const loanIds = loans.map(loan => loan.id);
+        const discountAmounts: number[] = Array(loans.length).fill(DISCOUNT_AMOUNT);
+        loanIds[loans.length - 1] += 123;
+
+        await expect(marketUnderLender.discountLoanBatch(loanIds, discountAmounts))
+          .to.be.revertedWithCustomError(marketUnderLender, ERROR_NAME_LOAN_NOT_EXIST);
+      });
+
+      it("One of the loans is already repaid", async () => {
+        const { marketUnderLender, installmentLoanParts: loans } = await setUpFixture(deployLendingMarketAndTakeLoans);
+        const loanIds = loans.map(loan => loan.id);
+        const discountAmounts: number[] = Array(loans.length).fill(DISCOUNT_AMOUNT);
+        await proveTx(connect(marketUnderLender, borrower).repayLoan(loanIds[loans.length - 1], FULL_REPAYMENT_AMOUNT));
+
+        await expect(marketUnderLender.discountLoanBatch(loanIds, discountAmounts))
+          .to.be.revertedWithCustomError(marketUnderLender, ERROR_NAME_LOAN_ALREADY_REPAID);
+      });
+
+      it("The caller is not the lender or an alias", async () => {
+        const { market, installmentLoanParts: loans } = await setUpFixture(deployLendingMarketAndTakeLoans);
+        const loanIds = loans.map(loan => loan.id);
+        const discountAmounts: number[] = Array(loans.length).fill(DISCOUNT_AMOUNT);
+
+        await expect(
+          connect(market, owner).discountLoanBatch(loanIds, discountAmounts)
+        ).to.be.revertedWithCustomError(market, ERROR_NAME_UNAUTHORIZED);
+
+        await expect(
+          connect(market, borrower).discountLoanBatch(loanIds, discountAmounts)
+        ).to.be.revertedWithCustomError(market, ERROR_NAME_UNAUTHORIZED);
+
+        await expect(
+          connect(market, stranger).discountLoanBatch(loanIds, discountAmounts)
+        ).to.be.revertedWithCustomError(market, ERROR_NAME_UNAUTHORIZED);
+      });
+
+      it("One of the discount amounts is zero", async () => {
+        const { marketUnderLender, installmentLoanParts: loans } = await setUpFixture(deployLendingMarketAndTakeLoans);
+        const loanIds = loans.map(loan => loan.id);
+        const discountAmounts: number[] = Array(loans.length).fill(DISCOUNT_AMOUNT);
+        discountAmounts[loans.length - 1] = 0;
+
+        await expect(marketUnderLender.discountLoanBatch(loanIds, discountAmounts))
+          .to.be.revertedWithCustomError(marketUnderLender, ERROR_NAME_INVALID_AMOUNT);
+      });
+
+      it("One of the discount amounts is not rounded according to the accuracy factor", async () => {
+        const { marketUnderLender, installmentLoanParts: loans } = await setUpFixture(deployLendingMarketAndTakeLoans);
+        const loanIds = loans.map(loan => loan.id);
+        const discountAmounts: number[] = Array(loans.length).fill(DISCOUNT_AMOUNT);
+        discountAmounts[loans.length - 1] = DISCOUNT_AMOUNT - 1;
+
+        await expect(marketUnderLender.discountLoanBatch(loanIds, discountAmounts))
+          .to.be.revertedWithCustomError(marketUnderLender, ERROR_NAME_INVALID_AMOUNT);
+      });
+
+      it("One of the discount amounts is bigger than outstanding balance", async () => {
+        const { marketUnderLender, installmentLoanParts: loans } = await setUpFixture(deployLendingMarketAndTakeLoans);
+        const loanIds = loans.map(loan => loan.id);
+        const discountAmounts: number[] = Array(loans.length).fill(DISCOUNT_AMOUNT);
+        const lastLoan = loans[loans.length - 1];
+        discountAmounts[loans.length - 1] = Number(roundMath(
+          lastLoan.state.borrowAmount + lastLoan.state.addonAmount,
+          ACCURACY_FACTOR
+        )) + ACCURACY_FACTOR;
+
+        await expect(marketUnderLender.discountLoanBatch(loanIds, discountAmounts))
           .to.be.revertedWithCustomError(marketUnderLender, ERROR_NAME_INVALID_AMOUNT);
       });
     });
