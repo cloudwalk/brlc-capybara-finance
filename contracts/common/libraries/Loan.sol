@@ -43,6 +43,7 @@ library Loan {
         // uint16 __reserved;         // Reserved for future use.
         // Slot 5
         uint64 lateFeeAmount;         // The late fee amount of the loan or zero if the loan is not defaulted.
+        uint64 discountAmount;        // The discount amount of the loan or zero if the loan is not discounted.
     }
 
     /// @dev A struct that defines the terms of a loan.
