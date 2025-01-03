@@ -2340,10 +2340,10 @@ describe("Contract 'LendingMarket': base tests", async () => {
       const loanIds: number[] = expectedLoans.map(loan => loan.id);
       const { marketUnderLender } = fixture;
 
+      const discountAmountsBefore = expectedLoans.map(loan => loan.state.discountAmount);
+
       connect(marketUnderLender, alias).discountLoanBatch.staticCall(loanIds, discountAmounts);
       const tx = marketUnderLender.discountLoanBatch(loanIds, discountAmounts);
-
-      const discountAmountsBefore = expectedLoans.map(loan => loan.state.discountAmount);
       const discountTimestamp = await getTxTimestamp(tx);
 
       for (let i = 0; i < expectedLoans.length; ++i) {
@@ -2391,14 +2391,12 @@ describe("Contract 'LendingMarket': base tests", async () => {
         const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
         const loans = fixture.installmentLoanParts;
 
-        const discountAmounts = await Promise.all(
+        const discountAmounts: number[] = await Promise.all(
           loans.map(async loan => {
             const preview = await fixture.marketUnderLender.getLoanPreview(loan.id, 0);
-            return preview.outstandingBalance;
+            return Number(preview.outstandingBalance);
           })
         );
-
-        console.log("discountAmounts", discountAmounts);
 
         await executeAndCheck(fixture, loans, discountAmounts);
       });
