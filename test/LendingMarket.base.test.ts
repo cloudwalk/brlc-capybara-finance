@@ -1125,6 +1125,11 @@ describe("Contract 'LendingMarket': base tests", async () => {
         );
       }
 
+      // Check that there is a transfer of principal form the liquidity pool to the borrower
+      await expect(tx)
+        .to.emit(token, EVENT_NAME_TRANSFER)
+        .withArgs(liquidityPoolAddress, borrower.address, principalAmount);
+
       await expect(tx)
         .to.emit(market, EVENT_NAME_LOAN_TAKEN)
         .withArgs(expectedLoanId, borrower.address, principalAmount, DURATION_IN_PERIODS);
@@ -1272,6 +1277,11 @@ describe("Contract 'LendingMarket': base tests", async () => {
           [-BORROW_AMOUNT, +BORROW_AMOUNT, 0, 0]
         );
       }
+
+      // Check that there is a transfer of principal form the liquidity pool to the borrower
+      await expect(tx)
+        .to.emit(token, EVENT_NAME_TRANSFER)
+        .withArgs(liquidityPoolAddress, borrower.address, principalAmount);
 
       await expect(tx)
         .to.emit(market, EVENT_NAME_LOAN_TAKEN)
@@ -1587,15 +1597,19 @@ describe("Contract 'LendingMarket': base tests", async () => {
           [liquidityPool, borrower, addonTreasury, market],
           [-totalPrincipal, +totalBorrowAmount, +totalAddonAmount, 0]
         );
-        expect(await getNumberOfEvents(tx, token, EVENT_NAME_TRANSFER)).to.eq(2);
       } else {
         await expect(tx).to.changeTokenBalances(
           token,
           [liquidityPool, borrower, addonTreasury, market],
           [-totalBorrowAmount, +totalBorrowAmount, 0, 0]
         );
-        expect(await getNumberOfEvents(tx, token, EVENT_NAME_TRANSFER)).to.eq(1);
       }
+      expect(await getNumberOfEvents(tx, token, EVENT_NAME_TRANSFER)).to.eq(2);
+
+      // Check that there is a transfer of principal form the liquidity pool to the borrower
+      await expect(tx)
+        .to.emit(token, EVENT_NAME_TRANSFER)
+        .withArgs(liquidityPoolAddress, borrower.address, totalPrincipal);
 
       // Check the returned value of the function for the second loan
       const nextActualLoanId: bigint = await connect(market, lender).takeLoanFor.staticCall(
@@ -2725,6 +2739,8 @@ describe("Contract 'LendingMarket': base tests", async () => {
 
       if (props.isAddonTreasuryConfigured) {
         await proveTx(liquidityPool.mockAddonTreasury(addonTreasury.address));
+      } else {
+        expect(await liquidityPool.addonTreasury()).to.eq(ZERO_ADDRESS);
       }
 
       if (props.revoker === lender) {
@@ -2745,6 +2761,9 @@ describe("Contract 'LendingMarket': base tests", async () => {
           [borrower, liquidityPool, addonTreasury, market],
           [borrowerBalanceChange, -borrowerBalanceChange + addonAmount, -addonAmount, 0]
         );
+        await expect(tx)
+          .to.emit(token, EVENT_NAME_TRANSFER)
+          .withArgs(addonTreasury.address, borrower.address, addonAmount);
       } else {
         await expect(tx).to.changeTokenBalances(
           token,
@@ -2769,7 +2788,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
           );
           await increaseBlockTimestampTo(timestamp);
           await revokeAndCheck(fixture, {
-            isAddonTreasuryConfigured: true,
+            isAddonTreasuryConfigured: false,
             currentLoan: fixture.ordinaryLoan,
             revoker: borrower
           });
@@ -2841,6 +2860,49 @@ describe("Contract 'LendingMarket': base tests", async () => {
 
           const timestamp = removeTimestampOffset(loan.state.startTimestamp + COOLDOWN_IN_PERIODS * PERIOD_IN_SECONDS);
           await increaseBlockTimestampTo(timestamp);
+
+          await revokeAndCheck(fixture, {
+            isAddonTreasuryConfigured: true,
+            currentLoan: loan,
+            revoker: lender
+          });
+        });
+
+        it("Is called by the borrower with a repayment that equals the principal amount", async () => {
+          const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
+
+          const loan = clone(fixture.ordinaryLoan);
+          const repaymentAmount = loan.state.borrowAmount + loan.state.addonAmount;
+
+          const timestamp = removeTimestampOffset(
+            fixture.ordinaryLoan.state.startTimestamp + (COOLDOWN_IN_PERIODS - 1) * PERIOD_IN_SECONDS
+          );
+          await increaseBlockTimestampTo(timestamp);
+
+          const tx = await proveTx(connect(fixture.market, borrower).repayLoan(loan.id, repaymentAmount));
+          processRepayment(loan, { repaymentAmount, repaymentTimestamp: await getBlockTimestamp(tx.blockNumber) });
+
+          await revokeAndCheck(fixture, {
+            isAddonTreasuryConfigured: true,
+            currentLoan: loan,
+            revoker: lender
+          });
+        });
+
+        it("Is called by the lender with a repayment is greater than the principal amount", async () => {
+          const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
+
+          const loan = clone(fixture.ordinaryLoan);
+          const repaymentAmount = loan.state.borrowAmount + loan.state.addonAmount + ACCURACY_FACTOR;
+
+          const timestamp = removeTimestampOffset(
+            fixture.ordinaryLoan.state.startTimestamp +
+            (fixture.ordinaryLoan.state.durationInPeriods + 1) * PERIOD_IN_SECONDS
+          );
+          await increaseBlockTimestampTo(timestamp);
+
+          const tx = await proveTx(connect(fixture.market, borrower).repayLoan(loan.id, repaymentAmount));
+          processRepayment(loan, { repaymentAmount, repaymentTimestamp: await getBlockTimestamp(tx.blockNumber) });
 
           await revokeAndCheck(fixture, {
             isAddonTreasuryConfigured: true,
@@ -2924,6 +2986,8 @@ describe("Contract 'LendingMarket': base tests", async () => {
 
       if (props.isAddonTreasuryConfigured) {
         await proveTx(liquidityPool.mockAddonTreasury(addonTreasury.address));
+      } else {
+        expect(await liquidityPool.addonTreasury()).to.eq(ZERO_ADDRESS);
       }
 
       if (props.revoker === lender) {
@@ -2960,6 +3024,9 @@ describe("Contract 'LendingMarket': base tests", async () => {
           [borrower, liquidityPool, addonTreasury, market],
           [borrowerBalanceChange, -borrowerBalanceChange + totalAddonAmount, -totalAddonAmount, 0]
         );
+        await expect(tx)
+          .to.emit(token, EVENT_NAME_TRANSFER)
+          .withArgs(addonTreasury.address, borrower.address, totalAddonAmount);
         expect(await getNumberOfEvents(tx, token, EVENT_NAME_TRANSFER)).to.eq(2);
       } else { // props.isAddonTreasuryConfigured == false
         await expect(tx).to.changeTokenBalances(
