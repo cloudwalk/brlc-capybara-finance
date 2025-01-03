@@ -2335,7 +2335,11 @@ describe("Contract 'LendingMarket': base tests", async () => {
   });
 
   describe("Function 'discountLoanBatch()'", () => {
-    async function executeAndCheck(fixture: Fixture, currentLoans: Loan[], discountAmounts: (number | bigint)[]): Promise<Loan[]> {
+    async function executeAndCheck(
+      fixture: Fixture,
+      currentLoans: Loan[],
+      discountAmounts: (number | bigint)[]
+    ): Promise<Loan[]> {
       const expectedLoans: Loan[] = currentLoans.map(loan => clone(loan));
       const loanIds: number[] = expectedLoans.map(loan => loan.id);
       const { marketUnderLender } = fixture;
@@ -2431,22 +2435,22 @@ describe("Contract 'LendingMarket': base tests", async () => {
 
         await expect(marketUnderLender.discountLoanBatch(
           [...loanIds, loanIds[0]],
-          discountAmounts,
+          discountAmounts
         )).to.be.revertedWithCustomError(marketUnderLender, ERROR_NAME_ARRAY_LENGTH_MISMATCH);
 
         await expect(marketUnderLender.discountLoanBatch(
           loanIds,
-          [...discountAmounts, DISCOUNT_AMOUNT],
+          [...discountAmounts, DISCOUNT_AMOUNT]
         )).to.be.revertedWithCustomError(marketUnderLender, ERROR_NAME_ARRAY_LENGTH_MISMATCH);
 
         await expect(marketUnderLender.discountLoanBatch(
           loanIds,
-          [],
+          []
         )).to.be.revertedWithCustomError(marketUnderLender, ERROR_NAME_ARRAY_LENGTH_MISMATCH);
 
         await expect(marketUnderLender.discountLoanBatch(
           [],
-          discountAmounts,
+          discountAmounts
         )).to.be.revertedWithCustomError(marketUnderLender, ERROR_NAME_ARRAY_LENGTH_MISMATCH);
       });
 
