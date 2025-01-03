@@ -85,6 +85,16 @@ interface ILendingMarket {
     /// @param loanId The unique identifier of the loan.
     event LoanRevoked(uint256 indexed loanId);
 
+    /// @dev Emitted when a loan is discounted.
+    /// @param loanId The unique identifier of the loan.
+    /// @param discountAmount The amount of the discount.
+    /// @param newTrackedBalance The new tracked balance of the loan after the discount.
+    event LoanDiscounted(
+        uint256 indexed loanId, // Tools: this comment prevents Prettier from formatting into a single line.
+        uint256 discountAmount,
+        uint256 newTrackedBalance
+    );
+
     /// @dev Emitted when an installment loan is revoked.
     /// @param firstInstallmentId The ID of the first sub-loan of the installment loan.
     /// @param installmentCount The total number of installments.
@@ -232,6 +242,14 @@ interface ILendingMarket {
         uint256[] calldata loanIds,
         uint256[] calldata repaymentAmounts,
         address repayer
+    ) external;
+
+    /// @dev Discounts a batch of loans.
+    /// @param loanIds The unique identifiers of the loans to discount.
+    /// @param discountAmounts The amounts to discount for each loan.
+    function discountLoanForBatch(
+        uint256[] calldata loanIds, // Tools: this comment prevents Prettier from formatting into a single line.
+        uint256[] calldata discountAmounts
     ) external;
 
     // -------------------------------------------- //

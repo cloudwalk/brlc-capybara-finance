@@ -114,6 +114,15 @@ contract LendingMarketMock is ILendingMarket {
         revert Error.NotImplemented();
     }
 
+    function discountLoanForBatch(
+        uint256[] calldata loanIds,
+        uint256[] calldata discountAmounts
+    ) external pure {
+        loanIds; // To prevent compiler warning about unused variable
+        discountAmounts; // To prevent compiler warning about unused variable
+        revert Error.NotImplemented();
+    }
+
     function freeze(uint256 loanId) external pure {
         loanId; // To prevent compiler warning about unused variable
         revert Error.NotImplemented();

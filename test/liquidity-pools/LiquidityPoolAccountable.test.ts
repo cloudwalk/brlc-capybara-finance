@@ -22,6 +22,7 @@ interface LoanState {
   firstInstallmentId: bigint;
   installmentCount: bigint;
   lateFeeAmount: bigint;
+  discountAmount: bigint;
 }
 
 interface Version {
@@ -75,7 +76,7 @@ const AUTO_REPAY_LOAN_IDS = [123n, 234n, 345n, 123n];
 const AUTO_REPAY_AMOUNTS = [10_123_456n, 1n, maxUintForBits(256), 0n];
 const EXPECTED_VERSION: Version = {
   major: 1,
-  minor: 6,
+  minor: 7,
   patch: 0
 };
 
@@ -95,7 +96,8 @@ const defaultLoanState: LoanState = {
   freezeTimestamp: 0n,
   firstInstallmentId: 0n,
   installmentCount: 0n,
-  lateFeeAmount: 0n
+  lateFeeAmount: 0n,
+  discountAmount: 0n
 };
 
 describe("Contract 'LiquidityPoolAccountable'", async () => {
