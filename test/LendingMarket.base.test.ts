@@ -74,8 +74,8 @@ interface LoanPreviewExtended {
   borrowAmount: number;
   addonAmount: number;
   repaidAmount: number;
-  discountAmount: number;
   lateFeeAmount: number;
+  discountAmount: number;
   programId: number;
   borrower: string;
   previewTimestamp: number;
@@ -100,8 +100,8 @@ interface InstallmentLoanPreview {
   totalBorrowAmount: number;
   totalAddonAmount: number;
   totalRepaidAmount: number;
-  totalDiscountAmount: number;
   totalLateFeeAmount: number;
+  totalDiscountAmount: number;
   installmentPreviews: LoanPreviewExtended[];
 
   [key: string]: number | LoanPreviewExtended[]; // Index signature

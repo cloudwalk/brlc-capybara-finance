@@ -123,8 +123,8 @@ library Loan {
     /// - totalAddonAmount --------- The total addon amount of all installments.
     /// - totalRepaidAmount -------- The total repaid amount of all installments.
     /// - totalLateFeeAmount ------- The total late fee amount of all installments.
-    /// - totalDiscountAmount ------ The total discount amount of all installments.
     /// - installmentPreviews ------ The extended previews of all installments.
+    /// - totalDiscountAmount ------ The total discount amount of all installments.
     ///
     /// The purpose of the fields in the case of ordinary loans:
     ///
@@ -137,8 +137,8 @@ library Loan {
     /// - totalAddonAmount --------- The addon amount of the loan.
     /// - totalRepaidAmount -------- The repaid amount of the loan.
     /// - totalLateFeeAmount ------- The late fee amount of the loan.
-    /// - totalDiscountAmount ------ The total discount amount of the loan.
     /// - installmentPreviews ------ The extended preview of the loan as a single item array.
+    /// - totalDiscountAmount ------ The total discount amount of the loan.
 
     /// Notes:
     ///
@@ -154,8 +154,8 @@ library Loan {
         uint256 totalBorrowAmount;
         uint256 totalAddonAmount;
         uint256 totalRepaidAmount;
-        uint256 totalDiscountAmount;
         uint256 totalLateFeeAmount;
+        uint256 totalDiscountAmount;
         PreviewExtended[] installmentPreviews;
     }
 }
