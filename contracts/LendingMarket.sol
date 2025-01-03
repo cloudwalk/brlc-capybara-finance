@@ -335,7 +335,7 @@ contract LendingMarket is
     }
 
     /// @inheritdoc ILendingMarket
-    function discountLoanBatch(
+    function discountLoanForBatch(
         uint256[] calldata loanIds, // Tools: this comment prevents Prettier from formatting into a single line.
         uint256[] calldata discountAmounts
     ) external whenNotPaused {

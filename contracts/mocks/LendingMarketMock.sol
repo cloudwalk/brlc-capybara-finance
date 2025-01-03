@@ -114,7 +114,7 @@ contract LendingMarketMock is ILendingMarket {
         revert Error.NotImplemented();
     }
 
-    function discountLoanBatch(
+    function discountLoanForBatch(
         uint256[] calldata loanIds,
         uint256[] calldata discountAmounts
     ) external pure {

@@ -2334,7 +2334,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
     });
   });
 
-  describe("Function 'discountLoanBatch()'", () => {
+  describe("Function 'discountLoanForBatch()'", () => {
     async function executeAndCheck(
       fixture: Fixture,
       currentLoans: Loan[],
@@ -2346,8 +2346,8 @@ describe("Contract 'LendingMarket': base tests", async () => {
 
       const discountAmountsBefore = expectedLoans.map(loan => loan.state.discountAmount);
 
-      connect(marketUnderLender, alias).discountLoanBatch.staticCall(loanIds, discountAmounts);
-      const tx = marketUnderLender.discountLoanBatch(loanIds, discountAmounts);
+      connect(marketUnderLender, alias).discountLoanForBatch.staticCall(loanIds, discountAmounts);
+      const tx = marketUnderLender.discountLoanForBatch(loanIds, discountAmounts);
       const discountTimestamp = await getTxTimestamp(tx);
 
       for (let i = 0; i < expectedLoans.length; ++i) {
@@ -2424,7 +2424,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
         const { market } = await setUpFixture(deployLendingMarketAndTakeLoans);
         await proveTx(market.pause());
 
-        await expect(market.discountLoanBatch([], []))
+        await expect(market.discountLoanForBatch([], []))
           .to.be.revertedWithCustomError(market, ERROR_NAME_ENFORCED_PAUSED);
       });
 
@@ -2433,22 +2433,22 @@ describe("Contract 'LendingMarket': base tests", async () => {
         const loanIds = loans.map(loan => loan.id);
         const discountAmounts: number[] = Array(loans.length).fill(DISCOUNT_AMOUNT);
 
-        await expect(marketUnderLender.discountLoanBatch(
+        await expect(marketUnderLender.discountLoanForBatch(
           [...loanIds, loanIds[0]],
           discountAmounts
         )).to.be.revertedWithCustomError(marketUnderLender, ERROR_NAME_ARRAY_LENGTH_MISMATCH);
 
-        await expect(marketUnderLender.discountLoanBatch(
+        await expect(marketUnderLender.discountLoanForBatch(
           loanIds,
           [...discountAmounts, DISCOUNT_AMOUNT]
         )).to.be.revertedWithCustomError(marketUnderLender, ERROR_NAME_ARRAY_LENGTH_MISMATCH);
 
-        await expect(marketUnderLender.discountLoanBatch(
+        await expect(marketUnderLender.discountLoanForBatch(
           loanIds,
           []
         )).to.be.revertedWithCustomError(marketUnderLender, ERROR_NAME_ARRAY_LENGTH_MISMATCH);
 
-        await expect(marketUnderLender.discountLoanBatch(
+        await expect(marketUnderLender.discountLoanForBatch(
           [],
           discountAmounts
         )).to.be.revertedWithCustomError(marketUnderLender, ERROR_NAME_ARRAY_LENGTH_MISMATCH);
@@ -2460,7 +2460,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
         const discountAmounts: number[] = Array(loans.length).fill(DISCOUNT_AMOUNT);
         loanIds[loans.length - 1] += 123;
 
-        await expect(marketUnderLender.discountLoanBatch(loanIds, discountAmounts))
+        await expect(marketUnderLender.discountLoanForBatch(loanIds, discountAmounts))
           .to.be.revertedWithCustomError(marketUnderLender, ERROR_NAME_LOAN_NOT_EXIST);
       });
 
@@ -2470,7 +2470,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
         const discountAmounts: number[] = Array(loans.length).fill(DISCOUNT_AMOUNT);
         await proveTx(connect(marketUnderLender, borrower).repayLoan(loanIds[loans.length - 1], FULL_REPAYMENT_AMOUNT));
 
-        await expect(marketUnderLender.discountLoanBatch(loanIds, discountAmounts))
+        await expect(marketUnderLender.discountLoanForBatch(loanIds, discountAmounts))
           .to.be.revertedWithCustomError(marketUnderLender, ERROR_NAME_LOAN_ALREADY_REPAID);
       });
 
@@ -2480,15 +2480,15 @@ describe("Contract 'LendingMarket': base tests", async () => {
         const discountAmounts: number[] = Array(loans.length).fill(DISCOUNT_AMOUNT);
 
         await expect(
-          connect(market, owner).discountLoanBatch(loanIds, discountAmounts)
+          connect(market, owner).discountLoanForBatch(loanIds, discountAmounts)
         ).to.be.revertedWithCustomError(market, ERROR_NAME_UNAUTHORIZED);
 
         await expect(
-          connect(market, borrower).discountLoanBatch(loanIds, discountAmounts)
+          connect(market, borrower).discountLoanForBatch(loanIds, discountAmounts)
         ).to.be.revertedWithCustomError(market, ERROR_NAME_UNAUTHORIZED);
 
         await expect(
-          connect(market, stranger).discountLoanBatch(loanIds, discountAmounts)
+          connect(market, stranger).discountLoanForBatch(loanIds, discountAmounts)
         ).to.be.revertedWithCustomError(market, ERROR_NAME_UNAUTHORIZED);
       });
 
@@ -2498,7 +2498,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
         const discountAmounts: number[] = Array(loans.length).fill(DISCOUNT_AMOUNT);
         discountAmounts[loans.length - 1] = 0;
 
-        await expect(marketUnderLender.discountLoanBatch(loanIds, discountAmounts))
+        await expect(marketUnderLender.discountLoanForBatch(loanIds, discountAmounts))
           .to.be.revertedWithCustomError(marketUnderLender, ERROR_NAME_INVALID_AMOUNT);
       });
 
@@ -2508,7 +2508,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
         const discountAmounts: number[] = Array(loans.length).fill(DISCOUNT_AMOUNT);
         discountAmounts[loans.length - 1] = DISCOUNT_AMOUNT - 1;
 
-        await expect(marketUnderLender.discountLoanBatch(loanIds, discountAmounts))
+        await expect(marketUnderLender.discountLoanForBatch(loanIds, discountAmounts))
           .to.be.revertedWithCustomError(marketUnderLender, ERROR_NAME_INVALID_AMOUNT);
       });
 
@@ -2522,7 +2522,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
           ACCURACY_FACTOR
         )) + ACCURACY_FACTOR;
 
-        await expect(marketUnderLender.discountLoanBatch(loanIds, discountAmounts))
+        await expect(marketUnderLender.discountLoanForBatch(loanIds, discountAmounts))
           .to.be.revertedWithCustomError(marketUnderLender, ERROR_NAME_INVALID_AMOUNT);
       });
     });

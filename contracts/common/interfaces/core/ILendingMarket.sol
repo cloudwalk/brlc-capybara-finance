@@ -247,7 +247,7 @@ interface ILendingMarket {
     /// @dev Discounts a batch of loans.
     /// @param loanIds The unique identifiers of the loans to discount.
     /// @param discountAmounts The amounts to discount for each loan.
-    function discountLoanBatch(
+    function discountLoanForBatch(
         uint256[] calldata loanIds, // Tools: this comment prevents Prettier from formatting into a single line.
         uint256[] calldata discountAmounts
     ) external;
