@@ -334,6 +334,24 @@ contract LendingMarket is
         }
     }
 
+    /// @inheritdoc ILendingMarket
+    function discountLoanForBatch(
+        uint256[] calldata loanIds, // Tools: this comment prevents Prettier from formatting into a single line.
+        uint256[] calldata discountAmounts
+    ) external whenNotPaused {
+        uint256 len = loanIds.length;
+        if (len != discountAmounts.length) {
+            revert Error.ArrayLengthMismatch();
+        }
+        for (uint256 i = 0; i < len; ++i) {
+            uint256 loanId = loanIds[i];
+            Loan.State storage loan = _loans[loanId];
+            _checkIfLoanOngoing(loanId);
+            _checkSender(msg.sender, loan.programId);
+            _discountLoan(loanId, loan, discountAmounts[i]);
+        }
+    }
+
     /// @dev Updates the loan state and makes the necessary transfers when repaying a loan.
     /// @param loanId The unique identifier of the loan to repay.
     /// @param repaymentAmount The amount to repay.
@@ -386,6 +404,47 @@ contract LendingMarket is
         ICreditLine(creditLine).onAfterLoanPayment(loanId, repaymentAmount);
 
         emit LoanRepayment(loanId, repayer, loan.borrower, repaymentAmount, newOutstandingBalance);
+    }
+
+    /// @dev Discounts a loan.
+    /// @param loanId The unique identifier of the loan to discount.
+    /// @param loan The storage state of the loan.
+    /// @param discountAmount The amount of the discount.
+    function _discountLoan(
+        uint256 loanId, // Tools: this comment prevents Prettier from formatting into a single line.
+        Loan.State storage loan,
+        uint256 discountAmount
+    ) internal {
+        if (discountAmount == 0) {
+            revert Error.InvalidAmount();
+        }
+
+        (uint256 oldOutstandingBalance, uint256 lateFeeAmount, ) = _outstandingBalance(loan, _blockTimestamp());
+        uint256 roundedOutstandingBalance = Rounding.roundMath(oldOutstandingBalance, Constants.ACCURACY_FACTOR);
+        uint256 newOutstandingBalance = 0; // Full discount by default
+
+        if (discountAmount == type(uint256).max) {
+            discountAmount = roundedOutstandingBalance;
+        } else {
+            if (discountAmount != Rounding.roundMath(discountAmount, Constants.ACCURACY_FACTOR)) {
+                revert Error.InvalidAmount();
+            }
+            if (discountAmount > roundedOutstandingBalance) {
+                revert Error.InvalidAmount();
+            }
+            // Not a full discount
+            if (discountAmount < roundedOutstandingBalance) {
+                newOutstandingBalance = oldOutstandingBalance - discountAmount;
+            }
+            // Else full discount
+        }
+
+        loan.discountAmount += discountAmount.toUint64();
+        loan.trackedBalance = newOutstandingBalance.toUint64();
+        loan.trackedTimestamp = _blockTimestamp().toUint32();
+        _updateStoredLateFee(lateFeeAmount, loan);
+
+        emit LoanDiscounted(loanId, discountAmount, newOutstandingBalance);
     }
 
     // -------------------------------------------- //
@@ -1036,6 +1095,7 @@ contract LendingMarket is
         preview.addonAmount = loan.addonAmount;
         preview.repaidAmount = loan.repaidAmount;
         preview.lateFeeAmount += loan.lateFeeAmount;
+        preview.discountAmount = loan.discountAmount;
         preview.programId = loan.programId;
         preview.borrower = loan.borrower;
         preview.previewTimestamp = timestamp;
@@ -1084,6 +1144,7 @@ contract LendingMarket is
             preview.totalAddonAmount += singleLoanPreview.addonAmount;
             preview.totalRepaidAmount += singleLoanPreview.repaidAmount;
             preview.totalLateFeeAmount += singleLoanPreview.lateFeeAmount;
+            preview.totalDiscountAmount += singleLoanPreview.discountAmount;
             preview.installmentPreviews[i] = singleLoanPreview;
             ++loanId;
         }

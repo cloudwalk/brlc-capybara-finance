@@ -43,6 +43,7 @@ library Loan {
         // uint16 __reserved;         // Reserved for future use.
         // Slot 5
         uint64 lateFeeAmount;         // The late fee amount of the loan or zero if the loan is not defaulted.
+        uint64 discountAmount;        // The discount amount of the loan or zero if the loan is not discounted.
     }
 
     /// @dev A struct that defines the terms of a loan.
@@ -73,6 +74,7 @@ library Loan {
     /// - addonAmount ------------ The addon amount of the loan at the previewed period.
     /// - repaidAmount ----------- The repaid amount of the loan at the previewed period.
     /// - lateFeeAmount ---------- The late fee amount of the loan at the previewed period.
+    /// - discountAmount --------- The discount amount of the loan at the previewed period.
     /// - programId -------------- The program ID of the loan.
     /// - borrower --------------- The borrower of the loan.
     /// - previewTimestamp ------- The preview timestamp.
@@ -92,6 +94,7 @@ library Loan {
         uint256 addonAmount;
         uint256 repaidAmount;
         uint256 lateFeeAmount;
+        uint256 discountAmount;
         uint256 programId;
         address borrower;
         uint256 previewTimestamp;
@@ -121,6 +124,7 @@ library Loan {
     /// - totalRepaidAmount -------- The total repaid amount of all installments.
     /// - totalLateFeeAmount ------- The total late fee amount of all installments.
     /// - installmentPreviews ------ The extended previews of all installments.
+    /// - totalDiscountAmount ------ The total discount amount of all installments.
     ///
     /// The purpose of the fields in the case of ordinary loans:
     ///
@@ -134,6 +138,7 @@ library Loan {
     /// - totalRepaidAmount -------- The repaid amount of the loan.
     /// - totalLateFeeAmount ------- The late fee amount of the loan.
     /// - installmentPreviews ------ The extended preview of the loan as a single item array.
+    /// - totalDiscountAmount ------ The total discount amount of the loan.
 
     /// Notes:
     ///
@@ -150,6 +155,7 @@ library Loan {
         uint256 totalAddonAmount;
         uint256 totalRepaidAmount;
         uint256 totalLateFeeAmount;
+        uint256 totalDiscountAmount;
         PreviewExtended[] installmentPreviews;
     }
 }

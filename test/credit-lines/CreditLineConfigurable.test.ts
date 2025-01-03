@@ -80,6 +80,7 @@ interface LoanState {
   firstInstallmentId: bigint;
   installmentCount: bigint;
   lateFeeAmount: bigint;
+  discountAmount: bigint;
 }
 
 interface Version {
@@ -154,7 +155,8 @@ const defaultLoanState: LoanState = {
   freezeTimestamp: 0n,
   firstInstallmentId: 0n,
   installmentCount: 0n,
-  lateFeeAmount: 0n
+  lateFeeAmount: 0n,
+  discountAmount: 0n
 };
 
 const ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED = "AccessControlUnauthorizedAccount";
@@ -209,7 +211,7 @@ const LATE_FEE_RATE = 987654321n;
 
 const EXPECTED_VERSION: Version = {
   major: 1,
-  minor: 6,
+  minor: 7,
   patch: 0
 };
 
