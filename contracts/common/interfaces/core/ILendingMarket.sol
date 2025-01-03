@@ -89,7 +89,11 @@ interface ILendingMarket {
     /// @param loanId The unique identifier of the loan.
     /// @param discountAmount The amount of the discount.
     /// @param newOutstandingBalance The new outstanding balance of the loan after the discount.
-    event LoanDiscounted(uint256 indexed loanId, uint256 discountAmount, uint256 newOutstandingBalance);
+    event LoanDiscounted(
+        uint256 indexed loanId, // Tools: this comment prevents Prettier from formatting into a single line.
+        uint256 discountAmount,
+        uint256 newOutstandingBalance
+    );
 
     /// @dev Emitted when an installment loan is revoked.
     /// @param firstInstallmentId The ID of the first sub-loan of the installment loan.

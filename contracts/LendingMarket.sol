@@ -335,7 +335,10 @@ contract LendingMarket is
     }
 
     /// @inheritdoc ILendingMarket
-    function discountLoanBatch(uint256[] calldata loanIds, uint256[] calldata discountAmounts) external whenNotPaused {
+    function discountLoanBatch(
+        uint256[] calldata loanIds, // Tools: this comment prevents Prettier from formatting into a single line.
+        uint256[] calldata discountAmounts
+    ) external whenNotPaused {
         uint256 len = loanIds.length;
         if (len != discountAmounts.length) {
             revert Error.ArrayLengthMismatch();
@@ -407,7 +410,11 @@ contract LendingMarket is
     /// @param loanId The unique identifier of the loan to discount.
     /// @param loan The storage state of the loan.
     /// @param discountAmount The amount of the discount.
-    function _discountLoan(uint256 loanId, Loan.State storage loan, uint256 discountAmount) internal {
+    function _discountLoan(
+        uint256 loanId, // Tools: this comment prevents Prettier from formatting into a single line.
+        Loan.State storage loan,
+        uint256 discountAmount
+    ) internal {
         if (discountAmount == 0) {
             revert Error.InvalidAmount();
         }
@@ -1087,8 +1094,8 @@ contract LendingMarket is
         preview.borrowAmount = loan.borrowAmount;
         preview.addonAmount = loan.addonAmount;
         preview.repaidAmount = loan.repaidAmount;
-        preview.discountAmount = loan.discountAmount;
         preview.lateFeeAmount += loan.lateFeeAmount;
+        preview.discountAmount = loan.discountAmount;
         preview.programId = loan.programId;
         preview.borrower = loan.borrower;
         preview.previewTimestamp = timestamp;
@@ -1136,8 +1143,8 @@ contract LendingMarket is
             preview.totalBorrowAmount += singleLoanPreview.borrowAmount;
             preview.totalAddonAmount += singleLoanPreview.addonAmount;
             preview.totalRepaidAmount += singleLoanPreview.repaidAmount;
-            preview.totalDiscountAmount += singleLoanPreview.discountAmount;
             preview.totalLateFeeAmount += singleLoanPreview.lateFeeAmount;
+            preview.totalDiscountAmount += singleLoanPreview.discountAmount;
             preview.installmentPreviews[i] = singleLoanPreview;
             ++loanId;
         }
