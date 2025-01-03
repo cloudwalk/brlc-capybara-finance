@@ -234,9 +234,10 @@ interface ILendingMarket {
     /// @dev Repays a batch of loans.
     ///
     /// Can be called only by an account with a special role.
+    /// Using `type(uint256).max` for the `repaymentAmount` will repay the remaining balance of the loan.
     ///
     /// @param loanIds The unique identifiers of the loans to repay.
-    /// @param repaymentAmounts The amounts to repay for each loan.
+    /// @param repaymentAmounts The amounts to repay for each loan in the batch.
     /// @param repayer The address of the token source for the repayments (borrower or third-party).
     function repayLoanForBatch(
         uint256[] calldata loanIds,
@@ -245,8 +246,12 @@ interface ILendingMarket {
     ) external;
 
     /// @dev Discounts a batch of loans.
+    ///
+    /// Can be called only by an account with a special role.
+    /// Using `type(uint256).max` for the `discountAmount` will discount the remaining balance of the loan.
+    ///
     /// @param loanIds The unique identifiers of the loans to discount.
-    /// @param discountAmounts The amounts to discount for each loan.
+    /// @param discountAmounts The amounts to discount for each loan in the batch.
     function discountLoanForBatch(
         uint256[] calldata loanIds, // Tools: this comment prevents Prettier from formatting into a single line.
         uint256[] calldata discountAmounts
