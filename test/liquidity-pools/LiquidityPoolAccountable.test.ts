@@ -73,7 +73,7 @@ const AUTO_REPAY_AMOUNTS = [10_123_456n, 1n, maxUintForBits(256), 0n];
 const EXPECTED_VERSION: Version = {
   major: 1,
   minor: 3,
-  patch: 0
+  patch: 1
 };
 
 const defaultLoanState: LoanState = {

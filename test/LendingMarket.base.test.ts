@@ -91,6 +91,7 @@ const ERROR_NAME_ZERO_ADDRESS = "ZeroAddress";
 const ERROR_NAME_PROGRAM_NOT_EXIST = "ProgramNotExist";
 const ERROR_NAME_COOLDOWN_PERIOD_PASSED = "CooldownPeriodHasPassed";
 const ERROR_NAME_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST = "SafeCastOverflowedUintDowncast";
+const ERROR_NAME_ARRAY_LENGTH_MISMATCH = "ArrayLengthMismatch";
 
 const EVENT_NAME_CREDIT_LINE_REGISTERED = "CreditLineRegistered";
 const EVENT_NAME_LENDER_ALIAS_CONFIGURED = "LenderAliasConfigured";
@@ -133,7 +134,7 @@ const COOLDOWN_IN_PERIODS = 3;
 const EXPECTED_VERSION: Version = {
   major: 1,
   minor: 3,
-  patch: 0
+  patch: 1
 };
 
 const defaultLoanTerms: LoanTerms = {
@@ -1243,6 +1244,148 @@ describe("Contract 'LendingMarket': base tests", async () => {
       });
     });
   });
+
+  describe("Function 'repayLoanForBatch()'", async () => {
+    it("Executes as expected and emits the correct events", async () => {
+      const { loanId, market, marketUnderLender } = await setUpFixture(deployLendingMarketAndTakeLoan);
+
+      // Take a second loan
+      const secondLoanId = await connect(market, borrower).takeLoan.staticCall(
+        PROGRAM_ID,
+        BORROW_AMOUNT,
+        DURATION_IN_PERIODS
+      );
+      await proveTx(connect(market, borrower).takeLoan(
+        PROGRAM_ID,
+        BORROW_AMOUNT,
+        DURATION_IN_PERIODS
+      ));
+
+      const loanIds = [loanId, secondLoanId];
+      const repayAmounts = [REPAYMENT_AMOUNT, REPAYMENT_AMOUNT];
+      const repayer = stranger.address;
+
+      // Can be called by an alias
+      await connect(marketUnderLender, alias).repayLoanForBatch.staticCall(loanIds, repayAmounts, repayer);
+
+      const tx = connect(marketUnderLender, lender).repayLoanForBatch(loanIds, repayAmounts, repayer);
+
+      // Check token transfers
+      await expect(tx).to.changeTokenBalances(
+        token,
+        [liquidityPool, stranger, market],
+        [+REPAYMENT_AMOUNT * 2, -REPAYMENT_AMOUNT * 2, 0]
+      );
+
+      // Check events for both loans
+      const expectedOutstandingBalance = BORROW_AMOUNT + ADDON_AMOUNT - REPAYMENT_AMOUNT;
+      await expect(tx)
+        .to.emit(market, EVENT_NAME_LOAN_REPAYMENT)
+        .withArgs(loanId, repayer, borrower.address, REPAYMENT_AMOUNT, expectedOutstandingBalance);
+      await expect(tx)
+        .to.emit(market, EVENT_NAME_LOAN_REPAYMENT)
+        .withArgs(secondLoanId, repayer, borrower.address, REPAYMENT_AMOUNT, expectedOutstandingBalance);
+
+      // Check that the appropriate market hook functions are called for both loans
+      await expect(tx)
+        .to.emit(liquidityPool, EVENT_NAME_ON_AFTER_LOAN_PAYMENT)
+        .withArgs(0, REPAYMENT_AMOUNT);
+      await expect(tx)
+        .to.emit(liquidityPool, EVENT_NAME_ON_AFTER_LOAN_PAYMENT)
+        .withArgs(secondLoanId, REPAYMENT_AMOUNT);
+    });
+
+    it("Is reverted if the contract is paused", async () => {
+      const { market } = await setUpFixture(deployLendingMarketAndTakeLoan);
+      await proveTx(market.pause());
+
+      await expect(
+        market.repayLoanForBatch([0], [REPAYMENT_AMOUNT], stranger.address)
+      ).to.be.revertedWithCustomError(market, ERROR_NAME_ENFORCED_PAUSED);
+    });
+
+    it("Is reverted if array lengths mismatch", async () => {
+      const { marketUnderLender } = await setUpFixture(deployLendingMarketAndTakeLoan);
+
+      await expect(
+        marketUnderLender.repayLoanForBatch([0], [], stranger.address)
+      ).to.be.revertedWithCustomError(marketUnderLender, ERROR_NAME_ARRAY_LENGTH_MISMATCH);
+    });
+
+    it("Is reverted if repayer address is zero", async () => {
+      const { marketUnderLender } = await setUpFixture(deployLendingMarketAndTakeLoan);
+
+      await expect(
+        marketUnderLender.repayLoanForBatch([0], [REPAYMENT_AMOUNT], ZERO_ADDRESS)
+      ).to.be.revertedWithCustomError(marketUnderLender, ERROR_NAME_ZERO_ADDRESS);
+    });
+
+    it("Is reverted if any loan does not exist", async () => {
+      const { marketUnderLender } = await setUpFixture(deployLendingMarketAndTakeLoan);
+      const nonExistentLoanId = 999;
+
+      await expect(
+        marketUnderLender.repayLoanForBatch(
+          [0, nonExistentLoanId],
+          [REPAYMENT_AMOUNT, REPAYMENT_AMOUNT],
+          stranger.address
+        )
+      ).to.be.revertedWithCustomError(marketUnderLender, ERROR_NAME_LOAN_NOT_EXIST);
+    });
+
+    it("Is reverted if any loan is already repaid", async () => {
+      const { loanId, market, marketUnderLender } = await setUpFixture(deployLendingMarketAndTakeLoan);
+
+      // Take a second loan
+      const secondLoanId = await connect(market, borrower).takeLoan.staticCall(
+        PROGRAM_ID,
+        BORROW_AMOUNT,
+        DURATION_IN_PERIODS
+      );
+      await proveTx(connect(market, borrower).takeLoan(
+        PROGRAM_ID,
+        BORROW_AMOUNT,
+        DURATION_IN_PERIODS
+      ));
+
+      // Fully repay the first loan
+      await proveTx(connect(market, borrower).repayLoan(0, FULL_REPAYMENT_AMOUNT));
+
+      await expect(
+        marketUnderLender.repayLoanForBatch(
+          [loanId, secondLoanId],
+          [REPAYMENT_AMOUNT, REPAYMENT_AMOUNT],
+          stranger.address
+        )
+      ).to.be.revertedWithCustomError(marketUnderLender, ERROR_NAME_LOAN_ALREADY_REPAID);
+    });
+
+    it("Is reverted if caller is not the lender or an alias", async () => {
+      const { market } = await setUpFixture(deployLendingMarketAndTakeLoan);
+
+      await expect(
+        connect(market, attacker).repayLoanForBatch([0], [REPAYMENT_AMOUNT], stranger.address)
+      ).to.be.revertedWithCustomError(market, ERROR_NAME_UNAUTHORIZED);
+    });
+
+    it("Is reverted if any repayment amount is not rounded according to accuracy factor", async () => {
+      const { marketUnderLender } = await setUpFixture(deployLendingMarketAndTakeLoan);
+      const wrongRepaymentAmount = REPAYMENT_AMOUNT - 1;
+
+      await expect(
+        marketUnderLender.repayLoanForBatch([0], [wrongRepaymentAmount], stranger.address)
+      ).to.be.revertedWithCustomError(marketUnderLender, ERROR_NAME_INVALID_AMOUNT);
+    });
+
+    it("Is reverted if any repayment amount is bigger than outstanding balance", async () => {
+      const { marketUnderLender } = await setUpFixture(deployLendingMarketAndTakeLoan);
+      const wrongRepaymentAmount = BORROW_AMOUNT + ADDON_AMOUNT + ACCURACY_FACTOR;
+
+      await expect(
+        marketUnderLender.repayLoanForBatch([0], [wrongRepaymentAmount], stranger.address)
+      ).to.be.revertedWithCustomError(marketUnderLender, ERROR_NAME_INVALID_AMOUNT);
+    });
+});
 
   describe("Function 'freeze()'", async () => {
     it("Executes as expected and emits the correct event", async () => {
