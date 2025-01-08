@@ -86,17 +86,6 @@ contract LendingMarketMock is ILendingMarket {
         emit RepayLoanCalled(loanId, repayAmount, repaymentCounter);
     }
 
-    function repayLoanForBatch(
-        uint256[] calldata loanIds,
-        uint256[] calldata repaymentAmounts,
-        address repayer
-    ) external pure {
-        loanIds; // To prevent compiler warning about unused variable
-        repaymentAmounts; // To prevent compiler warning about unused variable
-        repayer; // To prevent compiler warning about unused variable
-        revert Error.NotImplemented();
-    }
-
     function freeze(uint256 loanId) external pure {
         loanId; // To prevent compiler warning about unused variable
         revert Error.NotImplemented();

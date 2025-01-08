@@ -264,31 +264,6 @@ contract LendingMarket is
 
     /// @inheritdoc ILendingMarket
     function repayLoan(uint256 loanId, uint256 repayAmount) external whenNotPaused onlyOngoingLoan(loanId) {
-        _repayLoan(loanId, repayAmount, address(0));
-    }
-
-    /// @inheritdoc ILendingMarket
-    function repayLoanForBatch(
-        uint256[] calldata loanIds,
-        uint256[] calldata repaymentAmounts,
-        address repayer
-    ) external whenNotPaused {
-        uint256 len = loanIds.length;
-        if (len != repaymentAmounts.length) {
-            revert Error.ArrayLengthMismatch();
-        }
-        if (repayer == address(0)) {
-            revert Error.ZeroAddress();
-        }
-        for (uint256 i = 0; i < len; ++i) {
-            uint256 loanId = loanIds[i];
-            _checkIfLoanOngoing(loanId);
-            _checkSender(msg.sender, _loans[loanId].programId);
-            _repayLoan(loanId, repaymentAmounts[i], repayer);
-        }
-    }
-
-    function _repayLoan(uint256 loanId, uint256 repayAmount, address payer) internal {
         if (repayAmount == 0) {
             revert Error.InvalidAmount();
         }
@@ -299,7 +274,7 @@ contract LendingMarket is
         // Full repayment
         if (repayAmount == type(uint256).max) {
             outstandingBalance = Rounding.roundMath(outstandingBalance, Constants.ACCURACY_FACTOR);
-            _repayLoan(loanId, loan, outstandingBalance, outstandingBalance, payer);
+            _repayLoan(loanId, loan, outstandingBalance, outstandingBalance);
             return;
         }
 
@@ -309,7 +284,7 @@ contract LendingMarket is
 
         // Full repayment
         if (repayAmount == Rounding.roundMath(outstandingBalance, Constants.ACCURACY_FACTOR)) {
-            _repayLoan(loanId, loan, repayAmount, repayAmount, payer);
+            _repayLoan(loanId, loan, repayAmount, repayAmount);
             return;
         }
 
@@ -318,7 +293,7 @@ contract LendingMarket is
         }
 
         // Partial repayment
-        _repayLoan(loanId, loan, repayAmount, outstandingBalance, payer);
+        _repayLoan(loanId, loan, repayAmount, outstandingBalance);
     }
 
     /// @dev Updates the loan state and makes the necessary transfers when repaying a loan.
@@ -330,16 +305,13 @@ contract LendingMarket is
         uint256 loanId,
         Loan.State storage loan,
         uint256 repayAmount,
-        uint256 outstandingBalance,
-        address payer
+        uint256 outstandingBalance
     ) internal {
         address creditLine = _programCreditLines[loan.programId];
         address liquidityPool = _programLiquidityPools[loan.programId];
 
-        if (payer == address(0)) {
-            bool autoRepayment = _programLiquidityPools[loan.programId] == msg.sender;
-            payer = autoRepayment ? loan.borrower : msg.sender;
-        }
+        bool autoRepayment = _programLiquidityPools[loan.programId] == msg.sender;
+        address payer = autoRepayment ? loan.borrower : msg.sender;
 
         outstandingBalance -= repayAmount;
 
@@ -719,49 +691,6 @@ contract LendingMarket is
     // -------------------------------------------- //
     //  Internal functions                          //
     // -------------------------------------------- //
-
-    /// @dev Checks if the sender is authorized for the given program.
-    /// @param sender The address to check.
-    /// @param programId The ID of the lending program.
-    function _checkSender(address sender, uint32 programId) internal view {
-        if (!_isProgramLenderOrAlias(programId, sender)) {
-            revert Error.Unauthorized();
-        }
-    }
-
-    /// @dev Checks if the loan exists.
-    /// @param loan The storage state of the loan.
-    function _checkLoanExistence(Loan.State storage loan) internal view {
-        if (loan.token == address(0)) {
-            revert LoanNotExist();
-        }
-    }
-
-    /// @dev Checks if the loan is repaid.
-    /// @param loan The storage state of the loan.
-    /// @return True if the loan is repaid, false otherwise.
-    function _isRepaid(Loan.State storage loan) internal view returns (bool) {
-        return loan.trackedBalance == 0;
-    }
-
-    /// @dev Checks if the sender is authorized for the given program.
-    /// @param programId The ID of the lending program.
-    /// @param account The address to check.
-    /// @return True if the sender is authorized, false otherwise.
-    function _isProgramLenderOrAlias(uint32 programId, address account) internal view returns (bool) {
-        address lender = _programLenders[programId];
-        return account == lender || _hasAlias[lender][account];
-    }
-
-    /// @dev Checks if a loan with the specified ID is ongoing.
-    /// @param loanId The ID of the loan.
-    function _checkIfLoanOngoing(uint256 loanId) internal view {
-        Loan.State storage loan = _loans[loanId];
-        _checkLoanExistence(loan);
-        if (_isRepaid(loan)) {
-            revert LoanAlreadyRepaid();
-        }
-    }
 
     /// @dev Checks if the provided account is a lender or an alias for a lender of a given lending program.
     /// @param programId The identifier of the program to check.
