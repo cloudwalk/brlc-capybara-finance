@@ -2,8 +2,8 @@ import { ethers, upgrades } from "hardhat";
 import { expect } from "chai";
 import { Contract, ContractFactory } from "ethers";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
-import { connect, getAddress, getLatestBlockTimestamp, proveTx } from "../../test-utils/eth";
-import { checkEquality, maxUintForBits, roundMath, setUpFixture } from "../../test-utils/common";
+import { checkContractUupsUpgrading, connect, getAddress, getLatestBlockTimestamp, proveTx } from "../test-utils/eth";
+import { checkEquality, maxUintForBits, roundMath, setUpFixture } from "../test-utils/common";
 
 enum BorrowPolicy {
   SingleActiveLoan = 0,
@@ -168,6 +168,7 @@ const ERROR_NAME_ENFORCED_PAUSED = "EnforcedPause";
 const ERROR_NAME_INVALID_AMOUNT = "InvalidAmount";
 const ERROR_NAME_INVALID_BORROWER_CONFIGURATION = "InvalidBorrowerConfiguration";
 const ERROR_NAME_INVALID_CREDIT_LINE_CONFIGURATION = "InvalidCreditLineConfiguration";
+const ERROR_NAME_IMPLEMENTATION_ADDRESS_INVALID = "ImplementationAddressInvalid";
 const ERROR_NAME_LOAN_DURATION_OUT_OF_RANGE = "LoanDurationOutOfRange";
 const ERROR_NAME_NOT_PAUSED = "ExpectedPause";
 const ERROR_NAME_LIMIT_VIOLATION_ON_SINGLE_ACTIVE_LOAN = "LimitViolationOnSingleActiveLoan";
@@ -222,7 +223,7 @@ function processLoanClosing(borrowerState: BorrowerState, borrowAmount: bigint) 
   borrowerState.totalClosedLoanAmount += borrowAmount;
 }
 
-describe("Contract 'CreditLineConfigurable'", async () => {
+describe("Contract 'CreditLine'", async () => {
   let creditLineFactory: ContractFactory;
   let marketFactory: ContractFactory;
 
@@ -237,7 +238,7 @@ describe("Contract 'CreditLineConfigurable'", async () => {
   before(async () => {
     [deployer, lender, admin, token, attacker, borrower, ...users] = await ethers.getSigners();
 
-    creditLineFactory = await ethers.getContractFactory("CreditLineConfigurableTestable");
+    creditLineFactory = await ethers.getContractFactory("CreditLineTestable");
     creditLineFactory.connect(deployer); // Explicitly specifying the deployer account
 
     marketFactory = await ethers.getContractFactory("LendingMarketMock");
@@ -254,11 +255,15 @@ describe("Contract 'CreditLineConfigurable'", async () => {
   async function deployContracts(): Promise<Fixture> {
     const { market } = await deployMarketMock();
     const marketAddress = getAddress(market);
-    let creditLine = await upgrades.deployProxy(creditLineFactory, [
-      lender.address,
-      marketAddress,
-      token.address
-    ]);
+    let creditLine = await upgrades.deployProxy(
+      creditLineFactory,
+      [
+        lender.address,
+        marketAddress,
+        token.address
+      ],
+      { kind: "uups" }
+    );
     await creditLine.waitForDeployment();
     creditLine = connect(creditLine, lender); // Explicitly specifying the initial account
     const creditLineUnderAdmin = creditLine.connect(admin) as Contract;
@@ -473,6 +478,31 @@ describe("Contract 'CreditLineConfigurable'", async () => {
       const { creditLine } = await setUpFixture(deployContracts);
       const creditLineVersion = await creditLine.$__VERSION();
       checkEquality(creditLineVersion, EXPECTED_VERSION);
+    });
+  });
+
+  describe("Function 'upgradeToAndCall()'", async () => {
+    it("Executes as expected", async () => {
+      const { creditLine } = await setUpFixture(deployContracts);
+      await checkContractUupsUpgrading(creditLine, creditLineFactory);
+    });
+
+    it("Is reverted if the caller is not the owner", async () => {
+      const { creditLine } = await setUpFixture(deployContracts);
+
+      await expect(connect(creditLine, attacker).upgradeToAndCall(creditLine, "0x"))
+        .to.be.revertedWithCustomError(creditLine, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
+        .withArgs(attacker.address, OWNER_ROLE);
+    });
+
+    it("Is reverted if the provided implementation address is not a credit line contract", async () => {
+      const { creditLine } = await setUpFixture(deployContracts);
+      const mockContractFactory = await ethers.getContractFactory("UUPSExtUpgradeableMock");
+      const mockContract = await mockContractFactory.deploy() as Contract;
+      await mockContract.waitForDeployment();
+
+      await expect(creditLine.upgradeToAndCall(mockContract, "0x"))
+        .to.be.revertedWithCustomError(creditLine, ERROR_NAME_IMPLEMENTATION_ADDRESS_INVALID);
     });
   });
 

@@ -2,7 +2,7 @@
 
 pragma solidity 0.8.24;
 
-import { Rounding } from "../common/libraries/Rounding.sol";
+import { Rounding } from "../libraries/Rounding.sol";
 
 /// @title RoundingMock contract
 /// @author CloudWalk Inc. (See https://cloudwalk.io)

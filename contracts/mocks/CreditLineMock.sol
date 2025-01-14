@@ -2,14 +2,14 @@
 
 pragma solidity 0.8.24;
 
-import { Loan } from "../common/libraries/Loan.sol";
-import { Error } from "../common/libraries/Error.sol";
-import { ICreditLine } from "../common/interfaces/core/ICreditLine.sol";
+import { Error } from "../libraries/Error.sol";
+import { Loan } from "../libraries/Loan.sol";
+import { ICreditLine } from "../interfaces/ICreditLine.sol";
 
 /// @title CreditLineMock contract
 /// @author CloudWalk Inc. (See https://cloudwalk.io)
 /// @dev Mock of the `CreditLine` contract used for testing.
-contract CreditLineMock is ICreditLine {
+contract CreditLineMock {
     // -------------------------------------------- //
     //  Events                                      //
     // -------------------------------------------- //
@@ -23,8 +23,6 @@ contract CreditLineMock is ICreditLine {
     // -------------------------------------------- //
     //  Storage variables                           //
     // -------------------------------------------- //
-
-    address private _tokenAddress;
 
     mapping(address => Loan.Terms) private _loanTerms;
 
@@ -65,18 +63,6 @@ contract CreditLineMock is ICreditLine {
         terms.durationInPeriods = uint32(durationInPeriods);
     }
 
-    function market() external pure returns (address) {
-        revert Error.NotImplemented();
-    }
-
-    function lender() external pure returns (address) {
-        revert Error.NotImplemented();
-    }
-
-    function token() external view returns (address) {
-        return _tokenAddress;
-    }
-
     function lateFeeRate() external view returns (uint256) {
         return _lateFeeRate;
     }
@@ -84,10 +70,6 @@ contract CreditLineMock is ICreditLine {
     // -------------------------------------------- //
     //  Mock functions                              //
     // -------------------------------------------- //
-
-    function mockTokenAddress(address tokenAddress) external {
-        _tokenAddress = tokenAddress;
-    }
 
     function mockLoanTerms(address borrower, uint256 amount, Loan.Terms memory terms) external {
         amount; // To prevent compiler warning about unused variable

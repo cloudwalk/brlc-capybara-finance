@@ -4,27 +4,26 @@ pragma solidity 0.8.24;
 
 import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 
-import { Loan } from "../common/libraries/Loan.sol";
-import { Error } from "../common/libraries/Error.sol";
-import { Rounding } from "../common/libraries/Rounding.sol";
-import { SafeCast } from "../common/libraries/SafeCast.sol";
-import { Constants } from "../common/libraries/Constants.sol";
+import { AccessControlExtUpgradeable } from "./base/AccessControlExtUpgradeable.sol";
+import { UUPSExtUpgradeable } from "./base/UUPSExtUpgradeable.sol";
+import { Versionable } from "./base/Versionable.sol";
 
-import { ICreditLine } from "../common/interfaces/core/ICreditLine.sol";
-import { ILendingMarket } from "../common/interfaces/core/ILendingMarket.sol";
-import { ICreditLineConfigurable } from "../common/interfaces/ICreditLineConfigurable.sol";
-import { AccessControlExtUpgradeable } from "../common/AccessControlExtUpgradeable.sol";
-import { Versionable } from "../common/Versionable.sol";
+import { Constants } from "./libraries/Constants.sol";
+import { Error } from "./libraries/Error.sol";
+import { Loan } from "./libraries/Loan.sol";
+import { Rounding } from "./libraries/Rounding.sol";
+import { SafeCast } from "./libraries/SafeCast.sol";
 
-/// @title CreditLineConfigurable contract
+import { ICreditLine } from "./interfaces/ICreditLine.sol";
+import { ICreditLineConfiguration } from "./interfaces/ICreditLine.sol";
+import { ICreditLineHooks } from "./interfaces/ICreditLine.sol";
+import { ICreditLinePrimary } from "./interfaces/ICreditLine.sol";
+import { ILendingMarket } from "./interfaces/ILendingMarket.sol";
+
+/// @title CreditLine contract
 /// @author CloudWalk Inc. (See https://cloudwalk.io)
-/// @dev Implementation of the configurable credit line contract.
-contract CreditLineConfigurable is
-    AccessControlExtUpgradeable,
-    PausableUpgradeable,
-    ICreditLineConfigurable,
-    Versionable
-{
+/// @dev The upgradable credit line contract.
+contract CreditLine is AccessControlExtUpgradeable, PausableUpgradeable, ICreditLine, Versionable, UUPSExtUpgradeable {
     using SafeCast for uint256;
 
     /// @dev The role of this contract owner.
@@ -60,31 +59,6 @@ contract CreditLineConfigurable is
     uint256[45] private __gap;
 
     // -------------------------------------------- //
-    //  Errors                                      //
-    // -------------------------------------------- //
-
-    /// @dev Thrown when the credit line configuration is invalid.
-    error InvalidCreditLineConfiguration();
-
-    /// @dev Thrown when the borrower configuration is invalid.
-    error InvalidBorrowerConfiguration();
-
-    /// @dev Thrown when the borrower configuration has expired.
-    error BorrowerConfigurationExpired();
-
-    /// @dev Thrown when the loan duration is out of range.
-    error LoanDurationOutOfRange();
-
-    /// @dev Thrown when another loan is requested by an account but only one active loan is allowed.
-    error LimitViolationOnSingleActiveLoan();
-
-    /// @dev Thrown when the total borrowed amount of active loans exceeds the maximum borrow amount of a single loan.
-    error LimitViolationOnTotalActiveLoanAmount(uint256 newTotalActiveLoanAmount);
-
-    /// @dev Thrown when the borrower state counters or amounts would overflow their maximum values.
-    error BorrowerStateOverflow();
-
-    // -------------------------------------------- //
     //  Modifiers                                   //
     // -------------------------------------------- //
 
@@ -94,6 +68,16 @@ contract CreditLineConfigurable is
             revert Error.Unauthorized();
         }
         _;
+    }
+
+    // -------------------------------------------- //
+    //  Constructor                                 //
+    // -------------------------------------------- //
+
+    /// @dev Constructor that prohibits the initialization of the implementation of the upgradable contract.
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
     }
 
     // -------------------------------------------- //
@@ -174,10 +158,10 @@ contract CreditLineConfigurable is
     }
 
     // -------------------------------------------- //
-    //  Owner functions                             //
+    //  Configuration transactional functions       //
     // -------------------------------------------- //
 
-    /// @inheritdoc ICreditLineConfigurable
+    /// @inheritdoc ICreditLineConfiguration
     function configureCreditLine(CreditLineConfig memory config) external onlyRole(OWNER_ROLE) {
         if (config.minBorrowAmount > config.maxBorrowAmount) {
             revert InvalidCreditLineConfiguration();
@@ -204,10 +188,10 @@ contract CreditLineConfigurable is
     }
 
     // -------------------------------------------- //
-    //  Admin functions                             //
+    //  Primary transactional functions             //
     // -------------------------------------------- //
 
-    /// @inheritdoc ICreditLineConfigurable
+    /// @inheritdoc ICreditLinePrimary
     function configureBorrower(
         address borrower,
         BorrowerConfig memory config
@@ -215,7 +199,7 @@ contract CreditLineConfigurable is
         _configureBorrower(borrower, config);
     }
 
-    /// @inheritdoc ICreditLineConfigurable
+    /// @inheritdoc ICreditLinePrimary
     function configureBorrowers(
         address[] memory borrowers,
         BorrowerConfig[] memory configs
@@ -230,16 +214,17 @@ contract CreditLineConfigurable is
     }
 
     // -------------------------------------------- //
-    //  Market functions                            //
+    //  Hook transactional functions                //
     // -------------------------------------------- //
 
-    /// @inheritdoc ICreditLine
+    /// @inheritdoc ICreditLineHooks
     function onBeforeLoanTaken(uint256 loanId) external whenNotPaused onlyMarket returns (bool) {
         Loan.State memory loan = ILendingMarket(_market).getLoanState(loanId);
         _openLoan(loan);
         return true;
     }
 
+    /// @inheritdoc ICreditLineHooks
     function onAfterLoanPayment(uint256 loanId, uint256 repayAmount) external whenNotPaused onlyMarket returns (bool) {
         repayAmount; // To prevent compiler warning about unused variable
 
@@ -251,6 +236,7 @@ contract CreditLineConfigurable is
         return true;
     }
 
+    /// @inheritdoc ICreditLineHooks
     function onAfterLoanRevocation(uint256 loanId) external whenNotPaused onlyMarket returns (bool) {
         Loan.State memory loan = ILendingMarket(_market).getLoanState(loanId);
         _closeLoan(loan);
@@ -261,7 +247,17 @@ contract CreditLineConfigurable is
     //  View functions                              //
     // -------------------------------------------- //
 
-    /// @inheritdoc ICreditLine
+    /// @inheritdoc ICreditLineConfiguration
+    function creditLineConfiguration() external view override returns (CreditLineConfig memory) {
+        return _config;
+    }
+
+    /// @inheritdoc ICreditLineConfiguration
+    function isAdmin(address account) external view returns (bool) {
+        return hasRole(ADMIN_ROLE, account);
+    }
+
+    /// @inheritdoc ICreditLinePrimary
     function determineLoanTerms(
         address borrower,
         uint256 borrowAmount,
@@ -318,40 +314,34 @@ contract CreditLineConfigurable is
         terms.addonAmount = Rounding.roundMath(addonAmount, Constants.ACCURACY_FACTOR).toUint64();
     }
 
-    /// @inheritdoc ICreditLineConfigurable
+    /// @inheritdoc ICreditLinePrimary
     function getBorrowerConfiguration(address borrower) external view override returns (BorrowerConfig memory) {
         return _borrowerConfigs[borrower];
     }
 
-    /// @inheritdoc ICreditLineConfigurable
+    /// @inheritdoc ICreditLinePrimary
     function getBorrowerState(address borrower) external view returns (BorrowerState memory) {
         return _borrowerStates[borrower];
     }
 
-    /// @inheritdoc ICreditLineConfigurable
-    function creditLineConfiguration() external view override returns (CreditLineConfig memory) {
-        return _config;
-    }
-
-    /// @inheritdoc ICreditLineConfigurable
-    function isAdmin(address account) external view returns (bool) {
-        return hasRole(ADMIN_ROLE, account);
-    }
-
-    /// @inheritdoc ICreditLine
+    /// @inheritdoc ICreditLinePrimary
     function market() external view returns (address) {
         return _market;
     }
 
-    /// @inheritdoc ICreditLine
+    /// @inheritdoc ICreditLinePrimary
     function token() external view returns (address) {
         return _token;
     }
 
-    /// @inheritdoc ICreditLine
+    /// @inheritdoc ICreditLinePrimary
     function lateFeeRate() external view returns (uint256) {
         return _config.lateFeeRate;
     }
+
+    // -------------------------------------------- //
+    //  Pure functions                              //
+    // -------------------------------------------- //
 
     /// @dev Calculates the amount of a loan addon (extra charges or fees).
     /// @param amount The initial principal amount of the loan.
@@ -376,6 +366,9 @@ contract CreditLineConfigurable is
         uint256 addonRate = addonPeriodRate * durationInPeriods + addonFixedRate;
         return (amount * addonRate) / (interestRateFactor - addonRate);
     }
+
+    /// @inheritdoc ICreditLinePrimary
+    function proveCreditLine() external pure {}
 
     // -------------------------------------------- //
     //  Internal functions                          //
@@ -479,6 +472,12 @@ contract CreditLineConfigurable is
         borrowerState.totalClosedLoanAmount += loan.borrowAmount;
     }
 
-    /// @inheritdoc ICreditLine
-    function proveCreditLine() external pure {}
+    /// @dev The upgrade validation function for the UUPSExtUpgradeable contract.
+    /// @param newImplementation The address of the new implementation.
+    ///
+    function _validateUpgrade(address newImplementation) internal view override onlyRole(OWNER_ROLE) {
+        try ICreditLine(newImplementation).proveCreditLine() {} catch {
+            revert Error.ImplementationAddressInvalid();
+        }
+    }
 }

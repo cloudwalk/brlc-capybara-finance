@@ -2,12 +2,12 @@
 
 pragma solidity 0.8.24;
 
-import { CreditLineConfigurable } from "../credit-lines/CreditLineConfigurable.sol";
+import { CreditLine } from "../CreditLine.sol";
 
-/// @title CreditLineConfigurableTestable contract
+/// @title CreditLineTestable contract
 /// @author CloudWalk Inc. (See https://cloudwalk.io)
-/// @dev Version of the configurable credit line contract with additions required for testing.
-contract CreditLineConfigurableTestable is CreditLineConfigurable {
+/// @dev Version of the credit line contract with additions required for testing.
+contract CreditLineTestable is CreditLine {
     /// @dev Sets the borrower state for testing purposes.
     /// @param borrower The address of the borrower.
     /// @param newState The new borrower state.

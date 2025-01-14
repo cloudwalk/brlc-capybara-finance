@@ -2,7 +2,7 @@
 
 pragma solidity 0.8.24;
 
-import { Loan } from "./common/libraries/Loan.sol";
+import { Loan } from "./libraries/Loan.sol";
 
 /// @title LendingMarketStorage contract
 /// @author CloudWalk Inc. (See https://cloudwalk.io)

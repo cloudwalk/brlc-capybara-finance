@@ -3,6 +3,7 @@ import { expect } from "chai";
 import { Contract, ContractFactory, TransactionResponse } from "ethers";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import {
+  checkContractUupsUpgrading,
   connect,
   getAddress,
   getBlockTimestamp,
@@ -143,6 +144,7 @@ const ERROR_NAME_LOAN_NOT_FROZEN = "LoanNotFrozen";
 const ERROR_NAME_INAPPROPRIATE_DURATION_IN_PERIODS = "InappropriateLoanDuration";
 const ERROR_NAME_INAPPROPRIATE_INTEREST_RATE = "InappropriateInterestRate";
 const ERROR_NAME_INVALID_AMOUNT = "InvalidAmount";
+const ERROR_NAME_IMPLEMENTATION_ADDRESS_INVALID = "ImplementationAddressInvalid";
 const ERROR_NAME_LIQUIDITY_POOL_LENDER_NOT_CONFIGURED = "LiquidityPoolLenderNotConfigured";
 const ERROR_NAME_NOT_PAUSED = "ExpectedPause";
 const ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED = "AccessControlUnauthorizedAccount";
@@ -601,7 +603,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
   }
 
   async function deployLendingMarket(): Promise<Fixture> {
-    let market = await upgrades.deployProxy(lendingMarketFactory, [owner.address]);
+    let market = await upgrades.deployProxy(lendingMarketFactory, [owner.address], { kind: "uups" });
 
     market = connect(market, owner); // Explicitly specifying the initial account
     const marketUnderLender = connect(market, lender);
@@ -631,7 +633,6 @@ describe("Contract 'LendingMarket': base tests", async () => {
     await proveTx(marketUnderLender.configureAlias(alias.address, ALIAS_STATUS_CONFIGURED));
 
     // mock configurations
-    await proveTx(creditLine.mockTokenAddress(tokenAddress));
     await proveTx(creditLine.mockLoanTerms(borrower.address, BORROW_AMOUNT, creatLoanTerms()));
 
     // supply tokens
@@ -750,6 +751,31 @@ describe("Contract 'LendingMarket': base tests", async () => {
       const { market } = await setUpFixture(deployLendingMarket);
       const marketVersion = await market.$__VERSION();
       checkEquality(marketVersion, EXPECTED_VERSION);
+    });
+  });
+
+  describe("Function 'upgradeToAndCall()'", async () => {
+    it("Executes as expected", async () => {
+      const { market } = await setUpFixture(deployLendingMarket);
+      await checkContractUupsUpgrading(market, lendingMarketFactory);
+    });
+
+    it("Is reverted if the caller is not the owner", async () => {
+      const { market } = await setUpFixture(deployLendingMarket);
+
+      await expect(connect(market, attacker).upgradeToAndCall(market, "0x"))
+        .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
+        .withArgs(attacker.address, OWNER_ROLE);
+    });
+
+    it("Is reverted if the provided implementation address is not a lending market contract", async () => {
+      const { market } = await setUpFixture(deployLendingMarket);
+      const mockContractFactory = await ethers.getContractFactory("UUPSExtUpgradeableMock");
+      const mockContract = await mockContractFactory.deploy() as Contract;
+      await mockContract.waitForDeployment();
+
+      await expect(market.upgradeToAndCall(mockContract, "0x"))
+        .to.be.revertedWithCustomError(market, ERROR_NAME_IMPLEMENTATION_ADDRESS_INVALID);
     });
   });
 
