@@ -8,10 +8,6 @@ import { ABDKMath64x64 } from "./ABDKMath64x64.sol";
 /// @author CloudWalk Inc. (See https://cloudwalk.io)
 /// @dev Defines interest calculation functions.
 library InterestMath {
-    // -------------------------------------------- //
-    //  Functions                                   //
-    // -------------------------------------------- //
-
     /// @dev Calculates the outstanding balance of a loan using the compound interest formula.
     /// @param originalBalance The original balance of the loan.
     /// @param numberOfPeriods The number of periods since the loan was taken.

@@ -123,6 +123,10 @@ interface ILiquidityPoolConfiguration {
 /// @author CloudWalk Inc. (See https://cloudwalk.io)
 /// @dev The hooks part of the liquidity pool contract interface.
 interface ILiquidityPoolHooks {
+    // -------------------------------------------- //
+    //  Hook functions                              //
+    // -------------------------------------------- //
+
     /// @dev A hook that is triggered by the associated market before a loan is taken.
     /// @param loanId The unique identifier of the loan being taken.
     function onBeforeLoanTaken(uint256 loanId) external returns (bool);

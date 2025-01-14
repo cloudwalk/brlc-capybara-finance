@@ -17,51 +17,82 @@ library Loan {
     }
 
     /// @dev A struct that defines the stored state of a loan.
+    ///
+    /// Fields:
+    /// - programId -------------- The unique identifier of the program.
+    /// - borrowAmount ----------- The initial borrow amount of the loan, excluding the addon.
+    /// - addonAmount ------------ The amount of the loan addon (extra charges or fees).
+    /// - startTimestamp --------- The timestamp when the loan was created (stated).
+    /// - durationInPeriods ------ The total duration of the loan determined by the number of periods.
+    /// - token ------------------ The address of the token used for the loan.
+    /// - borrower --------------- The address of the borrower.
+    /// - interestRatePrimary ---- The primary interest rate that is applied to the loan.
+    /// - interestRateSecondary -- The secondary interest rate that is applied to the loan.
+    /// - repaidAmount ----------- The amount that has been repaid on the loan over its lifetime.
+    /// - trackedBalance --------- The borrow balance of the loan that is tracked over its lifetime.
+    /// - trackedTimestamp ------- The timestamp when the loan was last paid or its balance was updated.
+    /// - freezeTimestamp -------- The timestamp when the loan was frozen. Zero value for unfrozen loans.
+    /// - firstInstallmentId ----- The ID of the first installment for sub-loans or zero for ordinary loans.
+    /// - installmentCount ------- The total number of installments for sub-loans or zero for ordinary loans.
+    /// - lateFeeAmount ---------- The late fee amount of the loan or zero if the loan is not defaulted.
+    /// - discountAmount --------- The discount amount of the loan or zero if the loan is not discounted.
     struct State {
         // Slot1
-        uint32 programId;             // The unique identifier of the program.
-        uint64 borrowAmount;          // The initial borrow amount of the loan, excluding the addon.
-        uint64 addonAmount;           // The amount of the loan addon (extra charges or fees).
-        uint32 startTimestamp;        // The timestamp when the loan was created (stated).
-        uint32 durationInPeriods;     // The total duration of the loan determined by the number of periods.
-        // uint32 __reserved;         // Reserved for future use.
+        uint32 programId;
+        uint64 borrowAmount;
+        uint64 addonAmount;
+        uint32 startTimestamp;
+        uint32 durationInPeriods;
+        // uint32 __reserved;
         // Slot 2
-        address token;                // The address of the token used for the loan.
-        // uint96 __reserved;         // Reserved for future use.
+        address token;
+        // uint96 __reserved;
         // Slot 3
-        address borrower;             // The address of the borrower.
-        uint32 interestRatePrimary;   // The primary interest rate that is applied to the loan.
-        uint32 interestRateSecondary; // The secondary interest rate that is applied to the loan.
-        // uint32 __reserved;         // Reserved for future use.
+        address borrower;
+        uint32 interestRatePrimary;
+        uint32 interestRateSecondary;
+        // uint32 __reserved;
         // Slot 4
-        uint64 repaidAmount;          // The amount that has been repaid on the loan over its lifetime.
-        uint64 trackedBalance;        // The borrow balance of the loan that is tracked over its lifetime.
-        uint32 trackedTimestamp;      // The timestamp when the loan was last paid or its balance was updated.
-        uint32 freezeTimestamp;       // The timestamp when the loan was frozen. Zero value for unfrozen loans.
-        uint40 firstInstallmentId;    // The ID of the first installment for sub-loans or zero for ordinary loans.
-        uint8 installmentCount;       // The total number of installments for sub-loans or zero for ordinary loans.
-        // uint16 __reserved;         // Reserved for future use.
+        uint64 repaidAmount;
+        uint64 trackedBalance;
+        uint32 trackedTimestamp;
+        uint32 freezeTimestamp;
+        uint40 firstInstallmentId;
+        uint8 installmentCount;
+        // uint16 __reserved;
         // Slot 5
-        uint64 lateFeeAmount;         // The late fee amount of the loan or zero if the loan is not defaulted.
-        uint64 discountAmount;        // The discount amount of the loan or zero if the loan is not discounted.
+        uint64 lateFeeAmount;
+        uint64 discountAmount;
     }
 
     /// @dev A struct that defines the terms of a loan.
+    ///
+    /// Fields:
+    /// - token ------------------ The address of the token to be used for the loan.
+    /// - addonAmount ------------ The amount of the loan addon (extra charges or fees).
+    /// - durationInPeriods ------ The total duration of the loan determined by the number of periods.
+    /// - interestRatePrimary ---- The primary interest rate to be applied to the loan.
+    /// - interestRateSecondary -- The secondary interest rate to be applied to the loan.
     struct Terms {
         // Slot 1
-        address token;                // The address of the token to be used for the loan.
-        uint64 addonAmount;           // The amount of the loan addon (extra charges or fees).
-        uint32 durationInPeriods;     // The total duration of the loan determined by the number of periods.
+        address token;
+        uint64 addonAmount;
+        uint32 durationInPeriods;
         // Slot 2
-        uint32 interestRatePrimary;   // The primary interest rate to be applied to the loan.
-        uint32 interestRateSecondary; // The secondary interest rate to be applied to the loan.
+        uint32 interestRatePrimary;
+        uint32 interestRateSecondary;
     }
 
     /// @dev A struct that defines the preview of the loan.
+    ///
+    /// Fields:
+    /// - periodIndex ------------ The period index that matches the preview timestamp.
+    /// - trackedBalance --------- The tracked balance of the loan at the previewed period.
+    /// - outstandingBalance ----- The outstanding balance of the loan at the previewed period.
     struct Preview {
-        uint256 periodIndex;        // The period index that matches the preview timestamp.
-        uint256 trackedBalance;     // The tracked balance of the loan at the previewed period.
-        uint256 outstandingBalance; // The outstanding balance of the loan at the previewed period.
+        uint256 periodIndex;
+        uint256 trackedBalance;
+        uint256 outstandingBalance;
     }
 
     /// @dev A struct that defines the extended preview of a loan.
