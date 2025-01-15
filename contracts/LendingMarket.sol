@@ -1219,10 +1219,8 @@ contract LendingMarket is
         }
     }
 
-    /**
-     * @dev The upgrade validation function for the UUPSExtUpgradeable contract.
-     * @param newImplementation The address of the new implementation.
-     */
+    /// @dev The upgrade validation function for the UUPSExtUpgradeable contract.
+    /// @param newImplementation The address of the new implementation.
     function _validateUpgrade(address newImplementation) internal view override onlyRole(OWNER_ROLE) {
         try ILendingMarket(newImplementation).proveLendingMarket() {} catch {
             revert Error.ImplementationAddressInvalid();

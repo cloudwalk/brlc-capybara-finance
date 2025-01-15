@@ -427,11 +427,9 @@ interface ILendingMarketConfiguration {
     function hasAlias(address lender, address account) external view returns (bool);
 }
 
-/**
- * @title ILendingMarketErrors interface
- * @author CloudWalk Inc. (See https://cloudwalk.io)
- * @dev Defines the custom errors used in the lending market contract.
- */
+/// @title ILendingMarketErrors interface
+/// @author CloudWalk Inc. (See https://cloudwalk.io)
+/// @dev Defines the custom errors used in the lending market contract.
 interface ILendingMarketErrors {
     /// @dev Thrown when the loan ID exceeds the maximum allowed value.
     error LoanIdExcess();

@@ -6,11 +6,9 @@ import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils
 
 import { AccessControlExtUpgradeable } from "../base/AccessControlExtUpgradeable.sol";
 
-/**
- * @title AccessControlExtUpgradeableMock contract
- * @author CloudWalk Inc. (See https://www.cloudwalk.io)
- * @dev An implementation of the {AccessControlExtUpgradeable} contract for test purposes.
- */
+/// @title AccessControlExtUpgradeableMock contract
+/// @author CloudWalk Inc. (See https://www.cloudwalk.io)
+/// @dev An implementation of the {AccessControlExtUpgradeable} contract for test purposes.
 contract AccessControlExtUpgradeableMock is AccessControlExtUpgradeable, UUPSUpgradeable {
     // -------------------------------------------- //
     //  Constants                                   //
@@ -24,11 +22,9 @@ contract AccessControlExtUpgradeableMock is AccessControlExtUpgradeable, UUPSUpg
     //  Initializers                                //
     // -------------------------------------------- //
 
-    /**
-     * @dev The initialize function of the upgradable contract.
-     *
-     * See details https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable.
-     */
+    /// @dev The initialize function of the upgradable contract.
+    ///
+    /// See details https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable.
     function initialize() public initializer {
         _grantRole(OWNER_ROLE, _msgSender());
         _setRoleAdmin(USER_ROLE, OWNER_ROLE);
@@ -42,18 +38,14 @@ contract AccessControlExtUpgradeableMock is AccessControlExtUpgradeable, UUPSUpg
     //  Transactional functions                     //
     // -------------------------------------------- //
 
-    /**
-     * @dev Needed to check that the initialize function of the ancestor contract
-     * has the 'onlyInitializing' modifier.
-     */
+    /// @dev Needed to check that the initialize function of the ancestor contract
+    /// has the 'onlyInitializing' modifier.
     function call_parent_initialize() public {
         __AccessControlExt_init();
     }
 
-    /**
-     * @dev Needed to check that the unchained initialize function of the ancestor contract
-     * has the 'onlyInitializing' modifier.
-     */
+    /// @dev Needed to check that the unchained initialize function of the ancestor contract
+    /// has the 'onlyInitializing' modifier.
     function call_parent_initialize_unchained() public {
         __AccessControlExt_init_unchained();
     }
@@ -62,10 +54,8 @@ contract AccessControlExtUpgradeableMock is AccessControlExtUpgradeable, UUPSUpg
     //  Internal functions                          //
     // -------------------------------------------- //
 
-    /**
-     * @dev The upgrade authorization function for UUPSProxy.
-     * @param newImplementation The address of the new implementation.
-     */
+    /// @dev The upgrade authorization function for UUPSProxy.
+    /// @param newImplementation The address of the new implementation.
     function _authorizeUpgrade(address newImplementation) internal pure override {
         newImplementation; // Suppresses a compiler warning about the unused variable.
     }

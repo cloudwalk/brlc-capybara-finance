@@ -122,11 +122,9 @@ interface ICreditLineHooks {
     function onAfterLoanRevocation(uint256 loanId) external returns (bool);
 }
 
-/**
- * @title ICreditLineErrors interface
- * @author CloudWalk Inc. (See https://cloudwalk.io)
- * @dev Defines the custom errors used in the credit line contract.
- */
+/// @title ICreditLineErrors interface
+/// @author CloudWalk Inc. (See https://cloudwalk.io)
+/// @dev Defines the custom errors used in the credit line contract.
 interface ICreditLineErrors {
     /// @dev Thrown when the credit line configuration is invalid.
     error InvalidCreditLineConfiguration();

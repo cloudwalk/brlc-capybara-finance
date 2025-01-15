@@ -137,11 +137,9 @@ interface ILiquidityPoolHooks {
     function onAfterLoanRevocation(uint256 loanId) external returns (bool);
 }
 
-/**
- * @title ILiquidityPoolErrors interface
- * @author CloudWalk Inc. (See https://cloudwalk.io)
- * @dev Defines the custom errors used in the liquidity poool contract.
- */
+/// @title ILiquidityPoolErrors interface
+/// @author CloudWalk Inc. (See https://cloudwalk.io)
+/// @dev Defines the custom errors used in the liquidity poool contract.
 interface ILiquidityPoolErrors {
     /// @dev Thrown when attempting to zero the addon treasury address.
     ///
