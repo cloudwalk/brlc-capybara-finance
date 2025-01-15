@@ -8,10 +8,6 @@ import { Loan } from "./libraries/Loan.sol";
 /// @author CloudWalk Inc. (See https://cloudwalk.io)
 /// @dev Defines the storage layout for the lending market contract.
 abstract contract LendingMarketStorage {
-    // -------------------------------------------- //
-    //  Storage variables                           //
-    // -------------------------------------------- //
-
     /// @dev The loan identifier counter.
     uint256 internal _loanIdCounter;
 

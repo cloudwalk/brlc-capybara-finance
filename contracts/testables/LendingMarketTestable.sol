@@ -8,8 +8,16 @@ import { LendingMarket } from "../LendingMarket.sol";
 /// @author CloudWalk Inc. (See https://cloudwalk.io)
 /// @dev Version of the lending market contract with additions required for testing.
 contract LendingMarketTestable is LendingMarket {
+    // -------------------------------------------- //
+    //  Storage variables                           //
+    // -------------------------------------------- //
+
     /// @dev The maximum number of installments. Non-zero value overrides the constant in Constants.sol.
     uint256 public installmentCountMax;
+
+    // -------------------------------------------- //
+    //  Transactional functions                     //
+    // -------------------------------------------- //
 
     /// @dev Sets a new loan ID counter for testing.
     /// @param newValue The new loan ID counter value.
@@ -36,6 +44,10 @@ contract LendingMarketTestable is LendingMarket {
     function setInstallmentCountMax(uint256 newValue) external {
         installmentCountMax = newValue;
     }
+
+    // -------------------------------------------- //
+    //  Internal functions                          //
+    // -------------------------------------------- //
 
     /// @dev Overrides the same name function in the lending market contract to return the testable value if set.
     /// @return The maximum number of installments.

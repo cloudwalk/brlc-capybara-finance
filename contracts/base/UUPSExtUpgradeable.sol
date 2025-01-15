@@ -23,7 +23,7 @@ abstract contract UUPSExtUpgradeable is UUPSUpgradeable {
     error UUPSExtUpgradeable_ImplementationAddressZero();
 
     // -------------------------------------------- //
-    //  Authorization functions                     //
+    //  Internal functions                          //
     // -------------------------------------------- //
 
     /// @dev The upgrade authorization function for UUPSProxy.

@@ -12,29 +12,32 @@ import { ILendingMarket } from "../interfaces/ILendingMarket.sol";
 /// @dev Mock of the `LiquidityPool` contract used for testing.
 contract LiquidityPoolMock {
     // -------------------------------------------- //
-    //  Events                                      //
-    // -------------------------------------------- //
-
-    event OnBeforeLoanTakenCalled(uint256 indexed loanId);
-
-    event OnAfterLoanPaymentCalled(uint256 indexed loanId, uint256 indexed repayAmount);
-
-    event OnAfterLoanRevocationCalled(uint256 indexed loanId);
-
-    // -------------------------------------------- //
     //  Storage variables                           //
     // -------------------------------------------- //
 
     bool private _onBeforeLoanTakenResult;
-
     bool private _onAfterLoanPaymentResult;
-
     bool private _onAfterLoanRevocationResult;
-
     address private _addonTreasury;
 
     // -------------------------------------------- //
-    //  ILiquidityPool functions                    //
+    //  Events                                      //
+    // -------------------------------------------- //
+
+    event OnBeforeLoanTakenCalled(uint256 indexed loanId);
+    event OnAfterLoanPaymentCalled(uint256 indexed loanId, uint256 indexed repayAmount);
+    event OnAfterLoanRevocationCalled(uint256 indexed loanId);
+
+    // -------------------------------------------- //
+    //  Primary transactional functions             //
+    // -------------------------------------------- //
+
+    function repayLoan(address _market, uint256 loanId, uint256 amount) external {
+        ILendingMarket(_market).repayLoan(loanId, amount);
+    }
+
+    // -------------------------------------------- //
+    //  Hook transactional functions                //
     // -------------------------------------------- //
 
     function onBeforeLoanTaken(uint256 loanId) external returns (bool) {
@@ -52,12 +55,8 @@ contract LiquidityPoolMock {
         return _onAfterLoanRevocationResult;
     }
 
-    function addonTreasury() external view returns (address) {
-        return _addonTreasury;
-    }
-
     // -------------------------------------------- //
-    //  Mock functions                              //
+    //  Mock transactional functions                //
     // -------------------------------------------- //
 
     function approveMarket(address _market, address token_) external {
@@ -68,9 +67,13 @@ contract LiquidityPoolMock {
         _addonTreasury = newTreasury;
     }
 
-    function proveLiquidityPool() external pure {}
+    // -------------------------------------------- //
+    //  View and pure functions                     //
+    // -------------------------------------------- //
 
-    function repayLoan(address _market, uint256 loanId, uint256 amount) external {
-        ILendingMarket(_market).repayLoan(loanId, amount);
+    function addonTreasury() external view returns (address) {
+        return _addonTreasury;
     }
+
+    function proveLiquidityPool() external pure {}
 }

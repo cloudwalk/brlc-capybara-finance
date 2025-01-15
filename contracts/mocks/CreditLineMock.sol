@@ -11,16 +11,6 @@ import { ICreditLine } from "../interfaces/ICreditLine.sol";
 /// @dev Mock of the `CreditLine` contract used for testing.
 contract CreditLineMock {
     // -------------------------------------------- //
-    //  Events                                      //
-    // -------------------------------------------- //
-
-    event OnBeforeLoanTakenCalled(uint256 indexed loanId);
-
-    event OnAfterLoanPaymentCalled(uint256 indexed loanId, uint256 indexed repayAmount);
-
-    event OnAfterLoanRevocationCalled(uint256 indexed loanId);
-
-    // -------------------------------------------- //
     //  Storage variables                           //
     // -------------------------------------------- //
 
@@ -35,7 +25,17 @@ contract CreditLineMock {
     uint256 private _lateFeeRate;
 
     // -------------------------------------------- //
-    //  ICreditLine functions                       //
+    //  Events                                      //
+    // -------------------------------------------- //
+
+    event OnBeforeLoanTakenCalled(uint256 indexed loanId);
+
+    event OnAfterLoanPaymentCalled(uint256 indexed loanId, uint256 indexed repayAmount);
+
+    event OnAfterLoanRevocationCalled(uint256 indexed loanId);
+
+    // -------------------------------------------- //
+    //  Hook transactional functions                //
     // -------------------------------------------- //
 
     function onBeforeLoanTaken(uint256 loanId) external returns (bool) {
@@ -53,6 +53,23 @@ contract CreditLineMock {
         return _onAfterLoanRevocationResult;
     }
 
+    // -------------------------------------------- //
+    //  Mock transactional functions                //
+    // -------------------------------------------- //
+
+    function mockLoanTerms(address borrower, uint256 amount, Loan.Terms memory terms) external {
+        amount; // To prevent compiler warning about unused variable
+        _loanTerms[borrower] = terms;
+    }
+
+    function mockLateFeeRate(uint256 newRate) external {
+        _lateFeeRate = newRate;
+    }
+
+    // -------------------------------------------- //
+    //  View and pure functions                     //
+    // -------------------------------------------- //
+
     function determineLoanTerms(
         address borrower,
         uint256 borrowAmount,
@@ -65,19 +82,6 @@ contract CreditLineMock {
 
     function lateFeeRate() external view returns (uint256) {
         return _lateFeeRate;
-    }
-
-    // -------------------------------------------- //
-    //  Mock functions                              //
-    // -------------------------------------------- //
-
-    function mockLoanTerms(address borrower, uint256 amount, Loan.Terms memory terms) external {
-        amount; // To prevent compiler warning about unused variable
-        _loanTerms[borrower] = terms;
-    }
-
-    function mockLateFeeRate(uint256 newRate) external {
-        _lateFeeRate = newRate;
     }
 
     function proveCreditLine() external pure {}

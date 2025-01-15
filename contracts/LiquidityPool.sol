@@ -34,6 +34,10 @@ contract LiquidityPool is
     using SafeERC20 for IERC20;
     using SafeCast for uint256;
 
+    // -------------------------------------------- //
+    //  Constants                                   //
+    // -------------------------------------------- //
+
     /// @dev The role of this contract owner.
     bytes32 public constant OWNER_ROLE = keccak256("OWNER_ROLE");
 
@@ -159,7 +163,7 @@ contract LiquidityPool is
     }
 
     // -------------------------------------------- //
-    //  Pauser functions                            //
+    //  Pauser transactional functions              //
     // -------------------------------------------- //
 
     /// @dev Pauses the contract.

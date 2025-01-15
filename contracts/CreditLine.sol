@@ -26,6 +26,10 @@ import { ILendingMarket } from "./interfaces/ILendingMarket.sol";
 contract CreditLine is AccessControlExtUpgradeable, PausableUpgradeable, ICreditLine, Versionable, UUPSExtUpgradeable {
     using SafeCast for uint256;
 
+    // -------------------------------------------- //
+    //  Constants                                   //
+    // -------------------------------------------- //
+
     /// @dev The role of this contract owner.
     bytes32 public constant OWNER_ROLE = keccak256("OWNER_ROLE");
 
@@ -144,7 +148,7 @@ contract CreditLine is AccessControlExtUpgradeable, PausableUpgradeable, ICredit
     }
 
     // -------------------------------------------- //
-    //  Pauser functions                            //
+    //  Pauser transactional functions              //
     // -------------------------------------------- //
 
     /// @dev Pauses the contract.

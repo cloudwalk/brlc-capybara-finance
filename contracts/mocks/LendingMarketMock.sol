@@ -12,13 +12,6 @@ import { ILiquidityPool } from "../interfaces/ILiquidityPool.sol";
 /// @dev Mock of the `LendingMarket` contract used for testing.
 contract LendingMarketMock {
     // -------------------------------------------- //
-    //  Events                                      //
-    // -------------------------------------------- //
-
-    event RepayLoanCalled(uint256 indexed loanId, uint256 repayAmount, uint256 repaymentCounter);
-    event HookCallResult(bool result);
-
-    // -------------------------------------------- //
     //  Storage variables                           //
     // -------------------------------------------- //
 
@@ -26,7 +19,14 @@ contract LendingMarketMock {
     uint256 public repaymentCounter;
 
     // -------------------------------------------- //
-    //  ILendingMarket functions                    //
+    //  Events                                      //
+    // -------------------------------------------- //
+
+    event RepayLoanCalled(uint256 indexed loanId, uint256 repayAmount, uint256 repaymentCounter);
+    event HookCallResult(bool result);
+
+    // -------------------------------------------- //
+    //  Primary transactional functions             //
     // -------------------------------------------- //
 
     function repayLoan(uint256 loanId, uint256 repayAmount) external {
@@ -36,12 +36,8 @@ contract LendingMarketMock {
         emit RepayLoanCalled(loanId, repayAmount, repaymentCounter);
     }
 
-    function getLoanState(uint256 loanId) external view returns (Loan.State memory) {
-        return _loanStates[loanId];
-    }
-
     // -------------------------------------------- //
-    //  Mock functions                              //
+    //  Mock transactional functions                //
     // -------------------------------------------- //
 
     function mockLoanState(uint256 loanId, Loan.State memory state) external {
@@ -70,5 +66,13 @@ contract LendingMarketMock {
 
     function callOnAfterLoanRevocationCreditLine(address creditLine, uint256 loanId) external {
         emit HookCallResult(ICreditLine(creditLine).onAfterLoanRevocation(loanId));
+    }
+
+    // -------------------------------------------- //
+    //  View functions                              //
+    // -------------------------------------------- //
+
+    function getLoanState(uint256 loanId) external view returns (Loan.State memory) {
+        return _loanStates[loanId];
     }
 }

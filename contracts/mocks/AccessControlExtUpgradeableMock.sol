@@ -12,11 +12,17 @@ import { AccessControlExtUpgradeable } from "../base/AccessControlExtUpgradeable
  * @dev An implementation of the {AccessControlExtUpgradeable} contract for test purposes.
  */
 contract AccessControlExtUpgradeableMock is AccessControlExtUpgradeable, UUPSUpgradeable {
+    // -------------------------------------------- //
+    //  Constants                                   //
+    // -------------------------------------------- //
+
     /// @dev The role of this contract owner.
     bytes32 public constant OWNER_ROLE = keccak256("OWNER_ROLE");
     bytes32 public constant USER_ROLE = keccak256("USER_ROLE");
 
-    // ------------------ Initializers ---------------------------- //
+    // -------------------------------------------- //
+    //  Initializers                                //
+    // -------------------------------------------- //
 
     /**
      * @dev The initialize function of the upgradable contract.
@@ -32,7 +38,9 @@ contract AccessControlExtUpgradeableMock is AccessControlExtUpgradeable, UUPSUpg
         _authorizeUpgrade(address(0));
     }
 
-    // ------------------ Functions ------------------------------- //
+    // -------------------------------------------- //
+    //  Transactional functions                     //
+    // -------------------------------------------- //
 
     /**
      * @dev Needed to check that the initialize function of the ancestor contract
@@ -50,7 +58,9 @@ contract AccessControlExtUpgradeableMock is AccessControlExtUpgradeable, UUPSUpg
         __AccessControlExt_init_unchained();
     }
 
-    // ------------------ Internal functions ---------------------- //
+    // -------------------------------------------- //
+    //  Internal functions                          //
+    // -------------------------------------------- //
 
     /**
      * @dev The upgrade authorization function for UUPSProxy.

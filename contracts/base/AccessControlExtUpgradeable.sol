@@ -9,7 +9,7 @@ import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/ac
 /// @dev Extends the `AccessControlUpgradeable` contract by adding the `grantRoleBatch` and `revokeRoleBatch` functions.
 abstract contract AccessControlExtUpgradeable is AccessControlUpgradeable {
     // -------------------------------------------- //
-    //  Initialization functions                    //
+    //  Initializations                             //
     // -------------------------------------------- //
 
     /// @dev Internal initializer of the upgradable contract.
@@ -26,7 +26,7 @@ abstract contract AccessControlExtUpgradeable is AccessControlUpgradeable {
     function __AccessControlExt_init_unchained() internal onlyInitializing {}
 
     // -------------------------------------------- //
-    //  Batch functions                             //
+    //  Transactional functions                     //
     // -------------------------------------------- //
 
     /// @dev Grants `role` to `account` in batch.
