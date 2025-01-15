@@ -212,7 +212,7 @@ const LATE_FEE_RATE = 987654321n;
 
 const EXPECTED_VERSION: Version = {
   major: 1,
-  minor: 7,
+  minor: 8,
   patch: 0
 };
 
