@@ -252,8 +252,8 @@ contract LendingMarket is
         uint256 addonAmount,
         uint256 durationInPeriods
     ) external whenNotPaused returns (uint256) {
-        _checkSender(msg.sender, programId);
         _checkMainLoanParameters(borrower, programId, borrowAmount, addonAmount);
+        _checkSender(msg.sender, programId);
         uint256 loanId = _takeLoan(
             borrower, // Tools: this comment prevents Prettier from formatting into a single line.
             programId,
@@ -277,8 +277,8 @@ contract LendingMarket is
         uint256 totalAddonAmount = _sumArray(addonAmounts);
         installmentCount = borrowAmounts.length;
 
-        _checkSender(msg.sender, programId);
         _checkMainLoanParameters(borrower, programId, totalBorrowAmount, totalAddonAmount);
+        _checkSender(msg.sender, programId);
         _checkDurationArray(durationsInPeriods);
         _checkInstallmentCount(installmentCount);
         if (addonAmounts.length != installmentCount || durationsInPeriods.length != installmentCount) {
