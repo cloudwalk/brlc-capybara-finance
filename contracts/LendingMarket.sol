@@ -245,25 +245,6 @@ contract LendingMarket is
     // -------------------------------------------- //
 
     /// @inheritdoc ILendingMarketPrimary
-    function takeLoan(
-        uint32 programId,
-        uint256 borrowAmount,
-        uint256 durationInPeriods
-    ) external whenNotPaused returns (uint256) {
-        address borrower = msg.sender;
-        _checkMainLoanParameters(borrower, programId, borrowAmount, 0);
-        uint256 loanId = _takeLoan(
-            borrower,
-            programId,
-            borrowAmount,
-            -1, // addonAmount -- calculate internally
-            durationInPeriods
-        );
-        _transferTokensOnLoanTaking(loanId, borrowAmount, _loans[loanId].addonAmount);
-        return loanId;
-    }
-
-    /// @inheritdoc ILendingMarketPrimary
     function takeLoanFor(
         address borrower,
         uint32 programId,
@@ -277,7 +258,7 @@ contract LendingMarket is
             borrower, // Tools: this comment prevents Prettier from formatting into a single line.
             programId,
             borrowAmount,
-            int256(addonAmount),
+            addonAmount,
             durationInPeriods
         );
         _transferTokensOnLoanTaking(loanId, borrowAmount, addonAmount);
@@ -310,7 +291,7 @@ contract LendingMarket is
                 borrower,
                 programId,
                 borrowAmounts[i],
-                int256(addonAmounts[i]),
+                addonAmounts[i],
                 durationsInPeriods[i]
             );
             if (i == 0) {
@@ -658,15 +639,14 @@ contract LendingMarket is
     /// @param borrower The account for whom the loan is taken.
     /// @param programId The identifier of the program to take the loan from.
     /// @param borrowAmount The desired amount of tokens to borrow.
-    /// @param addonAmount If not negative, the off-chain calculated addon amount (extra charges or fees) for the loan,
-    ///        otherwise a flag to calculated the addon amount internally.
+    /// @param addonAmount The off-chain calculated addon amount (extra charges or fees) for the loan,
     /// @param durationInPeriods The desired duration of the loan in periods.
     /// @return The unique identifier of the loan.
     function _takeLoan(
         address borrower,
         uint32 programId,
         uint256 borrowAmount,
-        int256 addonAmount,
+        uint256 addonAmount,
         uint256 durationInPeriods
     ) internal returns (uint256) {
         address creditLine = _programCreditLines[programId];
@@ -687,9 +667,7 @@ contract LendingMarket is
             borrowAmount,
             durationInPeriods
         );
-        if (addonAmount >= 0) {
-            terms.addonAmount = uint256(addonAmount).toUint64();
-        }
+        terms.addonAmount = uint256(addonAmount).toUint64();
         uint256 principalAmount = borrowAmount + terms.addonAmount;
         uint32 blockTimestamp = _blockTimestamp().toUint32();
 

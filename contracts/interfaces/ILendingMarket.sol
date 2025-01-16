@@ -137,17 +137,6 @@ interface ILendingMarketPrimary {
     //  Transactional functions                     //
     // -------------------------------------------- //
 
-    /// @dev Takes an ordinary loan.
-    /// @param programId The identifier of the program to take the loan from.
-    /// @param borrowAmount The desired amount of tokens to borrow.
-    /// @param durationInPeriods The desired duration of the loan in periods.
-    /// @return The unique identifier of the loan.
-    function takeLoan(
-        uint32 programId, // Tools: this comment prevents Prettier from formatting into a single line.
-        uint256 borrowAmount,
-        uint256 durationInPeriods
-    ) external returns (uint256);
-
     /// @dev Takes an ordinary loan for a provided account. Can be called only by an account with a special role.
     /// @param borrower The account for whom the loan is taken.
     /// @param programId The identifier of the program to take the loan from.
