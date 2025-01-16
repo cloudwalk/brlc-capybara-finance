@@ -1243,20 +1243,6 @@ describe("Contract 'LendingMarket': base tests", async () => {
         ).to.be.revertedWithCustomError(market, ERROR_NAME_ENFORCED_PAUSED);
       });
 
-      it("The caller is not the lender or its alias", async () => {
-        const { market } = await setUpFixture(deployLendingMarketAndConfigureItForLoan);
-
-        await expect(
-          connect(market, borrower).takeLoanFor(
-            borrower.address,
-            PROGRAM_ID,
-            BORROW_AMOUNT,
-            ADDON_AMOUNT,
-            DURATION_IN_PERIODS
-          )
-        ).to.be.revertedWithCustomError(market, ERROR_NAME_UNAUTHORIZED);
-      });
-
       it("Te borrower address is zero", async () => {
         const { marketUnderLender } = await setUpFixture(deployLendingMarketAndConfigureItForLoan);
         const wrongBorrowerAddress = (ZERO_ADDRESS);
@@ -1272,9 +1258,9 @@ describe("Contract 'LendingMarket': base tests", async () => {
         ).to.be.revertedWithCustomError(marketUnderLender, ERROR_NAME_ZERO_ADDRESS);
       });
 
-      it("The program with the passed ID is not registered", async () => {
+      it("The program ID is zero", async () => {
         const { marketUnderLender } = await setUpFixture(deployLendingMarketAndConfigureItForLoan);
-        let wrongProgramId = 0;
+        const wrongProgramId = 0;
 
         await expect(
           marketUnderLender.takeLoanFor(
@@ -1284,9 +1270,13 @@ describe("Contract 'LendingMarket': base tests", async () => {
             ADDON_AMOUNT,
             DURATION_IN_PERIODS
           )
-        ).to.be.revertedWithCustomError(marketUnderLender, ERROR_NAME_UNAUTHORIZED);
+        ).to.be.revertedWithCustomError(marketUnderLender, ERROR_NAME_PROGRAM_NOT_EXIST);
+      });
 
-        wrongProgramId = PROGRAM_ID + 1;
+      it("The program with the passed ID is not registered", async () => {
+        const { marketUnderLender } = await setUpFixture(deployLendingMarketAndConfigureItForLoan);
+        const wrongProgramId = PROGRAM_ID + 1;
+
         await expect(
           marketUnderLender.takeLoanFor(
             borrower.address,
@@ -1343,6 +1333,20 @@ describe("Contract 'LendingMarket': base tests", async () => {
             DURATION_IN_PERIODS
           )
         ).to.be.revertedWithCustomError(marketUnderLender, ERROR_NAME_INVALID_AMOUNT);
+      });
+
+      it("The caller is not the lender or its alias", async () => {
+        const { market } = await setUpFixture(deployLendingMarketAndConfigureItForLoan);
+
+        await expect(
+          connect(market, borrower).takeLoanFor(
+            borrower.address,
+            PROGRAM_ID,
+            BORROW_AMOUNT,
+            ADDON_AMOUNT,
+            DURATION_IN_PERIODS
+          )
+        ).to.be.revertedWithCustomError(market, ERROR_NAME_UNAUTHORIZED);
       });
 
       it("The credit line is not registered", async () => {
@@ -1570,20 +1574,6 @@ describe("Contract 'LendingMarket': base tests", async () => {
         ).to.be.revertedWithCustomError(market, ERROR_NAME_ENFORCED_PAUSED);
       });
 
-      it("The caller is not the lender or its alias", async () => {
-        const { market } = await setUpFixture(deployLendingMarketAndConfigureItForLoan);
-
-        await expect(
-          connect(market, borrower).takeInstallmentLoanFor(
-            borrower.address,
-            PROGRAM_ID,
-            BORROW_AMOUNTS,
-            ADDON_AMOUNTS,
-            DURATIONS_IN_PERIODS
-          )
-        ).to.be.revertedWithCustomError(market, ERROR_NAME_UNAUTHORIZED);
-      });
-
       it("The borrower address is zero", async () => {
         const { marketUnderLender } = await setUpFixture(deployLendingMarketAndConfigureItForLoan);
         const wrongBorrowerAddress = (ZERO_ADDRESS);
@@ -1599,9 +1589,9 @@ describe("Contract 'LendingMarket': base tests", async () => {
         ).to.be.revertedWithCustomError(marketUnderLender, ERROR_NAME_ZERO_ADDRESS);
       });
 
-      it("Th program with the passed ID is not registered", async () => {
+      it("Th program ID is zero", async () => {
         const { marketUnderLender } = await setUpFixture(deployLendingMarketAndConfigureItForLoan);
-        let wrongProgramId = 0;
+        const wrongProgramId = 0;
 
         await expect(
           marketUnderLender.takeInstallmentLoanFor(
@@ -1611,9 +1601,13 @@ describe("Contract 'LendingMarket': base tests", async () => {
             ADDON_AMOUNTS,
             DURATIONS_IN_PERIODS
           )
-        ).to.be.revertedWithCustomError(marketUnderLender, ERROR_NAME_UNAUTHORIZED);
+        ).to.be.revertedWithCustomError(marketUnderLender, ERROR_NAME_PROGRAM_NOT_EXIST);
+      });
 
-        wrongProgramId = PROGRAM_ID + 1;
+      it("Th program with the passed ID is not registered", async () => {
+        const { marketUnderLender } = await setUpFixture(deployLendingMarketAndConfigureItForLoan);
+        const wrongProgramId = PROGRAM_ID + 1;
+
         await expect(
           marketUnderLender.takeInstallmentLoanFor(
             borrower.address,
@@ -1686,6 +1680,20 @@ describe("Contract 'LendingMarket': base tests", async () => {
             DURATIONS_IN_PERIODS
           )
         ).to.be.revertedWithCustomError(marketUnderLender, ERROR_NAME_INVALID_AMOUNT);
+      });
+
+      it("The caller is not the lender or its alias", async () => {
+        const { market } = await setUpFixture(deployLendingMarketAndConfigureItForLoan);
+
+        await expect(
+          connect(market, borrower).takeInstallmentLoanFor(
+            borrower.address,
+            PROGRAM_ID,
+            BORROW_AMOUNTS,
+            ADDON_AMOUNTS,
+            DURATIONS_IN_PERIODS
+          )
+        ).to.be.revertedWithCustomError(market, ERROR_NAME_UNAUTHORIZED);
       });
 
       it("The durations in the input array do not correspond to a non-decreasing sequence", async () => {
