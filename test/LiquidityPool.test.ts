@@ -38,7 +38,6 @@ const ERROR_NAME_ADDON_TREASURY_ADDRESS_ZEROING_PROHIBITED = "AddonTreasuryAddre
 const ERROR_NAME_ADDON_TREASURY_ZERO_ALLOWANCE_FOR_MARKET = "AddonTreasuryZeroAllowanceForMarket";
 const ERROR_NAME_ALREADY_CONFIGURED = "AlreadyConfigured";
 const ERROR_NAME_ALREADY_INITIALIZED = "InvalidInitialization";
-const ERROR_NAME_ARRAY_LENGTH_MISMATCH = "ArrayLengthMismatch";
 const ERROR_NAME_ENFORCED_PAUSED = "EnforcedPause";
 const ERROR_NAME_INSUFFICIENT_BALANCE = "InsufficientBalance";
 const ERROR_NAME_INVALID_AMOUNT = "InvalidAmount";
@@ -50,11 +49,9 @@ const ERROR_NAME_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST = "SafeCastOverflowedUintDow
 
 const EVENT_NAME_APPROVAL = "Approval";
 const EVENT_NAME_ADDON_TREASURY_CHANGED = "AddonTreasuryChanged";
-const EVENT_NAME_AUTO_REPAYMENT = "AutoRepayment";
 const EVENT_NAME_DEPOSIT = "Deposit";
 const EVENT_NAME_HOOK_CALL_RESULT = "HookCallResult";
 const EVENT_NAME_PAUSED = "Paused";
-const EVENT_NAME_REPAY_LOAN_CALLED = "RepayLoanCalled";
 const EVENT_NAME_RESCUE = "Rescue";
 const EVENT_NAME_UNPAUSED = "Unpaused";
 const EVENT_NAME_WITHDRAWAL = "Withdrawal";
@@ -73,8 +70,6 @@ const BORROW_AMOUNT = DEPOSIT_AMOUNT / 10n;
 const ADDON_AMOUNT = BORROW_AMOUNT / 10n;
 const REPAY_AMOUNT = BORROW_AMOUNT / 5n;
 const LOAN_ID = 123n;
-const AUTO_REPAY_LOAN_IDS = [123n, 234n, 345n, 123n];
-const AUTO_REPAY_AMOUNTS = [10_123_456n, 1n, maxUintForBits(256), 0n];
 const EXPECTED_VERSION: Version = {
   major: 1,
   minor: 8,
@@ -111,7 +106,6 @@ describe("Contract 'LiquidityPool'", async () => {
 
   let deployer: HardhatEthersSigner;
   let lender: HardhatEthersSigner;
-  let admin: HardhatEthersSigner;
   let attacker: HardhatEthersSigner;
   let addonTreasury: HardhatEthersSigner;
 
@@ -119,7 +113,7 @@ describe("Contract 'LiquidityPool'", async () => {
   let marketAddress: string;
 
   before(async () => {
-    [deployer, lender, admin, attacker, addonTreasury] = await ethers.getSigners();
+    [deployer, lender, attacker, addonTreasury] = await ethers.getSigners();
 
     // Factories with an explicitly specified deployer account
     liquidityPoolFactory = await ethers.getContractFactory("LiquidityPool");
@@ -620,53 +614,6 @@ describe("Contract 'LiquidityPool'", async () => {
       await expect(connect(liquidityPool, attacker).rescue(tokenAddress, rescuedAmount))
         .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
         .withArgs(attacker.address, OWNER_ROLE);
-    });
-  });
-
-  describe("Function 'autoRepay()'", async () => {
-    it("Executes as expected and emits the correct events", async () => {
-      const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
-      await proveTx(liquidityPool.grantRole(ADMIN_ROLE, admin.address));
-      let repaymentCounter: bigint = await market.repaymentCounter();
-
-      const tx = connect(liquidityPool, admin).autoRepay(AUTO_REPAY_LOAN_IDS, AUTO_REPAY_AMOUNTS);
-      await expect(tx)
-        .to.emit(liquidityPool, EVENT_NAME_AUTO_REPAYMENT)
-        .withArgs(AUTO_REPAY_LOAN_IDS.length);
-
-      for (let i = 0; i < AUTO_REPAY_LOAN_IDS.length; i++) {
-        ++repaymentCounter;
-        await expect(tx)
-          .to.emit(market, EVENT_NAME_REPAY_LOAN_CALLED)
-          .withArgs(AUTO_REPAY_LOAN_IDS[i], AUTO_REPAY_AMOUNTS[i], repaymentCounter);
-      }
-    });
-
-    it("Is reverted if the contract is paused", async () => {
-      const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
-      await proveTx(liquidityPool.pause());
-
-      await expect(connect(liquidityPool, admin).autoRepay(AUTO_REPAY_LOAN_IDS, AUTO_REPAY_AMOUNTS))
-        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_ENFORCED_PAUSED);
-    });
-
-    it("Is reverted if the caller is not an admin", async () => {
-      const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
-
-      // Even the lender cannot execute the auto repayments
-      await expect(connect(liquidityPool, lender).autoRepay(AUTO_REPAY_LOAN_IDS, AUTO_REPAY_AMOUNTS))
-        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
-        .withArgs(lender.address, ADMIN_ROLE);
-    });
-
-    it("Is reverted if the provided arrays do not match in length", async () => {
-      const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
-      await proveTx(liquidityPool.grantRole(ADMIN_ROLE, admin.address));
-
-      const wrongAutoRepayLoanIds: bigint[] = [...AUTO_REPAY_LOAN_IDS, AUTO_REPAY_LOAN_IDS[0]];
-
-      await expect(connect(liquidityPool, admin).autoRepay(wrongAutoRepayLoanIds, AUTO_REPAY_AMOUNTS))
-        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_ARRAY_LENGTH_MISMATCH);
     });
   });
 

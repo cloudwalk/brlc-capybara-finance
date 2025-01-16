@@ -41,7 +41,7 @@ contract LiquidityPool is
     /// @dev The role of this contract owner.
     bytes32 public constant OWNER_ROLE = keccak256("OWNER_ROLE");
 
-    /// @dev The role of this contract admin.
+    /// @dev The role of this contract admin. Currently not in use. Reserved for possible future changes.
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
 
     /// @dev The role of this contract pauser.
@@ -240,20 +240,6 @@ contract LiquidityPool is
         IERC20(token_).safeTransfer(msg.sender, amount);
 
         emit Rescue(token_, amount);
-    }
-
-    /// @inheritdoc ILiquidityPoolPrimary
-    function autoRepay(uint256[] memory loanIds, uint256[] memory amounts) external whenNotPaused onlyRole(ADMIN_ROLE) {
-        if (loanIds.length != amounts.length) {
-            revert Error.ArrayLengthMismatch();
-        }
-
-        emit AutoRepayment(loanIds.length);
-
-        ILendingMarket lendingMarket = ILendingMarket(_market);
-        for (uint256 i = 0; i < loanIds.length; i++) {
-            lendingMarket.repayLoan(loanIds[i], amounts[i]);
-        }
     }
 
     // -------------------------------------------- //

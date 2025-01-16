@@ -46,11 +46,6 @@ interface ILiquidityPoolPrimary {
     /// @param amount The amount of tokens to rescue.
     function rescue(address token, uint256 amount) external;
 
-    /// @dev Executes auto repayment of loans in the batch mode.
-    /// @param loanIds The unique identifiers of the loans to repay.
-    /// @param amounts The payment amounts that correspond with given loan ids.
-    function autoRepay(uint256[] memory loanIds, uint256[] memory amounts) external;
-
     // -------------------------------------------- //
     //  View and pure functions                     //
     // -------------------------------------------- //
