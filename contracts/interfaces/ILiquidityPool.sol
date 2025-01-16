@@ -24,10 +24,6 @@ interface ILiquidityPoolPrimary {
     /// @param amount The amount of tokens rescued.
     event Rescue(address indexed token, uint256 amount);
 
-    /// @dev Emitted when loan auto repayment was initiated.
-    /// @param numberOfLoans The number of loans repaid.
-    event AutoRepayment(uint256 numberOfLoans);
-
     // -------------------------------------------- //
     //  Transactional functions                     //
     // -------------------------------------------- //
