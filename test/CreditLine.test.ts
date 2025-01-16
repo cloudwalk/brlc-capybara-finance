@@ -195,10 +195,6 @@ const MIN_INTEREST_RATE_PRIMARY = 1n;
 const MAX_INTEREST_RATE_PRIMARY = maxUintForBits(32) - 1n;
 const MIN_INTEREST_RATE_SECONDARY = 10n;
 const MAX_INTEREST_RATE_SECONDARY = maxUintForBits(32) - 1n;
-const MIN_ADDON_FIXED_RATE = 1n;
-const MAX_ADDON_FIXED_RATE = maxUintForBits(32) - 1n;
-const MIN_ADDON_PERIOD_RATE = 10n;
-const MAX_ADDON_PERIOD_RATE = maxUintForBits(32) - 1n;
 const MIN_DURATION_IN_PERIODS = 1n;
 const MAX_DURATION_IN_PERIODS = maxUintForBits(32) - 1n;
 const NEGATIVE_TIME_OFFSET = 3n * 60n * 60n;
@@ -304,18 +300,18 @@ describe("Contract 'CreditLine'", async () => {
 
   function createCreditLineConfiguration(): CreditLineConfig {
     return {
-      minDurationInPeriods: MIN_DURATION_IN_PERIODS,
-      maxDurationInPeriods: MAX_DURATION_IN_PERIODS,
       minBorrowAmount: MIN_BORROW_AMOUNT,
       maxBorrowAmount: MAX_BORROW_AMOUNT,
       minInterestRatePrimary: MIN_INTEREST_RATE_PRIMARY,
       maxInterestRatePrimary: MAX_INTEREST_RATE_PRIMARY,
       minInterestRateSecondary: MIN_INTEREST_RATE_SECONDARY,
       maxInterestRateSecondary: MAX_INTEREST_RATE_SECONDARY,
-      minAddonFixedRate: MIN_ADDON_FIXED_RATE,
-      maxAddonFixedRate: MAX_ADDON_FIXED_RATE,
-      minAddonPeriodRate: MIN_ADDON_PERIOD_RATE,
-      maxAddonPeriodRate: MAX_ADDON_PERIOD_RATE,
+      minDurationInPeriods: MIN_DURATION_IN_PERIODS,
+      maxDurationInPeriods: MAX_DURATION_IN_PERIODS,
+      minAddonFixedRate: 0n,
+      maxAddonFixedRate: 0n,
+      minAddonPeriodRate: 0n,
+      maxAddonPeriodRate: 0n,
       lateFeeRate: LATE_FEE_RATE
     };
   }
@@ -332,8 +328,8 @@ describe("Contract 'CreditLine'", async () => {
       borrowPolicy: borrowPolicy,
       interestRatePrimary: MIN_INTEREST_RATE_PRIMARY,
       interestRateSecondary: MIN_INTEREST_RATE_SECONDARY,
-      addonFixedRate: MIN_ADDON_FIXED_RATE,
-      addonPeriodRate: MIN_ADDON_PERIOD_RATE
+      addonFixedRate: 0n,
+      addonPeriodRate: 0n
     };
   }
 
@@ -612,21 +608,41 @@ describe("Contract 'CreditLine'", async () => {
         .to.be.revertedWithCustomError(creditLine, ERROR_NAME_INVALID_CREDIT_LINE_CONFIGURATION);
     });
 
-    it("Is reverted if the min addon fixed rate is bigger than the max one", async () => {
+    it("Is reverted if the min addon fixed rate is not zero", async () => {
       const { creditLine } = await setUpFixture(deployContracts);
       const config = createCreditLineConfiguration();
 
-      config.minAddonFixedRate = config.maxAddonFixedRate + 1n;
+      config.minAddonFixedRate = 1n;
 
       await expect(creditLine.configureCreditLine(config))
         .to.be.revertedWithCustomError(creditLine, ERROR_NAME_INVALID_CREDIT_LINE_CONFIGURATION);
     });
 
-    it("Is reverted if the min addon period rate is bigger than the max one", async () => {
+    it("Is reverted if the max addon fixed rate is not zero", async () => {
       const { creditLine } = await setUpFixture(deployContracts);
       const config = createCreditLineConfiguration();
 
-      config.minAddonPeriodRate = config.maxAddonPeriodRate + 1n;
+      config.maxAddonFixedRate = 1n;
+
+      await expect(creditLine.configureCreditLine(config))
+        .to.be.revertedWithCustomError(creditLine, ERROR_NAME_INVALID_CREDIT_LINE_CONFIGURATION);
+    });
+
+    it("Is reverted if the min addon period rate is not zero", async () => {
+      const { creditLine } = await setUpFixture(deployContracts);
+      const config = createCreditLineConfiguration();
+
+      config.minAddonPeriodRate = 1n;
+
+      await expect(creditLine.configureCreditLine(config))
+        .to.be.revertedWithCustomError(creditLine, ERROR_NAME_INVALID_CREDIT_LINE_CONFIGURATION);
+    });
+
+    it("Is reverted if the max addon period rate is not zero", async () => {
+      const { creditLine } = await setUpFixture(deployContracts);
+      const config = createCreditLineConfiguration();
+
+      config.maxAddonPeriodRate = 1n;
 
       await expect(creditLine.configureCreditLine(config))
         .to.be.revertedWithCustomError(creditLine, ERROR_NAME_INVALID_CREDIT_LINE_CONFIGURATION);
@@ -777,41 +793,21 @@ describe("Contract 'CreditLine'", async () => {
         .to.be.revertedWithCustomError(creditLineUnderAdmin, ERROR_NAME_INVALID_BORROWER_CONFIGURATION);
     });
 
-    it("Is reverted if the addon fixed rate is less than credit line`s minimum one", async () => {
-      const { creditLineUnderAdmin, creditLineConfig } = await setUpFixture(deployAndConfigureContracts);
+    it("Is reverted if the addon fixed rate is not zero", async () => {
+      const { creditLineUnderAdmin } = await setUpFixture(deployAndConfigureContracts);
       const borrowerConfig = createBorrowerConfiguration();
 
-      borrowerConfig.addonFixedRate = creditLineConfig.minAddonFixedRate - 1n;
+      borrowerConfig.addonFixedRate = 1n;
 
       await expect(creditLineUnderAdmin.configureBorrower(borrower.address, borrowerConfig))
         .to.be.revertedWithCustomError(creditLineUnderAdmin, ERROR_NAME_INVALID_BORROWER_CONFIGURATION);
     });
 
-    it("Is reverted if the addon fixed rate is greater than credit line`s maximum one", async () => {
-      const { creditLineUnderAdmin, creditLineConfig } = await setUpFixture(deployAndConfigureContracts);
+    it("Is reverted if the addon period rate is not zero", async () => {
+      const { creditLineUnderAdmin } = await setUpFixture(deployAndConfigureContracts);
       const borrowerConfig = createBorrowerConfiguration();
 
-      borrowerConfig.addonFixedRate = creditLineConfig.maxAddonFixedRate + 1n;
-
-      await expect(creditLineUnderAdmin.configureBorrower(borrower.address, borrowerConfig))
-        .to.be.revertedWithCustomError(creditLineUnderAdmin, ERROR_NAME_INVALID_BORROWER_CONFIGURATION);
-    });
-
-    it("Is reverted if the addon period rate is less than credit line`s minimum one", async () => {
-      const { creditLineUnderAdmin, creditLineConfig } = await setUpFixture(deployAndConfigureContracts);
-      const borrowerConfig = createBorrowerConfiguration();
-
-      borrowerConfig.addonPeriodRate = creditLineConfig.minAddonPeriodRate - 1n;
-
-      await expect(creditLineUnderAdmin.configureBorrower(borrower.address, borrowerConfig))
-        .to.be.revertedWithCustomError(creditLineUnderAdmin, ERROR_NAME_INVALID_BORROWER_CONFIGURATION);
-    });
-
-    it("Is reverted if the addon period rate is greater than credit line`s maximum one", async () => {
-      const { creditLineUnderAdmin, creditLineConfig } = await setUpFixture(deployAndConfigureContracts);
-      const borrowerConfig = createBorrowerConfiguration();
-
-      borrowerConfig.addonPeriodRate = creditLineConfig.maxAddonPeriodRate + 1n;
+      borrowerConfig.addonPeriodRate = 1n;
 
       await expect(creditLineUnderAdmin.configureBorrower(borrower.address, borrowerConfig))
         .to.be.revertedWithCustomError(creditLineUnderAdmin, ERROR_NAME_INVALID_BORROWER_CONFIGURATION);
@@ -1046,7 +1042,7 @@ describe("Contract 'CreditLine'", async () => {
       const fixture = await setUpFixture(deployAndConfigureContractsWithBorrower);
       const { creditLine, creditLineUnderAdmin, borrowerConfig } = fixture;
       const borrowAmount = (borrowerConfig.minBorrowAmount + borrowerConfig.maxBorrowAmount) / 2n;
-      const durationInPeriods = INTEREST_RATE_FACTOR / 2n / borrowerConfig.addonPeriodRate;
+      const durationInPeriods = (borrowerConfig.minDurationInPeriods + borrowerConfig.maxDurationInPeriods) / 2n;
       const borrowerState: BorrowerState = {
         ...defaultBorrowerState,
         activeLoanCount: borrowPolicy == BorrowPolicy.SingleActiveLoan ? 0n : maxUintForBits(16),

@@ -179,10 +179,16 @@ contract CreditLine is AccessControlExtUpgradeable, PausableUpgradeable, ICredit
         if (config.minInterestRateSecondary > config.maxInterestRateSecondary) {
             revert InvalidCreditLineConfiguration();
         }
-        if (config.minAddonFixedRate > config.maxAddonFixedRate) {
+        if (config.minAddonFixedRate != 0) {
             revert InvalidCreditLineConfiguration();
         }
-        if (config.minAddonPeriodRate > config.maxAddonPeriodRate) {
+        if (config.maxAddonFixedRate != 0) {
+            revert InvalidCreditLineConfiguration();
+        }
+        if (config.minAddonPeriodRate != 0) {
+            revert InvalidCreditLineConfiguration();
+        }
+        if (config.maxAddonPeriodRate != 0) {
             revert InvalidCreditLineConfiguration();
         }
 
@@ -392,17 +398,10 @@ contract CreditLine is AccessControlExtUpgradeable, PausableUpgradeable, ICredit
             revert InvalidBorrowerConfiguration();
         }
 
-        if (config.addonFixedRate < _config.minAddonFixedRate) {
+        if (config.addonFixedRate != 0) {
             revert InvalidBorrowerConfiguration();
         }
-        if (config.addonFixedRate > _config.maxAddonFixedRate) {
-            revert InvalidBorrowerConfiguration();
-        }
-
-        if (config.addonPeriodRate < _config.minAddonPeriodRate) {
-            revert InvalidBorrowerConfiguration();
-        }
-        if (config.addonPeriodRate > _config.maxAddonPeriodRate) {
+        if (config.addonPeriodRate != 0) {
             revert InvalidBorrowerConfiguration();
         }
 
