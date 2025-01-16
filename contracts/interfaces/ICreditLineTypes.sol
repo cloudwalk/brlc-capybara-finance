@@ -39,6 +39,10 @@ interface ICreditLineTypes {
     /// - minAddonPeriodRate -------- The minimum period rate for the loan addon calculation.
     /// - maxAddonPeriodRate -------- The maximum period rate for the loan addon calculation.
     /// - lateFeeRate --------------- The late fee rate to be applied to the loan.
+    ///
+    /// Note:
+    /// Fields `minAddonFixedRate`, `maxAddonFixedRate`, `minAddonPeriodRate`, `maxAddonPeriodRate` have been
+    /// deprecated since version 1.9.0 and must be set to zero.
     struct CreditLineConfig {
         // Slot 1
         uint64 minBorrowAmount;
@@ -71,6 +75,9 @@ interface ICreditLineTypes {
     /// - interestRateSecondary -- The secondary interest rate to be applied to the loan.
     /// - addonFixedRate --------- The fixed rate for the loan addon calculation (extra charges or fees).
     /// - addonPeriodRate -------- The period rate for the loan addon calculation (extra charges or fees).
+    ///
+    /// Note:
+    /// Fields `addonFixedRate`, `addonPeriodRate` have been deprecated since version 1.9.0 and must be set to zero.
     struct BorrowerConfig {
         // Slot 1
         uint32 expiration;
