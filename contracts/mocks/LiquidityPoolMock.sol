@@ -29,14 +29,6 @@ contract LiquidityPoolMock {
     event OnAfterLoanRevocationCalled(uint256 indexed loanId);
 
     // -------------------------------------------- //
-    //  Primary transactional functions             //
-    // -------------------------------------------- //
-
-    function repayLoan(address _market, uint256 loanId, uint256 amount) external {
-        ILendingMarket(_market).repayLoan(loanId, amount);
-    }
-
-    // -------------------------------------------- //
     //  Hook transactional functions                //
     // -------------------------------------------- //
 

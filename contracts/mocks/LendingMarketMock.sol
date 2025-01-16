@@ -16,25 +16,12 @@ contract LendingMarketMock {
     // -------------------------------------------- //
 
     mapping(uint256 => Loan.State) private _loanStates;
-    uint256 public repaymentCounter;
 
     // -------------------------------------------- //
     //  Events                                      //
     // -------------------------------------------- //
 
-    event RepayLoanCalled(uint256 indexed loanId, uint256 repayAmount, uint256 repaymentCounter);
     event HookCallResult(bool result);
-
-    // -------------------------------------------- //
-    //  Primary transactional functions             //
-    // -------------------------------------------- //
-
-    function repayLoan(uint256 loanId, uint256 repayAmount) external {
-        loanId; // To prevent compiler warning about unused variable
-        repayAmount; // To prevent compiler warning about unused variable
-        ++repaymentCounter;
-        emit RepayLoanCalled(loanId, repayAmount, repaymentCounter);
-    }
 
     // -------------------------------------------- //
     //  Mock transactional functions                //

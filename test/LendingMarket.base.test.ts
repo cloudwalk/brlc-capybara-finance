@@ -128,8 +128,7 @@ interface Version {
 
 enum PayerKind {
   Borrower = 0,
-  LiquidityPool = 1,
-  Stranger = 2
+  Stranger = 1
 }
 
 const ERROR_NAME_ALREADY_CONFIGURED = "AlreadyConfigured";
@@ -1805,16 +1804,12 @@ describe("Contract 'LendingMarket': base tests", async () => {
       payerKind: PayerKind
     ): Promise<Loan> {
       const expectedLoan: Loan = clone(currentLoan);
-      const { market, marketAddress, ordinaryLoan: loan } = fixture;
+      const { market, ordinaryLoan: loan } = fixture;
       let tx: Promise<TransactionResponse>;
       let payer: HardhatEthersSigner;
       switch (payerKind) {
         case PayerKind.Borrower:
           tx = connect(market, borrower).repayLoan(loan.id, repaymentAmount);
-          payer = borrower;
-          break;
-        case PayerKind.LiquidityPool:
-          tx = liquidityPool.repayLoan(marketAddress, loan.id, repaymentAmount);
           payer = borrower;
           break;
         default:
@@ -1862,11 +1857,11 @@ describe("Contract 'LendingMarket': base tests", async () => {
         await repayLoanAndCheck(fixture, fixture.ordinaryLoan, REPAYMENT_AMOUNT, PayerKind.Stranger);
       });
 
-      it("There is a partial repayment from a liquidity pool after the loan is defaulted", async () => {
+      it("There is a partial repayment from a borrower after the loan is defaulted", async () => {
         const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
         const periodIndex = fixture.ordinaryLoanStartPeriod + fixture.ordinaryLoan.state.durationInPeriods + 1;
         await increaseBlockTimestampToPeriodIndex(periodIndex);
-        await repayLoanAndCheck(fixture, fixture.ordinaryLoan, REPAYMENT_AMOUNT, PayerKind.LiquidityPool);
+        await repayLoanAndCheck(fixture, fixture.ordinaryLoan, REPAYMENT_AMOUNT, PayerKind.Borrower);
       });
 
       it("There is a partial repayment from the borrower at the due date and another one a day after", async () => {
@@ -1965,8 +1960,6 @@ describe("Contract 'LendingMarket': base tests", async () => {
           connect(marketUnderLender, alias).repayLoanForBatch.staticCall(loanIds, repaymentAmounts, payer.address);
           tx = marketUnderLender.repayLoanForBatch(loanIds, repaymentAmounts, payer.address);
           break;
-        case PayerKind.LiquidityPool:
-          throw new Error("The liquidity pool is unable to call the function");
         default:
           payer = stranger;
           // Be sure the function can be called by an alias

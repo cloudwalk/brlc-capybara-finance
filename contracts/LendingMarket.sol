@@ -729,11 +729,6 @@ contract LendingMarket is
         address creditLine = _programCreditLines[loan.programId];
         address liquidityPool = _programLiquidityPools[loan.programId];
 
-        bool autoRepayment = _programLiquidityPools[loan.programId] == msg.sender;
-        if (autoRepayment) {
-            repayer = loan.borrower;
-        }
-
         loan.repaidAmount += repaymentAmount.toUint64();
         loan.trackedBalance = newOutstandingBalance.toUint64();
         loan.trackedTimestamp = _blockTimestamp().toUint32();
