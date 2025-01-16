@@ -3,7 +3,7 @@ import { expect } from "chai";
 import { Contract, ContractFactory } from "ethers";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import { checkContractUupsUpgrading, connect, getAddress, getLatestBlockTimestamp, proveTx } from "../test-utils/eth";
-import { checkEquality, maxUintForBits, roundMath, setUpFixture } from "../test-utils/common";
+import { checkEquality, maxUintForBits, setUpFixture } from "../test-utils/common";
 
 enum BorrowPolicy {
   SingleActiveLoan = 0,
@@ -188,7 +188,6 @@ const ADMIN_ROLE = ethers.id("ADMIN_ROLE");
 const PAUSER_ROLE = ethers.id("PAUSER_ROLE");
 
 const INTEREST_RATE_FACTOR = 10n ** 9n;
-const ACCURACY_FACTOR = 10000n;
 
 const MIN_BORROW_AMOUNT = 2n;
 const MAX_BORROW_AMOUNT = maxUintForBits(64) - 1n;
@@ -339,35 +338,16 @@ describe("Contract 'CreditLine'", async () => {
   }
 
   function createLoanTerms(
-    borrowAmount: bigint,
     durationInPeriods: bigint,
     borrowerConfig: BorrowerConfig
   ): LoanTerms {
-    const addonAmount = calculateAddonAmount(
-      borrowAmount,
-      durationInPeriods,
-      borrowerConfig.addonFixedRate,
-      borrowerConfig.addonPeriodRate,
-      INTEREST_RATE_FACTOR
-    );
     return {
       token: token.address,
       interestRatePrimary: borrowerConfig.interestRatePrimary,
       interestRateSecondary: borrowerConfig.interestRateSecondary,
       durationInPeriods,
-      addonAmount: roundMath(addonAmount, ACCURACY_FACTOR)
+      addonAmount: 0n
     };
-  }
-
-  function calculateAddonAmount(
-    borrowAmount: bigint,
-    durationInPeriods: bigint,
-    addonFixedRate: bigint,
-    addonPeriodRate: bigint,
-    interestRateFactor: bigint
-  ): bigint {
-    const addonRate = addonPeriodRate * durationInPeriods + addonFixedRate;
-    return (borrowAmount * addonRate) / (interestRateFactor - addonRate);
   }
 
   async function prepareLoan(market: Contract, props: { trackedBalance?: bigint } = {}): Promise<LoanState> {
@@ -1080,11 +1060,7 @@ describe("Contract 'CreditLine'", async () => {
       await proveTx(creditLineUnderAdmin.configureBorrower(borrower.address, borrowerConfig));
       await proveTx(creditLineUnderAdmin.setBorrowerState(borrower.address, borrowerState));
 
-      const expectedTerms: LoanTerms = createLoanTerms(
-        borrowAmount,
-        durationInPeriods,
-        borrowerConfig
-      );
+      const expectedTerms: LoanTerms = createLoanTerms(durationInPeriods, borrowerConfig);
       const actualTerms: LoanTerms = await creditLine.determineLoanTerms(
         borrower.address,
         borrowAmount,
@@ -1221,30 +1197,6 @@ describe("Contract 'CreditLine'", async () => {
 
       const actualValue = await creditLine.lateFeeRate();
       expect(actualValue).to.equal(LATE_FEE_RATE);
-    });
-  });
-
-  describe("Function 'calculateAddonAmount()'", async () => {
-    it("Returns correct values", async () => {
-      const { creditLine } = await setUpFixture(deployAndConfigureContractsWithBorrower);
-      const durationInPeriods = INTEREST_RATE_FACTOR / 2n / MIN_ADDON_PERIOD_RATE;
-      const actualValue = await creditLine.calculateAddonAmount(
-        BORROW_AMOUNT,
-        durationInPeriods,
-        MIN_ADDON_FIXED_RATE,
-        MIN_ADDON_PERIOD_RATE,
-        INTEREST_RATE_FACTOR
-      );
-
-      const expectedValue = calculateAddonAmount(
-        BORROW_AMOUNT,
-        durationInPeriods,
-        MIN_ADDON_FIXED_RATE,
-        MIN_ADDON_PERIOD_RATE,
-        INTEREST_RATE_FACTOR
-      );
-
-      expect(actualValue).to.eq(expectedValue);
     });
   });
 });

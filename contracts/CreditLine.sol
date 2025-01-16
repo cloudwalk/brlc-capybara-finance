@@ -308,14 +308,7 @@ contract CreditLine is AccessControlExtUpgradeable, PausableUpgradeable, ICredit
         terms.durationInPeriods = durationInPeriods.toUint32();
         terms.interestRatePrimary = borrowerConfig.interestRatePrimary;
         terms.interestRateSecondary = borrowerConfig.interestRateSecondary;
-        uint256 addonAmount = calculateAddonAmount(
-            borrowAmount,
-            durationInPeriods,
-            borrowerConfig.addonFixedRate,
-            borrowerConfig.addonPeriodRate,
-            Constants.INTEREST_RATE_FACTOR
-        );
-        terms.addonAmount = Rounding.roundMath(addonAmount, Constants.ACCURACY_FACTOR).toUint64();
+        // terms.addonAmount = 0;
     }
 
     /// @inheritdoc ICreditLinePrimary
@@ -346,30 +339,6 @@ contract CreditLine is AccessControlExtUpgradeable, PausableUpgradeable, ICredit
     // -------------------------------------------- //
     //  Pure functions                              //
     // -------------------------------------------- //
-
-    /// @dev Calculates the amount of a loan addon (extra charges or fees).
-    /// @param amount The initial principal amount of the loan.
-    /// @param durationInPeriods The duration of the loan in periods.
-    /// @param addonFixedRate The fixed rate of the loan addon (extra charges or fees).
-    /// @param addonPeriodRate The rate per period of the loan addon (extra charges or fees).
-    /// @param interestRateFactor The rate factor used together with interest rate.
-    /// @return The amount of the addon.
-    function calculateAddonAmount(
-        uint256 amount,
-        uint256 durationInPeriods,
-        uint256 addonFixedRate,
-        uint256 addonPeriodRate,
-        uint256 interestRateFactor
-    ) public pure returns (uint256) {
-        /// The initial formula for calculating the amount of the loan addon (extra charges or fees) is:
-        /// E = (A + E) * r (1)
-        /// where `A` -- the borrow amount, `E` -- addon, `r` -- the result addon rate (e.g. `1 %` => `0.01`),
-        /// Formula (1) can be rewritten as:
-        /// E = A * r / (1 - r) = A * (R / F) / (1 - R / F) = A * R / (F - R) (2)
-        /// where `R` -- the addon rate in units of the rate factor, `F` -- the interest rate factor.
-        uint256 addonRate = addonPeriodRate * durationInPeriods + addonFixedRate;
-        return (amount * addonRate) / (interestRateFactor - addonRate);
-    }
 
     /// @inheritdoc ICreditLinePrimary
     function proveCreditLine() external pure {}
