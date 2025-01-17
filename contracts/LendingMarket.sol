@@ -288,7 +288,7 @@ contract LendingMarket is
 
         for (uint256 i = 0; i < installmentCount; ++i) {
             uint256 loanId = _takeLoan(
-                borrower,
+                borrower, // Tools: this comment prevents Prettier from formatting into a single line.
                 programId,
                 borrowAmounts[i],
                 addonAmounts[i],
