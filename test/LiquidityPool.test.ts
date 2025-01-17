@@ -50,7 +50,6 @@ const ERROR_NAME_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST = "SafeCastOverflowedUintDow
 const EVENT_NAME_APPROVAL = "Approval";
 const EVENT_NAME_ADDON_TREASURY_CHANGED = "AddonTreasuryChanged";
 const EVENT_NAME_DEPOSIT = "Deposit";
-const EVENT_NAME_HOOK_CALL_RESULT = "HookCallResult";
 const EVENT_NAME_PAUSED = "Paused";
 const EVENT_NAME_RESCUE = "Rescue";
 const EVENT_NAME_UNPAUSED = "Unpaused";
@@ -625,11 +624,7 @@ describe("Contract 'LiquidityPool'", async () => {
       await prepareLoan({ loanId: LOAN_ID, borrowAmount: BORROW_AMOUNT, addonAmount: ADDON_AMOUNT });
       await proveTx(liquidityPool.deposit(DEPOSIT_AMOUNT));
 
-      const tx = market.callOnBeforeLoanTakenLiquidityPool(getAddress(liquidityPool), LOAN_ID);
-
-      await expect(tx)
-        .to.emit(market, EVENT_NAME_HOOK_CALL_RESULT)
-        .withArgs(true);
+      await proveTx(market.callOnBeforeLoanTakenLiquidityPool(getAddress(liquidityPool), LOAN_ID));
 
       const actualBalances = await liquidityPool.getBalances();
 
@@ -683,17 +678,9 @@ describe("Contract 'LiquidityPool'", async () => {
       const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
       await proveTx(liquidityPool.deposit(DEPOSIT_AMOUNT));
 
-      await expect(market.callOnAfterLoanPaymentLiquidityPool(
-        getAddress(liquidityPool),
-        LOAN_ID,
-        REPAY_AMOUNT
-      )).to.emit(
-        market,
-        EVENT_NAME_HOOK_CALL_RESULT
-      ).withArgs(true);
+      await proveTx(market.callOnAfterLoanPaymentLiquidityPool(getAddress(liquidityPool), LOAN_ID, REPAY_AMOUNT));
 
       const actualBalances = await liquidityPool.getBalances();
-
       expect(actualBalances[0]).to.eq(DEPOSIT_AMOUNT + REPAY_AMOUNT);
       expect(actualBalances[1]).to.eq(0n);
     });
@@ -749,11 +736,7 @@ describe("Contract 'LiquidityPool'", async () => {
       expect(actualBalancesBefore[0]).to.eq(DEPOSIT_AMOUNT - BORROW_AMOUNT - ADDON_AMOUNT + repaidAmount);
       expect(actualBalancesBefore[1]).to.eq(ADDON_AMOUNT);
 
-      const tx = market.callOnAfterLoanRevocationLiquidityPool(poolAddress, LOAN_ID);
-
-      await expect(tx)
-        .to.emit(market, EVENT_NAME_HOOK_CALL_RESULT)
-        .withArgs(true);
+      await proveTx(market.callOnAfterLoanRevocationLiquidityPool(poolAddress, LOAN_ID));
 
       const actualBalancesAfter: bigint[] = await liquidityPool.getBalances();
 

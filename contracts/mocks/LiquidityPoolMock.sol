@@ -15,9 +15,6 @@ contract LiquidityPoolMock {
     //  Storage variables                           //
     // -------------------------------------------- //
 
-    bool private _onBeforeLoanTakenResult;
-    bool private _onAfterLoanPaymentResult;
-    bool private _onAfterLoanRevocationResult;
     address private _addonTreasury;
 
     // -------------------------------------------- //
@@ -32,19 +29,16 @@ contract LiquidityPoolMock {
     //  Hook transactional functions                //
     // -------------------------------------------- //
 
-    function onBeforeLoanTaken(uint256 loanId) external returns (bool) {
+    function onBeforeLoanTaken(uint256 loanId) external {
         emit OnBeforeLoanTakenCalled(loanId);
-        return _onBeforeLoanTakenResult;
     }
 
-    function onAfterLoanPayment(uint256 loanId, uint256 repayAmount) external returns (bool) {
+    function onAfterLoanPayment(uint256 loanId, uint256 repayAmount) external {
         emit OnAfterLoanPaymentCalled(loanId, repayAmount);
-        return _onAfterLoanPaymentResult;
     }
 
-    function onAfterLoanRevocation(uint256 loanId) external returns (bool) {
+    function onAfterLoanRevocation(uint256 loanId) external {
         emit OnAfterLoanRevocationCalled(loanId);
-        return _onAfterLoanRevocationResult;
     }
 
     // -------------------------------------------- //

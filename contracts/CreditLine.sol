@@ -228,29 +228,25 @@ contract CreditLine is AccessControlExtUpgradeable, PausableUpgradeable, ICredit
     // -------------------------------------------- //
 
     /// @inheritdoc ICreditLineHooks
-    function onBeforeLoanTaken(uint256 loanId) external whenNotPaused onlyMarket returns (bool) {
+    function onBeforeLoanTaken(uint256 loanId) external whenNotPaused onlyMarket {
         Loan.State memory loan = ILendingMarket(_market).getLoanState(loanId);
         _openLoan(loan);
-        return true;
     }
 
     /// @inheritdoc ICreditLineHooks
-    function onAfterLoanPayment(uint256 loanId, uint256 repayAmount) external whenNotPaused onlyMarket returns (bool) {
+    function onAfterLoanPayment(uint256 loanId, uint256 repayAmount) external whenNotPaused onlyMarket {
         repayAmount; // To prevent compiler warning about unused variable
 
         Loan.State memory loan = ILendingMarket(_market).getLoanState(loanId);
         if (loan.trackedBalance == 0) {
             _closeLoan(loan);
         }
-
-        return true;
     }
 
     /// @inheritdoc ICreditLineHooks
-    function onAfterLoanRevocation(uint256 loanId) external whenNotPaused onlyMarket returns (bool) {
+    function onAfterLoanRevocation(uint256 loanId) external whenNotPaused onlyMarket {
         Loan.State memory loan = ILendingMarket(_market).getLoanState(loanId);
         _closeLoan(loan);
-        return true;
     }
 
     // -------------------------------------------- //

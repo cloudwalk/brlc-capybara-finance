@@ -116,16 +116,16 @@ interface ILiquidityPoolConfiguration {
 interface ILiquidityPoolHooks {
     /// @dev A hook that is triggered by the associated market before a loan is taken.
     /// @param loanId The unique identifier of the loan being taken.
-    function onBeforeLoanTaken(uint256 loanId) external returns (bool);
+    function onBeforeLoanTaken(uint256 loanId) external;
 
     /// @dev A hook that is triggered by the associated market after the loan payment.
     /// @param loanId The unique identifier of the loan being paid.
     /// @param repayAmount The amount of tokens that was repaid.
-    function onAfterLoanPayment(uint256 loanId, uint256 repayAmount) external returns (bool);
+    function onAfterLoanPayment(uint256 loanId, uint256 repayAmount) external;
 
     /// @dev A hook that is triggered by the associated market after the loan revocation.
     /// @param loanId The unique identifier of the loan being revoked.
-    function onAfterLoanRevocation(uint256 loanId) external returns (bool);
+    function onAfterLoanRevocation(uint256 loanId) external;
 }
 
 /// @title ILiquidityPoolErrors interface
