@@ -1133,14 +1133,11 @@ contract LendingMarket is
         Loan.State storage loan
     ) internal view returns (uint256) {
         address creditLine = _programCreditLines[loan.programId];
-        uint256 lateFeeRate = creditLine != address(0) ? ICreditLine(creditLine).lateFeeRate() : 0;
-        uint256 product = outstandingBalance * lateFeeRate;
-        uint256 reminder = product % Constants.INTEREST_RATE_FACTOR;
-        uint256 result = product / Constants.INTEREST_RATE_FACTOR;
-        if (reminder >= (Constants.INTEREST_RATE_FACTOR / 2)) {
-            ++result;
+        if (creditLine != address(0)) {
+            return ICreditLine(creditLine).determineLateFeeAmount(outstandingBalance);
+        } else {
+            return 0;
         }
-        return result;
     }
 
     /// @dev Updates the stored late fee amount for a loan.
