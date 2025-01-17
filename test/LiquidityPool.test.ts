@@ -469,19 +469,20 @@ describe("Contract 'LiquidityPool'", async () => {
   });
 
   describe("Function 'withdraw()'", async () => {
-    async function withdrawAndCheck(liquidityPool: Contract, props: {
-      borrowableBalance: bigint;
-      addonBalance: bigint;
-      borrowableAmount: bigint;
-      addonAmount: bigint;
-    }) {
-      const { borrowableAmount, addonAmount, borrowableBalance, addonBalance } = props;
+    it("Executes as expected if only the borrowable balance is withdrawn", async () => {
+      const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
+      const borrowableBalance = BORROW_AMOUNT * 2n;
+      const addonBalance = ADDON_AMOUNT * 2n;
+      const borrowableAmount = (BORROW_AMOUNT);
+      const addonAmount = 0n;
+
+      await prepareCertainBalances(liquidityPool, { borrowableBalance, addonBalance });
       const tx: Promise<TransactionResponse> = liquidityPool.withdraw(borrowableAmount, addonAmount);
 
       await expect(tx).to.changeTokenBalances(
         token,
         [lender.address, getAddress(liquidityPool)],
-        [(borrowableAmount + addonAmount), -(borrowableAmount + addonAmount)]
+        [borrowableAmount, -borrowableAmount]
       );
       await expect(tx)
         .to.emit(liquidityPool, EVENT_NAME_WITHDRAWAL)
@@ -489,46 +490,7 @@ describe("Contract 'LiquidityPool'", async () => {
 
       const actualBalancesAfter: bigint[] = await liquidityPool.getBalances();
       expect(actualBalancesAfter[0]).to.eq(borrowableBalance - borrowableAmount);
-      expect(actualBalancesAfter[1]).to.eq(addonBalance - addonAmount);
-    }
-
-    it("Executes as expected if only the borrowable balance is withdrawn", async () => {
-      const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
-      const borrowableBalance = BORROW_AMOUNT * 2n;
-      const addonBalance = ADDON_AMOUNT * 2n;
-      await prepareCertainBalances(liquidityPool, { borrowableBalance, addonBalance });
-      await withdrawAndCheck(liquidityPool, {
-        borrowableBalance,
-        addonBalance,
-        borrowableAmount: BORROW_AMOUNT,
-        addonAmount: 0n
-      });
-    });
-
-    it("Executes as expected if only the addon balance is withdrawn", async () => {
-      const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
-      const borrowableBalance = BORROW_AMOUNT * 2n;
-      const addonBalance = ADDON_AMOUNT * 2n;
-      await prepareCertainBalances(liquidityPool, { borrowableBalance, addonBalance });
-      await withdrawAndCheck(liquidityPool, {
-        borrowableBalance,
-        addonBalance,
-        borrowableAmount: 0n,
-        addonAmount: ADDON_AMOUNT
-      });
-    });
-
-    it("Executes as expected if both the balances are withdrawn", async () => {
-      const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
-      const borrowableBalance = BORROW_AMOUNT * 2n;
-      const addonBalance = ADDON_AMOUNT * 2n;
-      await prepareCertainBalances(liquidityPool, { borrowableBalance, addonBalance });
-      await withdrawAndCheck(liquidityPool, {
-        borrowableBalance,
-        addonBalance,
-        borrowableAmount: borrowableBalance,
-        addonAmount: addonBalance
-      });
+      expect(actualBalancesAfter[1]).to.eq(0n);
     });
 
     it("Is reverted if the caller does not have the owner role", async () => {
@@ -546,19 +508,24 @@ describe("Contract 'LiquidityPool'", async () => {
         .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_INVALID_AMOUNT);
     });
 
+    it("Is reverted if the addon balance is withdrawn with a non-zero amount", async () => {
+      const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
+      await prepareCertainBalances(liquidityPool, { borrowableBalance: DEPOSIT_AMOUNT, addonBalance: ADDON_AMOUNT });
+      let borrowableAmount = 1n;
+
+      await expect(liquidityPool.withdraw(borrowableAmount, 1n))
+        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_INVALID_AMOUNT);
+
+      borrowableAmount = 0n;
+      await expect(liquidityPool.withdraw(borrowableAmount, 1n))
+        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_INVALID_AMOUNT);
+    });
+
     it("Is reverted if the borrowable balance is withdrawn with a greater amount", async () => {
       const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
       await proveTx(liquidityPool.deposit(DEPOSIT_AMOUNT));
 
       await expect(liquidityPool.withdraw(DEPOSIT_AMOUNT + 1n, 0n))
-        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_INSUFFICIENT_BALANCE);
-    });
-
-    it("Is reverted if the addon balance is withdrawn with a greater amount", async () => {
-      const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
-      await prepareCertainBalances(liquidityPool, { borrowableBalance: DEPOSIT_AMOUNT, addonBalance: ADDON_AMOUNT });
-
-      await expect(liquidityPool.withdraw(0n, ADDON_AMOUNT + 1n))
         .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_INSUFFICIENT_BALANCE);
     });
 
@@ -629,11 +596,7 @@ describe("Contract 'LiquidityPool'", async () => {
       const actualBalances = await liquidityPool.getBalances();
 
       expect(actualBalances[0]).to.eq(DEPOSIT_AMOUNT - BORROW_AMOUNT - ADDON_AMOUNT);
-      if (addonTreasuryAddress === ZERO_ADDRESS) {
-        expect(actualBalances[1]).to.eq(ADDON_AMOUNT);
-      } else {
-        expect(actualBalances[1]).to.eq(0);
-      }
+      expect(actualBalances[1]).to.eq(0);
     }
 
     it("Executes as expected if the addon treasury address is zero", async () => {
@@ -734,7 +697,7 @@ describe("Contract 'LiquidityPool'", async () => {
 
       const actualBalancesBefore: bigint[] = await liquidityPool.getBalances();
       expect(actualBalancesBefore[0]).to.eq(DEPOSIT_AMOUNT - BORROW_AMOUNT - ADDON_AMOUNT + repaidAmount);
-      expect(actualBalancesBefore[1]).to.eq(ADDON_AMOUNT);
+      expect(actualBalancesBefore[1]).to.eq(0n);
 
       await proveTx(market.callOnAfterLoanRevocationLiquidityPool(poolAddress, LOAN_ID));
 
