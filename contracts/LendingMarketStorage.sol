@@ -2,16 +2,12 @@
 
 pragma solidity 0.8.24;
 
-import { Loan } from "./common/libraries/Loan.sol";
+import { Loan } from "./libraries/Loan.sol";
 
 /// @title LendingMarketStorage contract
 /// @author CloudWalk Inc. (See https://cloudwalk.io)
 /// @dev Defines the storage layout for the lending market contract.
 abstract contract LendingMarketStorage {
-    // -------------------------------------------- //
-    //  Storage variables                           //
-    // -------------------------------------------- //
-
     /// @dev The loan identifier counter.
     uint256 internal _loanIdCounter;
 

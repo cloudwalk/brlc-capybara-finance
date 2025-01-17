@@ -6,28 +6,37 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 
-import { Loan } from "../common/libraries/Loan.sol";
-import { Error } from "../common/libraries/Error.sol";
-import { SafeCast } from "../common/libraries/SafeCast.sol";
+import { AccessControlExtUpgradeable } from "./base/AccessControlExtUpgradeable.sol";
+import { UUPSExtUpgradeable } from "./base/UUPSExtUpgradeable.sol";
+import { Versionable } from "./base/Versionable.sol";
 
-import { ICreditLine } from "../common/interfaces/core/ICreditLine.sol";
-import { ILendingMarket } from "../common/interfaces/core/ILendingMarket.sol";
-import { ILiquidityPool } from "../common/interfaces/core/ILiquidityPool.sol";
-import { ILiquidityPoolAccountable } from "../common/interfaces/ILiquidityPoolAccountable.sol";
-import { AccessControlExtUpgradeable } from "../common/AccessControlExtUpgradeable.sol";
-import { Versionable } from "../common/Versionable.sol";
+import { Error } from "./libraries/Error.sol";
+import { Loan } from "./libraries/Loan.sol";
+import { SafeCast } from "./libraries/SafeCast.sol";
 
-/// @title LiquidityPoolAccountable contract
+import { ICreditLine } from "./interfaces/ICreditLine.sol";
+import { ILendingMarket } from "./interfaces/ILendingMarket.sol";
+import { ILiquidityPool } from "./interfaces/ILiquidityPool.sol";
+import { ILiquidityPoolConfiguration } from "./interfaces/ILiquidityPool.sol";
+import { ILiquidityPoolHooks } from "./interfaces/ILiquidityPool.sol";
+import { ILiquidityPoolPrimary } from "./interfaces/ILiquidityPool.sol";
+
+/// @title LiquidityPool contract
 /// @author CloudWalk Inc. (See https://cloudwalk.io)
-/// @dev Implementation of the accountable liquidity pool contract.
-contract LiquidityPoolAccountable is
+/// @dev The upgradable liquidity pool contract.
+contract LiquidityPool is
     AccessControlExtUpgradeable,
     PausableUpgradeable,
-    ILiquidityPoolAccountable,
-    Versionable
+    ILiquidityPool,
+    Versionable,
+    UUPSExtUpgradeable
 {
     using SafeERC20 for IERC20;
     using SafeCast for uint256;
+
+    // -------------------------------------------- //
+    //  Constants                                   //
+    // -------------------------------------------- //
 
     /// @dev The role of this contract owner.
     bytes32 public constant OWNER_ROLE = keccak256("OWNER_ROLE");
@@ -69,23 +78,6 @@ contract LiquidityPoolAccountable is
     uint256[46] private __gap;
 
     // -------------------------------------------- //
-    //  Errors                                      //
-    // -------------------------------------------- //
-
-    /// @dev Thrown when attempting to zero the addon treasury address.
-    ///
-    /// Zeroing the addon treasury address is prohibited because this can lead to a situation where
-    /// a loan is taken when it is non-zero and revoked when it is zero, which will lead to
-    /// an incorrect value of the `_addonsBalance` variable, or a reversion if `_addonsBalance == 0`.
-    error AddonTreasuryAddressZeroingProhibited();
-
-    /// @dev Thrown when the addon treasury has not provided an allowance for the lending market to transfer its tokens.
-    error AddonTreasuryZeroAllowanceForMarket();
-
-    /// @dev Thrown when the token source balance is insufficient.
-    error InsufficientBalance();
-
-    // -------------------------------------------- //
     //  Modifiers                                   //
     // -------------------------------------------- //
 
@@ -95,6 +87,16 @@ contract LiquidityPoolAccountable is
             revert Error.Unauthorized();
         }
         _;
+    }
+
+    // -------------------------------------------- //
+    //  Constructor                                 //
+    // -------------------------------------------- //
+
+    /// @dev Constructor that prohibits the initialization of the implementation of the upgradable contract.
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
     }
 
     // -------------------------------------------- //
@@ -161,7 +163,7 @@ contract LiquidityPoolAccountable is
     }
 
     // -------------------------------------------- //
-    //  Pauser functions                            //
+    //  Pauser transactional functions              //
     // -------------------------------------------- //
 
     /// @dev Pauses the contract.
@@ -175,10 +177,19 @@ contract LiquidityPoolAccountable is
     }
 
     // -------------------------------------------- //
-    //  Owner functions                            //
+    //  Configuration transactional functions       //
     // -------------------------------------------- //
 
-    /// @inheritdoc ILiquidityPoolAccountable
+    /// @inheritdoc ILiquidityPoolConfiguration
+    function setAddonTreasury(address newTreasury) external onlyRole(OWNER_ROLE) {
+        _setAddonTreasury(newTreasury);
+    }
+
+    // -------------------------------------------- //
+    //  Primary transactional functions             //
+    // -------------------------------------------- //
+
+    /// @inheritdoc ILiquidityPoolPrimary
     function deposit(uint256 amount) external onlyRole(OWNER_ROLE) {
         if (amount == 0) {
             revert Error.InvalidAmount();
@@ -196,7 +207,7 @@ contract LiquidityPoolAccountable is
         emit Deposit(amount);
     }
 
-    /// @inheritdoc ILiquidityPoolAccountable
+    /// @inheritdoc ILiquidityPoolPrimary
     function withdraw(uint256 borrowableAmount, uint256 addonAmount) external onlyRole(OWNER_ROLE) {
         if (borrowableAmount == 0 && addonAmount == 0) {
             revert Error.InvalidAmount();
@@ -217,7 +228,7 @@ contract LiquidityPoolAccountable is
         emit Withdrawal(borrowableAmount, addonAmount);
     }
 
-    /// @inheritdoc ILiquidityPoolAccountable
+    /// @inheritdoc ILiquidityPoolPrimary
     function rescue(address token_, uint256 amount) external onlyRole(OWNER_ROLE) {
         if (token_ == address(0)) {
             revert Error.ZeroAddress();
@@ -231,16 +242,7 @@ contract LiquidityPoolAccountable is
         emit Rescue(token_, amount);
     }
 
-    /// @inheritdoc ILiquidityPoolAccountable
-    function setAddonTreasury(address newTreasury) external onlyRole(OWNER_ROLE) {
-        _setAddonTreasury(newTreasury);
-    }
-
-    // -------------------------------------------- //
-    //  Admin functions                             //
-    // -------------------------------------------- //
-
-    /// @inheritdoc ILiquidityPoolAccountable
+    /// @inheritdoc ILiquidityPoolPrimary
     function autoRepay(uint256[] memory loanIds, uint256[] memory amounts) external whenNotPaused onlyRole(ADMIN_ROLE) {
         if (loanIds.length != amounts.length) {
             revert Error.ArrayLengthMismatch();
@@ -255,10 +257,10 @@ contract LiquidityPoolAccountable is
     }
 
     // -------------------------------------------- //
-    //  Market functions                            //
+    //  Hook transactional functions                //
     // -------------------------------------------- //
 
-    /// @inheritdoc ILiquidityPool
+    /// @inheritdoc ILiquidityPoolHooks
     function onBeforeLoanTaken(uint256 loanId) external whenNotPaused onlyMarket returns (bool) {
         Loan.State memory loan = ILendingMarket(_market).getLoanState(loanId);
         _borrowableBalance -= loan.borrowAmount + loan.addonAmount;
@@ -266,14 +268,14 @@ contract LiquidityPoolAccountable is
         return true;
     }
 
-    /// @inheritdoc ILiquidityPool
+    /// @inheritdoc ILiquidityPoolHooks
     function onAfterLoanPayment(uint256 loanId, uint256 amount) external whenNotPaused onlyMarket returns (bool) {
         loanId; // To prevent compiler warning about unused variable
         _borrowableBalance += amount.toUint64();
         return true;
     }
 
-    /// @inheritdoc ILiquidityPool
+    /// @inheritdoc ILiquidityPoolHooks
     function onAfterLoanRevocation(uint256 loanId) external whenNotPaused onlyMarket returns (bool) {
         Loan.State memory loan = ILendingMarket(_market).getLoanState(loanId);
         if (loan.borrowAmount > loan.repaidAmount) {
@@ -289,36 +291,36 @@ contract LiquidityPoolAccountable is
     //  View functions                              //
     // -------------------------------------------- //
 
-    /// @inheritdoc ILiquidityPoolAccountable
-    function getBalances() external view returns (uint256, uint256) {
-        return (_borrowableBalance, _addonsBalance);
-    }
-
-    /// @inheritdoc ILiquidityPoolAccountable
+    /// @inheritdoc ILiquidityPoolConfiguration
     function isAdmin(address account) external view returns (bool) {
         return hasRole(ADMIN_ROLE, account);
     }
 
-    /// @inheritdoc ILiquidityPool
+    /// @inheritdoc ILiquidityPoolPrimary
+    function addonTreasury() external view returns (address) {
+        return _addonTreasury;
+    }
+
+    /// @inheritdoc ILiquidityPoolPrimary
+    function getBalances() external view returns (uint256, uint256) {
+        return (_borrowableBalance, _addonsBalance);
+    }
+
+    /// @inheritdoc ILiquidityPoolPrimary
     function market() external view returns (address) {
         return _market;
     }
 
-    /// @inheritdoc ILiquidityPool
+    /// @inheritdoc ILiquidityPoolPrimary
     function token() external view returns (address) {
         return _token;
-    }
-
-    /// @inheritdoc ILiquidityPool
-    function addonTreasury() external view returns (address) {
-        return _addonTreasury;
     }
 
     // -------------------------------------------- //
     //  Pure functions                              //
     // -------------------------------------------- //
 
-    /// @inheritdoc ILiquidityPool
+    /// @inheritdoc ILiquidityPoolPrimary
     function proveLiquidityPool() external pure {}
 
     // -------------------------------------------- //
@@ -356,6 +358,15 @@ contract LiquidityPoolAccountable is
     function _revokeLoanAddon(uint64 addonAmount) internal {
         if (_addonTreasury == address(0)) {
             _addonsBalance -= addonAmount;
+        }
+    }
+
+    /// @dev The upgrade validation function for the UUPSExtUpgradeable contract.
+    /// @param newImplementation The address of the new implementation.
+    ///
+    function _validateUpgrade(address newImplementation) internal view override onlyRole(OWNER_ROLE) {
+        try ILiquidityPool(newImplementation).proveLiquidityPool() {} catch {
+            revert Error.ImplementationAddressInvalid();
         }
     }
 }

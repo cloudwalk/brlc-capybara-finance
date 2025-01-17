@@ -2,8 +2,8 @@ import { ethers, upgrades } from "hardhat";
 import { expect } from "chai";
 import { Contract, ContractFactory, TransactionResponse } from "ethers";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
-import { connect, getAddress, proveTx } from "../../test-utils/eth";
-import { checkEquality, maxUintForBits, setUpFixture } from "../../test-utils/common";
+import { checkContractUupsUpgrading, connect, getAddress, proveTx } from "../test-utils/eth";
+import { checkEquality, maxUintForBits, setUpFixture } from "../test-utils/common";
 
 interface LoanState {
   programId: bigint;
@@ -33,6 +33,7 @@ interface Version {
   [key: string]: number; // Indexing signature to ensure that fields are iterated over in a key-value style
 }
 
+const ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED = "AccessControlUnauthorizedAccount";
 const ERROR_NAME_ADDON_TREASURY_ADDRESS_ZEROING_PROHIBITED = "AddonTreasuryAddressZeroingProhibited";
 const ERROR_NAME_ADDON_TREASURY_ZERO_ALLOWANCE_FOR_MARKET = "AddonTreasuryZeroAllowanceForMarket";
 const ERROR_NAME_ALREADY_CONFIGURED = "AlreadyConfigured";
@@ -41,8 +42,8 @@ const ERROR_NAME_ARRAY_LENGTH_MISMATCH = "ArrayLengthMismatch";
 const ERROR_NAME_ENFORCED_PAUSED = "EnforcedPause";
 const ERROR_NAME_INSUFFICIENT_BALANCE = "InsufficientBalance";
 const ERROR_NAME_INVALID_AMOUNT = "InvalidAmount";
+const ERROR_NAME_IMPLEMENTATION_ADDRESS_INVALID = "ImplementationAddressInvalid";
 const ERROR_NAME_NOT_PAUSED = "ExpectedPause";
-const ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED = "AccessControlUnauthorizedAccount";
 const ERROR_NAME_UNAUTHORIZED = "Unauthorized";
 const ERROR_NAME_ZERO_ADDRESS = "ZeroAddress";
 const ERROR_NAME_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST = "SafeCastOverflowedUintDowncast";
@@ -76,7 +77,7 @@ const AUTO_REPAY_LOAN_IDS = [123n, 234n, 345n, 123n];
 const AUTO_REPAY_AMOUNTS = [10_123_456n, 1n, maxUintForBits(256), 0n];
 const EXPECTED_VERSION: Version = {
   major: 1,
-  minor: 7,
+  minor: 8,
   patch: 0
 };
 
@@ -100,7 +101,7 @@ const defaultLoanState: LoanState = {
   discountAmount: 0n
 };
 
-describe("Contract 'LiquidityPoolAccountable'", async () => {
+describe("Contract 'LiquidityPool'", async () => {
   let liquidityPoolFactory: ContractFactory;
   let tokenFactory: ContractFactory;
   let marketFactory: ContractFactory;
@@ -121,7 +122,7 @@ describe("Contract 'LiquidityPoolAccountable'", async () => {
     [deployer, lender, admin, attacker, addonTreasury] = await ethers.getSigners();
 
     // Factories with an explicitly specified deployer account
-    liquidityPoolFactory = await ethers.getContractFactory("LiquidityPoolAccountable");
+    liquidityPoolFactory = await ethers.getContractFactory("LiquidityPool");
     liquidityPoolFactory = liquidityPoolFactory.connect(deployer);
     tokenFactory = await ethers.getContractFactory("ERC20Mock");
     tokenFactory = tokenFactory.connect(deployer);
@@ -142,11 +143,15 @@ describe("Contract 'LiquidityPoolAccountable'", async () => {
   });
 
   async function deployLiquidityPool(): Promise<{ liquidityPool: Contract }> {
-    let liquidityPool = await upgrades.deployProxy(liquidityPoolFactory, [
-      lender.address,
-      marketAddress,
-      tokenAddress
-    ]);
+    let liquidityPool = await upgrades.deployProxy(
+      liquidityPoolFactory,
+      [
+        lender.address,
+        marketAddress,
+        tokenAddress
+      ],
+      { kind: "uups" }
+    );
 
     await liquidityPool.waitForDeployment();
     liquidityPool = connect(liquidityPool, lender); // Explicitly specifying the initial account
@@ -256,6 +261,31 @@ describe("Contract 'LiquidityPoolAccountable'", async () => {
       const { liquidityPool } = await setUpFixture(deployLiquidityPool);
       const liquidityPoolVersion = await liquidityPool.$__VERSION();
       checkEquality(liquidityPoolVersion, EXPECTED_VERSION);
+    });
+  });
+
+  describe("Function 'upgradeToAndCall()'", async () => {
+    it("Executes as expected", async () => {
+      const { liquidityPool } = await setUpFixture(deployLiquidityPool);
+      await checkContractUupsUpgrading(liquidityPool, liquidityPoolFactory);
+    });
+
+    it("Is reverted if the caller is not the owner", async () => {
+      const { liquidityPool } = await setUpFixture(deployLiquidityPool);
+
+      await expect(connect(liquidityPool, attacker).upgradeToAndCall(liquidityPool, "0x"))
+        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
+        .withArgs(attacker.address, OWNER_ROLE);
+    });
+
+    it("Is reverted if the provided implementation address is not a liquidity pool contract", async () => {
+      const { liquidityPool } = await setUpFixture(deployLiquidityPool);
+      const mockContractFactory = await ethers.getContractFactory("UUPSExtUpgradeableMock");
+      const mockContract = await mockContractFactory.deploy() as Contract;
+      await mockContract.waitForDeployment();
+
+      await expect(liquidityPool.upgradeToAndCall(mockContract, "0x"))
+        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_IMPLEMENTATION_ADDRESS_INVALID);
     });
   });
 

@@ -2,29 +2,17 @@
 
 pragma solidity 0.8.24;
 
-import { Loan } from "../common/libraries/Loan.sol";
-import { Error } from "../common/libraries/Error.sol";
-import { ICreditLine } from "../common/interfaces/core/ICreditLine.sol";
+import { Error } from "../libraries/Error.sol";
+import { Loan } from "../libraries/Loan.sol";
+import { ICreditLine } from "../interfaces/ICreditLine.sol";
 
 /// @title CreditLineMock contract
 /// @author CloudWalk Inc. (See https://cloudwalk.io)
 /// @dev Mock of the `CreditLine` contract used for testing.
-contract CreditLineMock is ICreditLine {
-    // -------------------------------------------- //
-    //  Events                                      //
-    // -------------------------------------------- //
-
-    event OnBeforeLoanTakenCalled(uint256 indexed loanId);
-
-    event OnAfterLoanPaymentCalled(uint256 indexed loanId, uint256 indexed repayAmount);
-
-    event OnAfterLoanRevocationCalled(uint256 indexed loanId);
-
+contract CreditLineMock {
     // -------------------------------------------- //
     //  Storage variables                           //
     // -------------------------------------------- //
-
-    address private _tokenAddress;
 
     mapping(address => Loan.Terms) private _loanTerms;
 
@@ -37,7 +25,17 @@ contract CreditLineMock is ICreditLine {
     uint256 private _lateFeeRate;
 
     // -------------------------------------------- //
-    //  ICreditLine functions                       //
+    //  Events                                      //
+    // -------------------------------------------- //
+
+    event OnBeforeLoanTakenCalled(uint256 indexed loanId);
+
+    event OnAfterLoanPaymentCalled(uint256 indexed loanId, uint256 indexed repayAmount);
+
+    event OnAfterLoanRevocationCalled(uint256 indexed loanId);
+
+    // -------------------------------------------- //
+    //  Hook transactional functions                //
     // -------------------------------------------- //
 
     function onBeforeLoanTaken(uint256 loanId) external returns (bool) {
@@ -55,6 +53,23 @@ contract CreditLineMock is ICreditLine {
         return _onAfterLoanRevocationResult;
     }
 
+    // -------------------------------------------- //
+    //  Mock transactional functions                //
+    // -------------------------------------------- //
+
+    function mockLoanTerms(address borrower, uint256 amount, Loan.Terms memory terms) external {
+        amount; // To prevent compiler warning about unused variable
+        _loanTerms[borrower] = terms;
+    }
+
+    function mockLateFeeRate(uint256 newRate) external {
+        _lateFeeRate = newRate;
+    }
+
+    // -------------------------------------------- //
+    //  View and pure functions                     //
+    // -------------------------------------------- //
+
     function determineLoanTerms(
         address borrower,
         uint256 borrowAmount,
@@ -65,37 +80,8 @@ contract CreditLineMock is ICreditLine {
         terms.durationInPeriods = uint32(durationInPeriods);
     }
 
-    function market() external pure returns (address) {
-        revert Error.NotImplemented();
-    }
-
-    function lender() external pure returns (address) {
-        revert Error.NotImplemented();
-    }
-
-    function token() external view returns (address) {
-        return _tokenAddress;
-    }
-
     function lateFeeRate() external view returns (uint256) {
         return _lateFeeRate;
-    }
-
-    // -------------------------------------------- //
-    //  Mock functions                              //
-    // -------------------------------------------- //
-
-    function mockTokenAddress(address tokenAddress) external {
-        _tokenAddress = tokenAddress;
-    }
-
-    function mockLoanTerms(address borrower, uint256 amount, Loan.Terms memory terms) external {
-        amount; // To prevent compiler warning about unused variable
-        _loanTerms[borrower] = terms;
-    }
-
-    function mockLateFeeRate(uint256 newRate) external {
-        _lateFeeRate = newRate;
     }
 
     function proveCreditLine() external pure {}

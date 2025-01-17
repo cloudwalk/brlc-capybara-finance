@@ -171,11 +171,11 @@ describe("Contract 'LendingMarket': complex tests", async () => {
     // Factories with an explicitly specified deployer account
     let tokenFactory: ContractFactory = await ethers.getContractFactory("ERC20Mock");
     tokenFactory = tokenFactory.connect(owner);
-    let lendingMarketFactory: ContractFactory = await ethers.getContractFactory("LendingMarketUUPS");
+    let lendingMarketFactory: ContractFactory = await ethers.getContractFactory("LendingMarket");
     lendingMarketFactory = lendingMarketFactory.connect(owner);
-    let creditLineFactory: ContractFactory = await ethers.getContractFactory("CreditLineConfigurableUUPS");
+    let creditLineFactory: ContractFactory = await ethers.getContractFactory("CreditLine");
     creditLineFactory = creditLineFactory.connect(owner);
-    let liquidityPoolFactory: ContractFactory = await ethers.getContractFactory("LiquidityPoolAccountableUUPS");
+    let liquidityPoolFactory: ContractFactory = await ethers.getContractFactory("LiquidityPool");
     liquidityPoolFactory = liquidityPoolFactory.connect(owner);
 
     // Deploy the token contract

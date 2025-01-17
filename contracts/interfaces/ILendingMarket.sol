@@ -2,11 +2,11 @@
 
 pragma solidity 0.8.24;
 
-import { Loan } from "../../libraries/Loan.sol";
+import { Loan } from "../libraries/Loan.sol";
 
-/// @title ILendingMarket interface
+/// @title ILendingMarketPrimary interface
 /// @author CloudWalk Inc. (See https://cloudwalk.io)
-/// @dev Defines the lending market contract functions and events.
+/// @dev The primary part of the lending market contract interface.
 ///
 /// The lending market supports two types of loans:
 ///
@@ -26,7 +26,7 @@ import { Loan } from "../../libraries/Loan.sol";
 /// Note: Throughout the code, the terms "loan" (without additional specification), "sub-loan", and "installment"
 /// are used interchangeably since they all represent the same underlying loan structure in the smart contract.
 /// Unless otherwise specified, a smart-contract function is applicable to both ordinary loans and sub-loans.
-interface ILendingMarket {
+interface ILendingMarketPrimary {
     // -------------------------------------------- //
     //  Events                                      //
     // -------------------------------------------- //
@@ -73,17 +73,17 @@ interface ILendingMarket {
         uint256 outstandingBalance
     );
 
-    /// @dev Emitted when a loan is frozen.
-    /// @param loanId The unique identifier of the loan.
-    event LoanFrozen(uint256 indexed loanId);
-
-    /// @dev Emitted when a loan is unfrozen.
-    /// @param loanId The unique identifier of the loan.
-    event LoanUnfrozen(uint256 indexed loanId);
-
     /// @dev Emitted when a loan is revoked.
     /// @param loanId The unique identifier of the loan.
     event LoanRevoked(uint256 indexed loanId);
+
+    /// @dev Emitted when an installment loan is revoked.
+    /// @param firstInstallmentId The ID of the first sub-loan of the installment loan.
+    /// @param installmentCount The total number of installments.
+    event InstallmentLoanRevoked(
+        uint256 indexed firstInstallmentId, // Tools: this comment prevents Prettier from formatting into a single line.
+        uint256 installmentCount
+    );
 
     /// @dev Emitted when a loan is discounted.
     /// @param loanId The unique identifier of the loan.
@@ -95,13 +95,13 @@ interface ILendingMarket {
         uint256 newTrackedBalance
     );
 
-    /// @dev Emitted when an installment loan is revoked.
-    /// @param firstInstallmentId The ID of the first sub-loan of the installment loan.
-    /// @param installmentCount The total number of installments.
-    event InstallmentLoanRevoked(
-        uint256 indexed firstInstallmentId, // Tools: this comment prevents Prettier from formatting into a single line.
-        uint256 installmentCount
-    );
+    /// @dev Emitted when a loan is frozen.
+    /// @param loanId The unique identifier of the loan.
+    event LoanFrozen(uint256 indexed loanId);
+
+    /// @dev Emitted when a loan is unfrozen.
+    /// @param loanId The unique identifier of the loan.
+    event LoanUnfrozen(uint256 indexed loanId);
 
     /// @dev Emitted when the duration of the loan is updated.
     /// @param loanId The unique identifier of the loan.
@@ -133,52 +133,8 @@ interface ILendingMarket {
         uint256 indexed oldInterestRate
     );
 
-    /// @dev Emitted when a new credit line is registered.
-    /// @param lender The address of the lender who registered the credit line.
-    /// @param creditLine The address of the credit line registered.
-    event CreditLineRegistered(
-        address indexed lender, // Tools: this comment prevents Prettier from formatting into a single line.
-        address indexed creditLine
-    );
-
-    /// @dev Emitted when a new liquidity pool is registered.
-    /// @param lender The address of the lender who registered the liquidity pool.
-    /// @param liquidityPool The address of the liquidity pool registered.
-    event LiquidityPoolRegistered(
-        address indexed lender, // Tools: this comment prevents Prettier from formatting into a single line.
-        address indexed liquidityPool
-    );
-
-    /// @dev Emitted when a new program is created.
-    /// @param lender The address of the lender who created the program.
-    /// @param programId The unique identifier of the program.
-    event ProgramCreated(
-        address indexed lender, // Tools: this comment prevents Prettier from formatting into a single line.
-        uint32 indexed programId
-    );
-
-    /// @dev Emitted when a program is updated.
-    /// @param programId The unique identifier of the program.
-    /// @param creditLine The address of the credit line associated with the program.
-    /// @param liquidityPool The address of the liquidity pool associated with the program.
-    event ProgramUpdated(
-        uint32 indexed programId, // Tools: this comment prevents Prettier from formatting into a single line.
-        address indexed creditLine,
-        address indexed liquidityPool
-    );
-
-    /// @dev Emitted when a lender alias is configured.
-    /// @param lender The address of the lender account.
-    /// @param account The address of the alias account.
-    /// @param isAlias True if the account is configured as an alias, otherwise false.
-    event LenderAliasConfigured(
-        address indexed lender, // Tools: this comment prevents Prettier from formatting into a single line.
-        address indexed account,
-        bool isAlias
-    );
-
     // -------------------------------------------- //
-    //  Borrower functions                          //
+    //  Transactional functions                     //
     // -------------------------------------------- //
 
     /// @dev Takes an ordinary loan.
@@ -245,6 +201,14 @@ interface ILendingMarket {
         address repayer
     ) external;
 
+    /// @dev Revokes an ordinary loan.
+    /// @param loanId The unique identifier of the loan to revoke.
+    function revokeLoan(uint256 loanId) external;
+
+    /// @dev Revokes an installment loan by revoking all of its sub-loans.
+    /// @param loanId The unique identifier of any sub-loan of the installment loan to revoke.
+    function revokeInstallmentLoan(uint256 loanId) external;
+
     /// @dev Discounts a batch of loans.
     ///
     /// Can be called only by an account with a special role.
@@ -256,29 +220,6 @@ interface ILendingMarket {
         uint256[] calldata loanIds, // Tools: this comment prevents Prettier from formatting into a single line.
         uint256[] calldata discountAmounts
     ) external;
-
-    // -------------------------------------------- //
-    //  Lender functions                            //
-    // -------------------------------------------- //
-
-    /// @dev Registers a credit line.
-    /// @param creditLine The address of the credit line to register.
-    function registerCreditLine(address creditLine) external;
-
-    /// @dev Registers a liquidity pool.
-    /// @param liquidityPool The address of the liquidity pool to register.
-    function registerLiquidityPool(address liquidityPool) external;
-
-    /// @dev Creates a new program.
-    /// @param creditLine The address of the credit line to associate with the program.
-    /// @param liquidityPool The address of the liquidity pool to associate with the program.
-    function createProgram(address creditLine, address liquidityPool) external;
-
-    /// @dev Updates an existing program.
-    /// @param programId The unique identifier of the program to update.
-    /// @param creditLine The address of the credit line to associate with the program.
-    /// @param liquidityPool The address of the liquidity pool to associate with the program.
-    function updateProgram(uint32 programId, address creditLine, address liquidityPool) external;
 
     /// @dev Freezes an ordinary loan or a sub-loan.
     /// @param loanId The unique identifier of the loan to freeze.
@@ -303,25 +244,8 @@ interface ILendingMarket {
     /// @param newInterestRate The new secondary interest rate of the loan.
     function updateLoanInterestRateSecondary(uint256 loanId, uint256 newInterestRate) external;
 
-    /// @dev Configures an alias for a lender.
-    /// @param account The address to configure as an alias.
-    /// @param isAlias True if the account is an alias, otherwise false.
-    function configureAlias(address account, bool isAlias) external;
-
     // -------------------------------------------- //
-    //  Borrower OR Lender functions                //
-    // -------------------------------------------- //
-
-    /// @dev Revokes an ordinary loan.
-    /// @param loanId The unique identifier of the loan to revoke.
-    function revokeLoan(uint256 loanId) external;
-
-    /// @dev Revokes an installment loan by revoking all of its sub-loans.
-    /// @param loanId The unique identifier of any sub-loan of the installment loan to revoke.
-    function revokeInstallmentLoan(uint256 loanId) external;
-
-    // -------------------------------------------- //
-    //  View functions                              //
+    //  View and pure functions                     //
     // -------------------------------------------- //
 
     /// @dev Gets the lender of a credit line.
@@ -392,12 +316,6 @@ interface ILendingMarket {
     /// @param account The address to check whether it's a lender or an alias.
     function isProgramLenderOrAlias(uint32 programId, address account) external view returns (bool);
 
-    /// @dev Checks if the provided account is an alias for a lender.
-    /// @param lender The address of the lender to check alias for.
-    /// @param account The address to check whether it's an alias or not.
-    /// @return True if the account is an alias for the lender, otherwise false.
-    function hasAlias(address lender, address account) external view returns (bool);
-
     /// @dev Returns the rate factor used to for interest rate calculations.
     function interestRateFactor() external view returns (uint256);
 
@@ -417,3 +335,151 @@ interface ILendingMarket {
     /// @dev Proves the contract is the lending market one. A marker function.
     function proveLendingMarket() external pure;
 }
+
+/// @title ILendingMarketConfiguration interface
+/// @author CloudWalk Inc. (See https://cloudwalk.io)
+/// @dev The configuration part of the lending market contract interface.
+interface ILendingMarketConfiguration {
+    // -------------------------------------------- //
+    //  Events                                      //
+    // -------------------------------------------- //
+
+    /// @dev Emitted when a new credit line is registered.
+    /// @param lender The address of the lender who registered the credit line.
+    /// @param creditLine The address of the credit line registered.
+    event CreditLineRegistered(
+        address indexed lender, // Tools: this comment prevents Prettier from formatting into a single line.
+        address indexed creditLine
+    );
+
+    /// @dev Emitted when a new liquidity pool is registered.
+    /// @param lender The address of the lender who registered the liquidity pool.
+    /// @param liquidityPool The address of the liquidity pool registered.
+    event LiquidityPoolRegistered(
+        address indexed lender, // Tools: this comment prevents Prettier from formatting into a single line.
+        address indexed liquidityPool
+    );
+
+    /// @dev Emitted when a new program is created.
+    /// @param lender The address of the lender who created the program.
+    /// @param programId The unique identifier of the program.
+    event ProgramCreated(
+        address indexed lender, // Tools: this comment prevents Prettier from formatting into a single line.
+        uint32 indexed programId
+    );
+
+    /// @dev Emitted when a program is updated.
+    /// @param programId The unique identifier of the program.
+    /// @param creditLine The address of the credit line associated with the program.
+    /// @param liquidityPool The address of the liquidity pool associated with the program.
+    event ProgramUpdated(
+        uint32 indexed programId, // Tools: this comment prevents Prettier from formatting into a single line.
+        address indexed creditLine,
+        address indexed liquidityPool
+    );
+
+    /// @dev Emitted when a lender alias is configured.
+    /// @param lender The address of the lender account.
+    /// @param account The address of the alias account.
+    /// @param isAlias True if the account is configured as an alias, otherwise false.
+    event LenderAliasConfigured(
+        address indexed lender, // Tools: this comment prevents Prettier from formatting into a single line.
+        address indexed account,
+        bool isAlias
+    );
+
+    // -------------------------------------------- //
+    //  Transactional functions                     //
+    // -------------------------------------------- //
+
+    /// @dev Registers a credit line.
+    /// @param creditLine The address of the credit line to register.
+    function registerCreditLine(address creditLine) external;
+
+    /// @dev Registers a liquidity pool.
+    /// @param liquidityPool The address of the liquidity pool to register.
+    function registerLiquidityPool(address liquidityPool) external;
+
+    /// @dev Creates a new program.
+    /// @param creditLine The address of the credit line to associate with the program.
+    /// @param liquidityPool The address of the liquidity pool to associate with the program.
+    function createProgram(address creditLine, address liquidityPool) external;
+
+    /// @dev Updates an existing program.
+    /// @param programId The unique identifier of the program to update.
+    /// @param creditLine The address of the credit line to associate with the program.
+    /// @param liquidityPool The address of the liquidity pool to associate with the program.
+    function updateProgram(uint32 programId, address creditLine, address liquidityPool) external;
+
+    /// @dev Configures an alias for a lender.
+    /// @param account The address to configure as an alias.
+    /// @param isAlias True if the account is an alias, otherwise false.
+    function configureAlias(address account, bool isAlias) external;
+
+    // -------------------------------------------- //
+    //  View functions                              //
+    // -------------------------------------------- //
+
+    /// @dev Checks if the provided account is an alias for a lender.
+    /// @param lender The address of the lender to check alias for.
+    /// @param account The address to check whether it's an alias or not.
+    /// @return True if the account is an alias for the lender, otherwise false.
+    function hasAlias(address lender, address account) external view returns (bool);
+}
+
+/// @title ILendingMarketErrors interface
+/// @author CloudWalk Inc. (See https://cloudwalk.io)
+/// @dev Defines the custom errors used in the lending market contract.
+interface ILendingMarketErrors {
+    /// @dev Thrown when the loan ID exceeds the maximum allowed value.
+    error LoanIdExcess();
+
+    /// @dev Thrown when the loan does not exist.
+    error LoanNotExist();
+
+    /// @dev Thrown when the loan is not frozen.
+    error LoanNotFrozen();
+
+    /// @dev Thrown when the loan is already repaid.
+    error LoanAlreadyRepaid();
+
+    /// @dev Thrown when the loan is already frozen.
+    error LoanAlreadyFrozen();
+
+    /// @dev Thrown when the loan type according to the provided ID does not match the expected one.
+    /// @param actualType The actual type of the loan.
+    /// @param expectedType The expected type of the loan.
+    error LoanTypeUnexpected(Loan.Type actualType, Loan.Type expectedType);
+
+    /// @dev Thrown when the credit line is not configured.
+    error CreditLineLenderNotConfigured();
+
+    /// @dev Thrown when the liquidity pool is not configured.
+    error LiquidityPoolLenderNotConfigured();
+
+    /// @dev Thrown when provided interest rate is inappropriate.
+    error InappropriateInterestRate();
+
+    /// @dev Thrown when provided loan duration is inappropriate.
+    error InappropriateLoanDuration();
+
+    /// @dev Thrown when the cooldown period has passed.
+    error CooldownPeriodHasPassed();
+
+    /// @dev Thrown when the program does not exist.
+    error ProgramNotExist();
+
+    /// @dev Thrown when the provided address does not belong to a contract of expected type or a contract at all.
+    error ContractAddressInvalid();
+
+    /// @dev Thrown when the provided duration array is invalid.
+    error DurationArrayInvalid();
+
+    /// @dev Thrown when the installment count exceeds the maximum allowed value.
+    error InstallmentCountExcess();
+}
+
+/// @title ILendingMarket interface
+/// @author CloudWalk Inc. (See https://cloudwalk.io)
+/// @dev The full interface of the lending market contract.
+interface ILendingMarket is ILendingMarketPrimary, ILendingMarketConfiguration, ILendingMarketErrors {}

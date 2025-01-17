@@ -2,41 +2,42 @@
 
 pragma solidity 0.8.24;
 
-import { Error } from "../common/libraries/Error.sol";
-import { ILiquidityPool } from "../common/interfaces/core/ILiquidityPool.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { ILendingMarket } from "../common/interfaces/core/ILendingMarket.sol";
+
+import { Error } from "../libraries/Error.sol";
+import { ILendingMarket } from "../interfaces/ILendingMarket.sol";
 
 /// @title LiquidityPoolMock contract
 /// @author CloudWalk Inc. (See https://cloudwalk.io)
 /// @dev Mock of the `LiquidityPool` contract used for testing.
-contract LiquidityPoolMock is ILiquidityPool {
+contract LiquidityPoolMock {
+    // -------------------------------------------- //
+    //  Storage variables                           //
+    // -------------------------------------------- //
+
+    bool private _onBeforeLoanTakenResult;
+    bool private _onAfterLoanPaymentResult;
+    bool private _onAfterLoanRevocationResult;
+    address private _addonTreasury;
+
     // -------------------------------------------- //
     //  Events                                      //
     // -------------------------------------------- //
 
     event OnBeforeLoanTakenCalled(uint256 indexed loanId);
-
     event OnAfterLoanPaymentCalled(uint256 indexed loanId, uint256 indexed repayAmount);
-
     event OnAfterLoanRevocationCalled(uint256 indexed loanId);
 
     // -------------------------------------------- //
-    //  Storage variables                           //
+    //  Primary transactional functions             //
     // -------------------------------------------- //
 
-    address private _tokenAddress;
-
-    bool private _onBeforeLoanTakenResult;
-
-    bool private _onAfterLoanPaymentResult;
-
-    bool private _onAfterLoanRevocationResult;
-
-    address private _addonTreasury;
+    function repayLoan(address _market, uint256 loanId, uint256 amount) external {
+        ILendingMarket(_market).repayLoan(loanId, amount);
+    }
 
     // -------------------------------------------- //
-    //  ILiquidityPool functions                    //
+    //  Hook transactional functions                //
     // -------------------------------------------- //
 
     function onBeforeLoanTaken(uint256 loanId) external returns (bool) {
@@ -54,29 +55,9 @@ contract LiquidityPoolMock is ILiquidityPool {
         return _onAfterLoanRevocationResult;
     }
 
-    function market() external pure returns (address) {
-        revert Error.NotImplemented();
-    }
-
-    function lender() external pure returns (address) {
-        revert Error.NotImplemented();
-    }
-
-    function token() external view returns (address) {
-        return _tokenAddress;
-    }
-
-    function addonTreasury() external view returns (address) {
-        return _addonTreasury;
-    }
-
     // -------------------------------------------- //
-    //  Mock functions                              //
+    //  Mock transactional functions                //
     // -------------------------------------------- //
-
-    function mockTokenAddress(address tokenAddress) external {
-        _tokenAddress = tokenAddress;
-    }
 
     function approveMarket(address _market, address token_) external {
         IERC20(token_).approve(_market, type(uint56).max);
@@ -86,9 +67,13 @@ contract LiquidityPoolMock is ILiquidityPool {
         _addonTreasury = newTreasury;
     }
 
-    function proveLiquidityPool() external pure {}
+    // -------------------------------------------- //
+    //  View and pure functions                     //
+    // -------------------------------------------- //
 
-    function repayLoan(address _market, uint256 loanId, uint256 amount) external {
-        ILendingMarket(_market).repayLoan(loanId, amount);
+    function addonTreasury() external view returns (address) {
+        return _addonTreasury;
     }
+
+    function proveLiquidityPool() external pure {}
 }
