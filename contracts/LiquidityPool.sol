@@ -62,15 +62,16 @@ contract LiquidityPool is
 
     /// @dev The addons balance of the liquidity pool.
     ///
-    /// It is used only if the addon amount of loans is retained on the pool contract.
-    /// If the addon amount of loans transfers to an external addon treasury this variable is kept unchanged.
+    /// IMPORTANT! Deprecated since version 1.9.0. Now this variable is always zero.
+    ///
     /// See the comments of the {_addonTreasury} storage variable for more details.
     uint64 internal _addonsBalance;
 
     /// @dev The address of the addon treasury.
     ///
-    /// If the address is zero the addon amount of a loan is retained in the pool.
-    /// Otherwise the addon amount transfers to that treasury when a loan is taken and back when a loan is revoked.
+    /// Previously, this address affected the pool logic.
+    /// But since version 1.9.0, the ability to save the addon amount in the pool has become deprecated.
+    /// Now the addon amount must always be output to an external wallet. The addon balance of the pool is always zero.
     address internal _addonTreasury;
 
     /// @dev This empty reserved space is put in place to allow future versions
@@ -209,19 +210,18 @@ contract LiquidityPool is
 
     /// @inheritdoc ILiquidityPoolPrimary
     function withdraw(uint256 borrowableAmount, uint256 addonAmount) external onlyRole(OWNER_ROLE) {
-        if (borrowableAmount == 0 && addonAmount == 0) {
+        if (borrowableAmount == 0) {
+            revert Error.InvalidAmount();
+        }
+        if (addonAmount != 0) {
             revert Error.InvalidAmount();
         }
 
         if (_borrowableBalance < borrowableAmount) {
             revert InsufficientBalance();
         }
-        if (_addonsBalance < addonAmount) {
-            revert InsufficientBalance();
-        }
 
         _borrowableBalance -= borrowableAmount.toUint64();
-        _addonsBalance -= addonAmount.toUint64();
 
         IERC20(_token).safeTransfer(msg.sender, borrowableAmount + addonAmount);
 
@@ -250,7 +250,6 @@ contract LiquidityPool is
     function onBeforeLoanTaken(uint256 loanId) external whenNotPaused onlyMarket {
         Loan.State memory loan = ILendingMarket(_market).getLoanState(loanId);
         _borrowableBalance -= loan.borrowAmount + loan.addonAmount;
-        _collectLoanAddon(loan.addonAmount);
     }
 
     /// @inheritdoc ILiquidityPoolHooks
@@ -267,7 +266,6 @@ contract LiquidityPool is
         } else {
             _borrowableBalance = _borrowableBalance - (loan.repaidAmount - loan.borrowAmount) + loan.addonAmount;
         }
-        _revokeLoanAddon(loan.addonAmount);
     }
 
     // -------------------------------------------- //
@@ -324,24 +322,6 @@ contract LiquidityPool is
         }
         emit AddonTreasuryChanged(newTreasury, oldTreasury);
         _addonTreasury = newTreasury;
-    }
-
-    /// @dev Collects the addon amount depending on the addon treasury address.
-    ///
-    /// See the comments of the {_addonTreasury} storage variable for more details.
-    function _collectLoanAddon(uint64 addonAmount) internal {
-        if (_addonTreasury == address(0)) {
-            _addonsBalance += addonAmount;
-        }
-    }
-
-    /// @dev Revokes the addon amount depending on the addon treasury address.
-    ///
-    /// See the comments of the {_addonTreasury} storage variable for more details.
-    function _revokeLoanAddon(uint64 addonAmount) internal {
-        if (_addonTreasury == address(0)) {
-            _addonsBalance -= addonAmount;
-        }
     }
 
     /// @dev The upgrade validation function for the UUPSExtUpgradeable contract.

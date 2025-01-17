@@ -16,7 +16,7 @@ interface ILiquidityPoolPrimary {
 
     /// @dev Emitted when tokens are withdrawn from the liquidity pool.
     /// @param borrowableAmount The amount of tokens withdrawn from the borrowable balance.
-    /// @param addonAmount The amount of tokens withdrawn from the addons balance.
+    /// @param addonAmount Deprecated since version 1.9.0. This amount is always zero now.
     event Withdrawal(uint256 borrowableAmount, uint256 addonAmount);
 
     /// @dev Emitted when tokens are rescued from the liquidity pool.
@@ -34,7 +34,8 @@ interface ILiquidityPoolPrimary {
 
     /// @dev Withdraws tokens from the liquidity pool.
     /// @param borrowableAmount The amount of tokens to withdraw from the borrowable balance.
-    /// @param addonAmount The amount of tokens to withdraw from the addons balance.
+    /// @param addonAmount This parameter has been deprecated since version 1.9.0 and must be zero.
+    ///        See the {addonTreasury} function comments for more details.
     function withdraw(uint256 borrowableAmount, uint256 addonAmount) external;
 
     /// @dev Rescues tokens from the liquidity pool.
@@ -54,17 +55,16 @@ interface ILiquidityPoolPrimary {
 
     /// @dev Returns the addon treasury address.
     ///
-    /// If the address is zero the addon amount of a loan is retained in the pool.
-    /// Otherwise the addon amount transfers to that treasury when a loan is taken and back when a loan is revoked.
+    /// Previously, this address affected the pool logic.
+    /// But since version 1.9.0, the ability to save the addon amount in the pool has become deprecated.
+    /// Now the addon amount must always be output to an external wallet. The addon balance of the pool is always zero.
     ///
     /// @return The current address of the addon treasury.
     function addonTreasury() external view returns (address);
 
     /// @dev Gets the borrowable and addons balances of the liquidity pool.
     ///
-    /// The addons part of the balance is changes only if the addon amount of loans is retained on the pool contract.
-    /// If the addon amount of loans transfers to an external addon treasury that part is kept unchanged.
-    /// See the {addonTreasury} function comments for more details.
+    /// The addons part of the balance has been deprecated since version 1.9.0 and now it always equals zero.
     ///
     /// @return The borrowable and addons balances.
     function getBalances() external view returns (uint256, uint256);

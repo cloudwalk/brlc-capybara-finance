@@ -1161,8 +1161,11 @@ contract LendingMarket is
         address liquidityPool = _programLiquidityPools[loan.programId];
         address token = loan.token;
         address addonTreasury = ILiquidityPool(liquidityPool).addonTreasury();
+        if (addonTreasury == address(0)) {
+            revert AddonTreasuryAddressZero();
+        }
         IERC20(token).safeTransferFrom(liquidityPool, loan.borrower, borrowAmount);
-        if (addonTreasury != address(0)) {
+        if (addonAmount != 0) {
             IERC20(token).safeTransferFrom(liquidityPool, addonTreasury, addonAmount);
         }
     }
@@ -1181,13 +1184,15 @@ contract LendingMarket is
         address liquidityPool = _programLiquidityPools[loan.programId];
         address token = loan.token;
         address addonTreasury = ILiquidityPool(liquidityPool).addonTreasury();
-
+        if (addonTreasury == address(0)) {
+            revert AddonTreasuryAddressZero();
+        }
         if (repaidAmount < borrowAmount) {
             IERC20(loan.token).safeTransferFrom(loan.borrower, liquidityPool, borrowAmount - repaidAmount);
         } else if (repaidAmount != borrowAmount) {
             IERC20(loan.token).safeTransferFrom(liquidityPool, loan.borrower, repaidAmount - borrowAmount);
         }
-        if (addonTreasury != address(0)) {
+        if (addonAmount != 0) {
             IERC20(token).safeTransferFrom(addonTreasury, liquidityPool, addonAmount);
         }
     }

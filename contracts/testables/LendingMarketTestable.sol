@@ -45,6 +45,15 @@ contract LendingMarketTestable is LendingMarket {
         installmentCountMax = newValue;
     }
 
+    /// @dev Set the zero addon amount for a batch of loans.
+    /// @param loanIds The unique identifiers of the loans to zero the addon amount.
+    function zeroAddonAmountBatch(uint256[] calldata loanIds) external {
+        uint256 len = loanIds.length;
+        for (uint256 i = 0; i < len; ++i) {
+            _loans[loanIds[i]].addonAmount = 0;
+        }
+    }
+
     // -------------------------------------------- //
     //  Internal functions                          //
     // -------------------------------------------- //
