@@ -205,7 +205,7 @@ const INTEREST_RATE_FACTOR = 10n ** 9n;
 
 const EXPECTED_VERSION: Version = {
   major: 1,
-  minor: 8,
+  minor: 9,
   patch: 0
 };
 
