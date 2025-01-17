@@ -15,7 +15,7 @@ contract CreditLineMock {
     // -------------------------------------------- //
 
     mapping(address => Loan.Terms) private _loanTerms;
-    uint256 private _lateFeeRate;
+    uint256 private _lateFeeAmount;
 
     // -------------------------------------------- //
     //  Events                                      //
@@ -50,8 +50,8 @@ contract CreditLineMock {
         _loanTerms[borrower] = terms;
     }
 
-    function mockLateFeeRate(uint256 newRate) external {
-        _lateFeeRate = newRate;
+    function mockLateFeeAmount(uint256 newAmount) external {
+        _lateFeeAmount = newAmount;
     }
 
     // -------------------------------------------- //
@@ -68,8 +68,9 @@ contract CreditLineMock {
         terms.durationInPeriods = uint32(durationInPeriods);
     }
 
-    function lateFeeRate() external view returns (uint256) {
-        return _lateFeeRate;
+    function determineLateFeeAmount(uint256 loanTrackedBalance) external view returns (uint256) {
+        loanTrackedBalance; // To prevent compiler warning about unused variable
+        return _lateFeeAmount;
     }
 
     function proveCreditLine() external pure {}

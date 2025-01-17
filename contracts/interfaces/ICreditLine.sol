@@ -47,14 +47,16 @@ interface ICreditLinePrimary is ICreditLineTypes {
         uint256 durationInPeriods
     ) external view returns (Loan.Terms memory terms);
 
+    /// @dev Returns the late fee amount that might be applied to a loan if it is overdue.
+    /// @param loanTrackedBalance The tracked balance of the loan as the base to calculate the late fee amount.
+    /// @return The amount of the late fee.
+    function determineLateFeeAmount(uint256 loanTrackedBalance) external view returns (uint256);
+
     /// @dev Returns the address of the associated lending market.
     function market() external view returns (address);
 
     /// @dev Returns the address of the credit line token.
     function token() external view returns (address);
-
-    /// @dev Returns the late fee rate to be applied to loans taken out with this credit line.
-    function lateFeeRate() external view returns (uint256);
 
     /// @dev Retrieves the configuration of a borrower.
     /// @param borrower The address of the borrower to check.

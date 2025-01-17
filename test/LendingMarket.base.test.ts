@@ -29,7 +29,7 @@ interface LoanTerms {
 }
 
 interface LoanConfig {
-  lateFeeRate: number;
+  lateFeeAmount: number;
 }
 
 interface LoanState {
@@ -195,7 +195,7 @@ const FULL_REPAYMENT_AMOUNT = ethers.MaxUint256;
 const INTEREST_RATE_FACTOR = 10 ** 9;
 const INTEREST_RATE_PRIMARY = INTEREST_RATE_FACTOR / 10;
 const INTEREST_RATE_SECONDARY = INTEREST_RATE_FACTOR / 5;
-const LATE_FEE_RATE = INTEREST_RATE_FACTOR / 50; // 2%
+const LATE_FEE_AMOUNT = ACCURACY_FACTOR / 2 - 1;
 const PERIOD_IN_SECONDS = 86400;
 const DURATION_IN_PERIODS = 10;
 const ALIAS_STATUS_CONFIGURED = true;
@@ -236,7 +236,7 @@ const defaultLoanState: LoanState = {
 };
 
 const defaultLoanConfig: LoanConfig = {
-  lateFeeRate: 0
+  lateFeeAmount: 0
 };
 
 const defaultLoan: Loan = {
@@ -357,7 +357,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
     id: number;
     borrowAmount: number;
     addonAmount: number;
-    lateFeeRate: number;
+    lateFeeAmount: number;
     timestamp: number;
   }): Loan {
     const timestampWithOffset = calculateTimestampWithOffset(props.timestamp);
@@ -377,7 +377,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
     };
     const loanConfig: LoanConfig = {
       ...defaultLoanConfig,
-      lateFeeRate: props.lateFeeRate
+      lateFeeAmount: props.lateFeeAmount
     };
     return {
       id: props.id,
@@ -391,7 +391,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
     borrowAmounts: number[];
     addonAmounts: number[];
     durations: number[];
-    lateFeeRate: number;
+    lateFeeAmount: number;
     timestamp: number;
   }): Loan[] {
     const timestampWithOffset = calculateTimestampWithOffset(props.timestamp);
@@ -415,7 +415,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       };
       const loanConfig: LoanConfig = {
         ...defaultLoanConfig,
-        lateFeeRate: props.lateFeeRate
+        lateFeeAmount: props.lateFeeAmount
       };
       loans.push({ id: props.firstInstallmentId + i, state: loanState, config: loanConfig });
     }
@@ -455,12 +455,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
     const duePeriodIndex = startPeriodIndex + loan.state.durationInPeriods;
 
     if (periodIndex > duePeriodIndex && trackedPeriodIndex <= duePeriodIndex) {
-      const outstandingBalance = calculateOutstandingBalance(
-        loan.state.trackedBalance,
-        duePeriodIndex - trackedPeriodIndex,
-        loan.state.interestRatePrimary
-      );
-      return Math.round(outstandingBalance * loan.config.lateFeeRate / INTEREST_RATE_FACTOR);
+      return loan.config.lateFeeAmount;
     } else {
       return 0;
     }
@@ -654,9 +649,9 @@ describe("Contract 'LendingMarket': base tests", async () => {
     const fixture = await deployLendingMarketAndConfigureItForLoan();
     const { market, marketUnderLender } = fixture;
 
-    // Configure the late fee rate
-    const lateFeeRate = (LATE_FEE_RATE);
-    await proveTx(creditLine.mockLateFeeRate(lateFeeRate));
+    // Configure the late fee amount
+    const lateFeeAmount = (LATE_FEE_AMOUNT);
+    await proveTx(creditLine.mockLateFeeAmount(lateFeeAmount));
 
     // Take an ordinary loan
     const ordinaryLoanId = Number(await market.loanCounter());
@@ -671,7 +666,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       id: ordinaryLoanId,
       borrowAmount: BORROW_AMOUNT,
       addonAmount: ADDON_AMOUNT,
-      lateFeeRate,
+      lateFeeAmount,
       timestamp: await getBlockTimestamp(txReceipt1.blockNumber)
     });
     fixture.ordinaryLoanStartPeriod = calculatePeriodIndex(fixture.ordinaryLoan.state.startTimestamp);
@@ -692,7 +687,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       borrowAmounts: BORROW_AMOUNTS,
       addonAmounts: ADDON_AMOUNTS,
       durations: DURATIONS_IN_PERIODS,
-      lateFeeRate,
+      lateFeeAmount,
       timestamp
     });
     fixture.installmentLoanStartPeriodIndex =
@@ -1175,7 +1170,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
         id: expectedLoanId,
         borrowAmount: BORROW_AMOUNT,
         addonAmount,
-        lateFeeRate: 0,
+        lateFeeAmount: LATE_FEE_AMOUNT,
         timestamp
       });
 
@@ -1493,7 +1488,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
         borrowAmounts,
         addonAmounts,
         durations: durationsInPeriods,
-        lateFeeRate: 0,
+        lateFeeAmount: LATE_FEE_AMOUNT,
         timestamp
       });
 
@@ -3325,6 +3320,17 @@ describe("Contract 'LendingMarket': base tests", async () => {
       for (let i = 0; i < loans.length; ++i) {
         checkEquality(actualLoanPreviews[i], expectedLoanPreviews[i], i);
       }
+
+      // The loan after defaulting and no credit line registered for the program ID.
+      // The late fee amount must be zero in this case.
+      const loan = clone(loans[0]);
+      await proveTx(
+        market.setCreditLineForProgram(loan.state.programId, ZERO_ADDRESS) // Call via the testable version
+      );
+      loan.config.lateFeeAmount = 0;
+      const expectedLoanPreview = determineLoanPreview(loan, timestamp);
+      const actualLoanPreview = await market.getLoanPreview(loan.id, timestamp);
+      checkEquality(actualLoanPreview, expectedLoanPreview);
     });
 
     it("Function 'getLoanPreviewExtendedBatch()' executes as expected", async () => {

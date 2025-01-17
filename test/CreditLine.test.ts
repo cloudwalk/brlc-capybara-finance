@@ -201,6 +201,7 @@ const LOAN_ID = 123n;
 const ADDON_AMOUNT = 123456789n;
 const REPAY_AMOUNT = 12345678n;
 const LATE_FEE_RATE = 987654321n;
+const INTEREST_RATE_FACTOR = 10n ** 9n;
 
 const EXPECTED_VERSION: Version = {
   major: 1,
@@ -1166,12 +1167,32 @@ describe("Contract 'CreditLine'", async () => {
     });
   });
 
-  describe("Function 'lateFeeRate()'", async () => {
+  describe("Function 'determineLateFeeAmount()'", async () => {
     it("Returns the expected value", async () => {
-      const { creditLine } = await setUpFixture(deployAndConfigureContractsWithBorrower);
+      const { creditLine, creditLineConfig } = await setUpFixture(deployAndConfigureContractsWithBorrower);
+      const lateFeeRate = INTEREST_RATE_FACTOR / 1000n;
+      const creditLineConfigNew = { ...creditLineConfig, lateFeeRate };
+      await proveTx(creditLine.configureCreditLine(creditLineConfigNew));
 
-      const actualValue = await creditLine.lateFeeRate();
-      expect(actualValue).to.equal(LATE_FEE_RATE);
+      let loanTrackedBalance = 0n;
+      let actualValue = await creditLine.determineLateFeeAmount(loanTrackedBalance);
+      let expectedValue = 0n; // round(loanTrackedBalance * lateFeeRate / INTEREST_RATE_FACTOR)
+      expect(actualValue).to.equal(expectedValue);
+
+      loanTrackedBalance = 1000n;
+      actualValue = await creditLine.determineLateFeeAmount(loanTrackedBalance);
+      expectedValue = 1n; // round(loanTrackedBalance * lateFeeRate / INTEREST_RATE_FACTOR)
+      expect(actualValue).to.equal(expectedValue);
+
+      loanTrackedBalance = 1499n;
+      actualValue = await creditLine.determineLateFeeAmount(loanTrackedBalance);
+      expectedValue = 1n; // round(loanTrackedBalance * lateFeeRate / INTEREST_RATE_FACTOR)
+      expect(actualValue).to.equal(expectedValue);
+
+      loanTrackedBalance = 1500n;
+      actualValue = await creditLine.determineLateFeeAmount(loanTrackedBalance);
+      expectedValue = 2n; // round(loanTrackedBalance * lateFeeRate / INTEREST_RATE_FACTOR)
+      expect(actualValue).to.equal(expectedValue);
     });
   });
 });
