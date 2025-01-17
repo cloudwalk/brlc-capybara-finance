@@ -15,13 +15,6 @@ contract CreditLineMock {
     // -------------------------------------------- //
 
     mapping(address => Loan.Terms) private _loanTerms;
-
-    bool private _onBeforeLoanTakenResult;
-
-    bool private _onAfterLoanPaymentResult;
-
-    bool private _onAfterLoanRevocationResult;
-
     uint256 private _lateFeeRate;
 
     // -------------------------------------------- //
@@ -29,28 +22,23 @@ contract CreditLineMock {
     // -------------------------------------------- //
 
     event OnBeforeLoanTakenCalled(uint256 indexed loanId);
-
     event OnAfterLoanPaymentCalled(uint256 indexed loanId, uint256 indexed repayAmount);
-
     event OnAfterLoanRevocationCalled(uint256 indexed loanId);
 
     // -------------------------------------------- //
     //  Hook transactional functions                //
     // -------------------------------------------- //
 
-    function onBeforeLoanTaken(uint256 loanId) external returns (bool) {
+    function onBeforeLoanTaken(uint256 loanId) external {
         emit OnBeforeLoanTakenCalled(loanId);
-        return _onBeforeLoanTakenResult;
     }
 
-    function onAfterLoanPayment(uint256 loanId, uint256 repayAmount) external returns (bool) {
+    function onAfterLoanPayment(uint256 loanId, uint256 repayAmount) external {
         emit OnAfterLoanPaymentCalled(loanId, repayAmount);
-        return _onAfterLoanPaymentResult;
     }
 
-    function onAfterLoanRevocation(uint256 loanId) external returns (bool) {
+    function onAfterLoanRevocation(uint256 loanId) external {
         emit OnAfterLoanRevocationCalled(loanId);
-        return _onAfterLoanRevocationResult;
     }
 
     // -------------------------------------------- //

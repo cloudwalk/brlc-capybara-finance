@@ -247,22 +247,20 @@ contract LiquidityPool is
     // -------------------------------------------- //
 
     /// @inheritdoc ILiquidityPoolHooks
-    function onBeforeLoanTaken(uint256 loanId) external whenNotPaused onlyMarket returns (bool) {
+    function onBeforeLoanTaken(uint256 loanId) external whenNotPaused onlyMarket {
         Loan.State memory loan = ILendingMarket(_market).getLoanState(loanId);
         _borrowableBalance -= loan.borrowAmount + loan.addonAmount;
         _collectLoanAddon(loan.addonAmount);
-        return true;
     }
 
     /// @inheritdoc ILiquidityPoolHooks
-    function onAfterLoanPayment(uint256 loanId, uint256 amount) external whenNotPaused onlyMarket returns (bool) {
+    function onAfterLoanPayment(uint256 loanId, uint256 amount) external whenNotPaused onlyMarket {
         loanId; // To prevent compiler warning about unused variable
         _borrowableBalance += amount.toUint64();
-        return true;
     }
 
     /// @inheritdoc ILiquidityPoolHooks
-    function onAfterLoanRevocation(uint256 loanId) external whenNotPaused onlyMarket returns (bool) {
+    function onAfterLoanRevocation(uint256 loanId) external whenNotPaused onlyMarket {
         Loan.State memory loan = ILendingMarket(_market).getLoanState(loanId);
         if (loan.borrowAmount > loan.repaidAmount) {
             _borrowableBalance = _borrowableBalance + (loan.borrowAmount - loan.repaidAmount) + loan.addonAmount;
@@ -270,7 +268,6 @@ contract LiquidityPool is
             _borrowableBalance = _borrowableBalance - (loan.repaidAmount - loan.borrowAmount) + loan.addonAmount;
         }
         _revokeLoanAddon(loan.addonAmount);
-        return true;
     }
 
     // -------------------------------------------- //

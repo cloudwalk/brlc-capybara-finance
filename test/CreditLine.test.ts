@@ -180,14 +180,11 @@ const EVENT_NAME_BORROWER_CONFIGURED = "BorrowerConfigured";
 const EVENT_NAME_CREDIT_LINE_CONFIGURED = "CreditLineConfigured";
 const EVENT_NAME_PAUSED = "Paused";
 const EVENT_NAME_UNPAUSED = "Unpaused";
-const EVENT_NAME_HOOK_CALL_RESULT = "HookCallResult";
 
 const DEFAULT_ADMIN_ROLE = ethers.ZeroHash;
 const OWNER_ROLE = ethers.id("OWNER_ROLE");
 const ADMIN_ROLE = ethers.id("ADMIN_ROLE");
 const PAUSER_ROLE = ethers.id("PAUSER_ROLE");
-
-const INTEREST_RATE_FACTOR = 10n ** 9n;
 
 const MIN_BORROW_AMOUNT = 2n;
 const MAX_BORROW_AMOUNT = maxUintForBits(64) - 1n;
@@ -878,9 +875,7 @@ describe("Contract 'CreditLine'", async () => {
       await proveTx(creditLineUnderAdmin.setBorrowerState(borrower.address, expectedBorrowerState));
       const loanState: LoanState = await prepareLoan(market);
 
-      await expect(market.callOnBeforeLoanTakenCreditLine(getAddress(creditLine), LOAN_ID))
-        .to.emit(market, EVENT_NAME_HOOK_CALL_RESULT)
-        .withArgs(true);
+      await proveTx(market.callOnBeforeLoanTakenCreditLine(getAddress(creditLine), LOAN_ID));
 
       expectedBorrowerState.activeLoanCount += 1n;
       expectedBorrowerState.totalActiveLoanAmount += BigInt(loanState.borrowAmount);
@@ -940,14 +935,7 @@ describe("Contract 'CreditLine'", async () => {
       await prepareLoan(market, { trackedBalance: 123n });
       const expectedBorrowerState: BorrowerState = { ...defaultBorrowerState };
 
-      await expect(market.callOnAfterLoanPaymentCreditLine(
-        getAddress(creditLine),
-        LOAN_ID,
-        REPAY_AMOUNT
-      )).to.emit(
-        market,
-        EVENT_NAME_HOOK_CALL_RESULT
-      ).withArgs(true);
+      await proveTx(market.callOnAfterLoanPaymentCreditLine(getAddress(creditLine), LOAN_ID, REPAY_AMOUNT));
 
       const actualBorrowerState = await creditLine.getBorrowerState(borrower.address);
       checkEquality(actualBorrowerState, expectedBorrowerState);
@@ -965,14 +953,7 @@ describe("Contract 'CreditLine'", async () => {
       };
       await proveTx(creditLine.setBorrowerState(borrower.address, expectedBorrowerState));
 
-      await expect(market.callOnAfterLoanPaymentCreditLine(
-        getAddress(creditLine),
-        LOAN_ID,
-        REPAY_AMOUNT
-      )).to.emit(
-        market,
-        EVENT_NAME_HOOK_CALL_RESULT
-      ).withArgs(true);
+      await proveTx(market.callOnAfterLoanPaymentCreditLine(getAddress(creditLine), LOAN_ID, REPAY_AMOUNT));
       processLoanClosing(expectedBorrowerState, BigInt(loanState.borrowAmount));
 
       const actualBorrowerState = await creditLine.getBorrowerState(borrower.address);
@@ -1011,9 +992,7 @@ describe("Contract 'CreditLine'", async () => {
       };
       await proveTx(creditLine.setBorrowerState(borrower.address, expectedBorrowerState));
 
-      await expect(market.callOnAfterLoanRevocationCreditLine(getAddress(creditLine), LOAN_ID))
-        .to.emit(market, EVENT_NAME_HOOK_CALL_RESULT)
-        .withArgs(true);
+      await proveTx(market.callOnAfterLoanRevocationCreditLine(getAddress(creditLine), LOAN_ID));
 
       processLoanClosing(expectedBorrowerState, BigInt(loanState.borrowAmount));
 
