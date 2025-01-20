@@ -454,7 +454,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
     const startPeriodIndex = calculatePeriodIndex(loan.state.startTimestamp);
     const duePeriodIndex = startPeriodIndex + loan.state.durationInPeriods;
 
-    if (periodIndex > duePeriodIndex && trackedPeriodIndex <= duePeriodIndex) {
+    if (loan.state.trackedBalance != 0 && periodIndex > duePeriodIndex && trackedPeriodIndex <= duePeriodIndex) {
       return loan.config.lateFeeAmount;
     } else {
       return 0;
@@ -3281,8 +3281,8 @@ describe("Contract 'LendingMarket': base tests", async () => {
       const { market } = fixture;
 
       const loans = [
-        fixture.ordinaryLoan,
-        fixture.installmentLoanParts[fixture.installmentLoanParts.length - 1]
+        clone(fixture.ordinaryLoan),
+        clone(fixture.installmentLoanParts[fixture.installmentLoanParts.length - 1])
       ];
       const minDuration = Math.min(...loans.map(loan => loan.state.durationInPeriods));
       const maxDuration = Math.max(...loans.map(loan => loan.state.durationInPeriods));
@@ -3298,6 +3298,18 @@ describe("Contract 'LendingMarket': base tests", async () => {
       for (let i = 0; i < loans.length; ++i) {
         checkEquality(actualLoanPreviews[i], expectedLoanPreviews[i], i);
       }
+
+      // Repay the first loan to be sure that the function works correctly with repaid loans
+      const tx = connect(market, lender).repayLoanForBatch(
+        [loans[0].id],
+        [expectedLoanPreviews[0].outstandingBalance],
+        borrower.address
+      );
+      timestamp = await getTxTimestamp(tx);
+      processRepayment(
+        loans[0],
+        { repaymentTimestamp: timestamp, repaymentAmount: expectedLoanPreviews[0].outstandingBalance }
+      );
 
       // The loan at the middle of its duration
       timestamp += Math.floor(minDuration / 2) * PERIOD_IN_SECONDS;

@@ -967,7 +967,7 @@ contract LendingMarket is
         periodIndex = _periodIndex(timestamp, Constants.PERIOD_IN_SECONDS);
         uint256 trackedPeriodIndex = _periodIndex(loan.trackedTimestamp, Constants.PERIOD_IN_SECONDS);
 
-        if (periodIndex > trackedPeriodIndex) {
+        if (outstandingBalance != 0 && periodIndex > trackedPeriodIndex) {
             uint256 duePeriodIndex = _getDuePeriodIndex(loan.startTimestamp, loan.durationInPeriods);
             if (trackedPeriodIndex <= duePeriodIndex) {
                 if (periodIndex <= duePeriodIndex) {
@@ -1133,11 +1133,8 @@ contract LendingMarket is
         Loan.State storage loan
     ) internal view returns (uint256) {
         address creditLine = _programCreditLines[loan.programId];
-        if (creditLine != address(0)) {
-            return ICreditLine(creditLine).determineLateFeeAmount(outstandingBalance);
-        } else {
-            return 0;
-        }
+        // The `creditLine` variable is not checked because it is always non-zero according to the contract logic.
+        return ICreditLine(creditLine).determineLateFeeAmount(outstandingBalance);
     }
 
     /// @dev Updates the stored late fee amount for a loan.
