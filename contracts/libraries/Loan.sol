@@ -73,6 +73,11 @@ library Loan {
     /// - durationInPeriods ------ The total duration of the loan determined by the number of periods.
     /// - interestRatePrimary ---- The primary interest rate to be applied to the loan.
     /// - interestRateSecondary -- The secondary interest rate to be applied to the loan.
+    ///
+    /// Note:
+    /// The `addonAmount` field has been deprecated since version 1.9.0 and is always zero.
+    /// The addon amount of a loan is no longer calculated in the contract.
+    /// It is passed as a parameter of a borrow function instead.
     struct Terms {
         // Slot 1
         address token;

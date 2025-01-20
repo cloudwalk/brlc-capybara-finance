@@ -179,6 +179,9 @@ contract CreditLine is AccessControlExtUpgradeable, PausableUpgradeable, ICredit
         if (config.minInterestRateSecondary > config.maxInterestRateSecondary) {
             revert InvalidCreditLineConfiguration();
         }
+
+        // Check that fields `minAddonFixedRate`, `maxAddonFixedRate`, `minAddonPeriodRate`, `maxAddonPeriodRate`
+        // are zero because they have been deprecated since version 1.9.0
         if (config.minAddonFixedRate != 0) {
             revert InvalidCreditLineConfiguration();
         }
@@ -310,7 +313,7 @@ contract CreditLine is AccessControlExtUpgradeable, PausableUpgradeable, ICredit
         terms.durationInPeriods = durationInPeriods.toUint32();
         terms.interestRatePrimary = borrowerConfig.interestRatePrimary;
         terms.interestRateSecondary = borrowerConfig.interestRateSecondary;
-        // terms.addonAmount = 0;
+        // terms.addonAmount = 0 because the field has been deprecated since version 1.9.0
     }
 
     /// @inheritdoc ICreditLinePrimary
