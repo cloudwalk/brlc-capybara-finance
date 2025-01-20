@@ -175,19 +175,7 @@ contract LendingMarket is
         address creditLine, // Tools: this comment prevents Prettier from formatting into a single line.
         address liquidityPool
     ) external whenNotPaused {
-        if (creditLine == address(0)) {
-            revert Error.ZeroAddress();
-        }
-        if (liquidityPool == address(0)) {
-            revert Error.ZeroAddress();
-        }
-
-        if (_creditLineLenders[creditLine] != msg.sender) {
-            revert Error.Unauthorized();
-        }
-        if (_liquidityPoolLenders[liquidityPool] != msg.sender) {
-            revert Error.Unauthorized();
-        }
+        _checkCreditLineAndLiquidityPool(creditLine, liquidityPool);
 
         _programIdCounter++;
         uint32 programId = _programIdCounter;
@@ -209,16 +197,10 @@ contract LendingMarket is
         if (programId == 0) {
             revert ProgramNotExist();
         }
-
         if (_programLenders[programId] != msg.sender) {
             revert Error.Unauthorized();
         }
-        if (_creditLineLenders[creditLine] != msg.sender) {
-            revert Error.Unauthorized();
-        }
-        if (_liquidityPoolLenders[liquidityPool] != msg.sender) {
-            revert Error.Unauthorized();
-        }
+        _checkCreditLineAndLiquidityPool(creditLine, liquidityPool);
 
         emit ProgramUpdated(programId, creditLine, liquidityPool);
 
@@ -1143,6 +1125,25 @@ contract LendingMarket is
     function _updateStoredLateFee(uint256 lateFeeAmount, Loan.State storage loan) internal {
         if (lateFeeAmount > 0) {
             loan.lateFeeAmount = lateFeeAmount.toUint64();
+        }
+    }
+
+    /// @dev Checks if the credit line and liquidity pool are valid.
+    /// @param creditLine The address of the credit line.
+    /// @param liquidityPool The address of the liquidity pool.
+    function _checkCreditLineAndLiquidityPool(address creditLine, address liquidityPool) internal view {
+        if (creditLine == address(0)) {
+            revert Error.ZeroAddress();
+        }
+        if (liquidityPool == address(0)) {
+            revert Error.ZeroAddress();
+        }
+
+        if (_creditLineLenders[creditLine] != msg.sender) {
+            revert Error.Unauthorized();
+        }
+        if (_liquidityPoolLenders[liquidityPool] != msg.sender) {
+            revert Error.Unauthorized();
         }
     }
 

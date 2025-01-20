@@ -1110,6 +1110,24 @@ describe("Contract 'LendingMarket': base tests", async () => {
       ).to.be.revertedWithCustomError(market, ERROR_NAME_UNAUTHORIZED);
     });
 
+    it("Is reverted if the provided credit line address is zero", async () => {
+      const { marketUnderLender } = await setUpFixture(deployLendingMarketAndConfigureItForLoan);
+      const wrongCreditLineAddress = (ZERO_ADDRESS);
+
+      await expect(
+        marketUnderLender.updateProgram(PROGRAM_ID, wrongCreditLineAddress, liquidityPoolAddress)
+      ).to.be.revertedWithCustomError(marketUnderLender, ERROR_NAME_ZERO_ADDRESS);
+    });
+
+    it("Is reverted if the provided liquidity pool address is zero", async () => {
+      const { marketUnderLender } = await setUpFixture(deployLendingMarketAndConfigureItForLoan);
+      const wrongLiquidityPoolAddress = (ZERO_ADDRESS);
+
+      await expect(
+        marketUnderLender.updateProgram(PROGRAM_ID, creditLineAddress, wrongLiquidityPoolAddress)
+      ).to.be.revertedWithCustomError(marketUnderLender, ERROR_NAME_ZERO_ADDRESS);
+    });
+
     it("Is reverted if caller is not the lender of the creditLine", async () => {
       const { market, marketUnderLender } = await setUpFixture(deployLendingMarketAndConfigureItForLoan);
       await proveTx(connect(market, attacker).registerCreditLine(anotherCreditLineAddress));
