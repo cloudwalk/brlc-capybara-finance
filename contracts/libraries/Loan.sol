@@ -92,6 +92,9 @@ library Loan {
     /// - periodIndex ------------ The period index that matches the preview timestamp.
     /// - trackedBalance --------- The tracked balance of the loan at the previewed period.
     /// - outstandingBalance ----- The outstanding balance of the loan at the previewed period.
+    ///
+    /// Note:
+    /// The outstanding balance is the tracked balance rounded according to the accuracy factor with math rules.
     struct Preview {
         uint256 periodIndex;
         uint256 trackedBalance;
@@ -120,6 +123,9 @@ library Loan {
     /// - interestRateSecondary -- The secondary interest rate of the loan.
     /// - firstInstallmentId ----- The ID of the first installment for sub-loans or zero for ordinary loans.
     /// - installmentCount ------- The total number of installments for sub-loans or zero for ordinary loans.
+    ///
+    /// Note:
+    /// The outstanding balance is the tracked balance rounded according to the accuracy factor with math rules.
     struct PreviewExtended {
         uint256 periodIndex;
         uint256 trackedBalance;
@@ -177,8 +183,8 @@ library Loan {
     /// Notes:
     ///
     /// 1. The `totalTrackedBalance` fields calculates as the sum of tracked balances of all installments.
-    /// 2. The `totalOutstandingBalance` fields calculates as the sum of rounded tracked balances
-    ///    of all installments according to the `ACCURACY_FACTOR` constant.
+    /// 2. The `totalOutstandingBalance` fields calculates as the sum of outstanding balances of all installments.
+    /// 3. The outstanding balance is the tracked balance rounded according to the accuracy factor with math rules.
     struct InstallmentLoanPreview {
         uint256 firstInstallmentId;
         uint256 installmentCount;

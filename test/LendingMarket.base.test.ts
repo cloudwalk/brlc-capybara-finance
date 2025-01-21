@@ -422,7 +422,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
     return loans;
   }
 
-  function calculateOutstandingBalance(originalBalance: number, numberOfPeriods: number, interestRate: number): number {
+  function calculateTrackedBalance(originalBalance: number, numberOfPeriods: number, interestRate: number): number {
     return Math.round(originalBalance * Math.pow(1 + interestRate / INTEREST_RATE_FACTOR, numberOfPeriods));
   }
 
@@ -462,7 +462,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
   }
 
   function determineLoanPreview(loan: Loan, timestamp: number): LoanPreview {
-    let outstandingBalance = loan.state.trackedBalance;
+    let trackedBalance = loan.state.trackedBalance;
     let timestampWithOffset = calculateTimestampWithOffset(timestamp);
     if (loan.state.freezeTimestamp != 0) {
       timestampWithOffset = loan.state.freezeTimestamp;
@@ -478,25 +478,25 @@ describe("Contract 'LendingMarket': base tests", async () => {
       numberOfPeriodsWithSecondaryRate > 0 ? numberOfPeriods - numberOfPeriodsWithSecondaryRate : numberOfPeriods;
 
     if (numberOfPeriodsWithPrimaryRate > 0) {
-      outstandingBalance = calculateOutstandingBalance(
-        outstandingBalance,
+      trackedBalance = calculateTrackedBalance(
+        trackedBalance,
         numberOfPeriodsWithPrimaryRate,
         loan.state.interestRatePrimary
       );
     }
 
     if (numberOfPeriodsWithSecondaryRate > 0) {
-      outstandingBalance += determineLateFeeAmount(loan, timestamp);
-      outstandingBalance = calculateOutstandingBalance(
-        outstandingBalance,
+      trackedBalance += determineLateFeeAmount(loan, timestamp);
+      trackedBalance = calculateTrackedBalance(
+        trackedBalance,
         numberOfPeriodsWithSecondaryRate,
         loan.state.interestRateSecondary
       );
     }
     return {
       periodIndex,
-      trackedBalance: outstandingBalance,
-      outstandingBalance: Number(roundMath(outstandingBalance, ACCURACY_FACTOR))
+      trackedBalance,
+      outstandingBalance: Number(roundMath(trackedBalance, ACCURACY_FACTOR))
     };
   }
 
@@ -1867,7 +1867,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
         payer.address,
         borrower.address,
         repaymentAmount,
-        expectedLoan.state.trackedBalance // outstanding balance
+        expectedLoan.state.trackedBalance
       );
 
       // Check that the appropriate market hook functions are called
@@ -2015,7 +2015,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
           payer.address,
           borrower.address,
           expectedRepaymentAmount,
-          expectedLoan.state.trackedBalance // outstanding balance
+          expectedLoan.state.trackedBalance
         );
 
         // Check that the appropriate market hook functions are called
@@ -2265,7 +2265,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
         await expect(tx).to.emit(marketUnderLender, EVENT_NAME_LOAN_DISCOUNTED).withArgs(
           expectedLoan.id,
           expectedDiscountAmount,
-          expectedLoan.state.trackedBalance // outstanding balance
+          expectedLoan.state.trackedBalance
         );
       }
 
@@ -3473,16 +3473,16 @@ describe("Contract 'LendingMarket': base tests", async () => {
   });
 
   describe("Pure functions", async () => {
-    it("Function 'calculateOutstandingBalance()' executes as expected", async () => {
+    it("Function 'calculateTrackedBalance()' executes as expected", async () => {
       const { market } = await setUpFixture(deployLendingMarketAndTakeLoans);
-      const actualBalance = await market.calculateOutstandingBalance(
+      const actualBalance = await market.calculateTrackedBalance(
         BORROW_AMOUNT,
         DURATION_IN_PERIODS,
         INTEREST_RATE_PRIMARY,
         INTEREST_RATE_FACTOR
       );
 
-      const expectedBalance = calculateOutstandingBalance(
+      const expectedBalance = calculateTrackedBalance(
         BORROW_AMOUNT,
         DURATION_IN_PERIODS,
         INTEREST_RATE_PRIMARY
