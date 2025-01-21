@@ -632,7 +632,7 @@ describe("Contract 'LiquidityPool'", async () => {
       await proveTx(liquidityPool.deposit(DEPOSIT_AMOUNT));
 
       await expect(market.callOnBeforeLoanTakenLiquidityPool(getAddress(liquidityPool), LOAN_ID))
-        .to.be.revertedWithPanic(0x11);
+        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_INSUFFICIENT_BALANCE);
     });
   });
 
