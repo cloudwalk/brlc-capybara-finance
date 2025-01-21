@@ -310,7 +310,7 @@ contract CreditLine is AccessControlExtUpgradeable, PausableUpgradeable, ICredit
         } // else borrowerConfig.borrowPolicy == BorrowPolicy.MultipleActiveLoans
 
         terms.token = _token;
-        terms.durationInPeriods = durationInPeriods.toUint32();
+        terms.durationInPeriods = durationInPeriods;
         terms.interestRatePrimary = borrowerConfig.interestRatePrimary;
         terms.interestRateSecondary = borrowerConfig.interestRateSecondary;
         // terms.addonAmount = 0 because the field has been deprecated since version 1.9.0

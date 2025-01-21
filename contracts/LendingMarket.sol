@@ -649,7 +649,7 @@ contract LendingMarket is
             borrowAmount,
             durationInPeriods
         );
-        terms.addonAmount = uint256(addonAmount).toUint64();
+        terms.addonAmount = addonAmount;
         uint256 principalAmount = borrowAmount + terms.addonAmount;
         uint32 blockTimestamp = _blockTimestamp().toUint32();
 
@@ -658,13 +658,13 @@ contract LendingMarket is
         loan.borrower = borrower;
         loan.programId = programId;
         loan.startTimestamp = blockTimestamp;
-        loan.durationInPeriods = terms.durationInPeriods;
-        loan.interestRatePrimary = terms.interestRatePrimary;
-        loan.interestRateSecondary = terms.interestRateSecondary;
+        loan.durationInPeriods = terms.durationInPeriods.toUint32();
+        loan.interestRatePrimary = terms.interestRatePrimary.toUint32();
+        loan.interestRateSecondary = terms.interestRateSecondary.toUint32();
         loan.borrowAmount = borrowAmount.toUint64();
         loan.trackedBalance = principalAmount.toUint64();
         loan.trackedTimestamp = blockTimestamp;
-        loan.addonAmount = terms.addonAmount;
+        loan.addonAmount = terms.addonAmount.toUint64();
         // Other loan fields are zero: repaidAmount, repaidAmount, firstInstallmentId, lateFeeAmount
 
         ICreditLine(creditLine).onBeforeLoanTaken(id);

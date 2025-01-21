@@ -79,13 +79,11 @@ library Loan {
     /// The addon amount of a loan is no longer calculated in the contract.
     /// It is passed as a parameter of a borrow function instead.
     struct Terms {
-        // Slot 1
         address token;
-        uint64 addonAmount;
-        uint32 durationInPeriods;
-        // Slot 2
-        uint32 interestRatePrimary;
-        uint32 interestRateSecondary;
+        uint256 addonAmount;
+        uint256 durationInPeriods;
+        uint256 interestRatePrimary;
+        uint256 interestRateSecondary;
     }
 
     /// @dev A struct that defines the preview of the loan.
