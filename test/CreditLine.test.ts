@@ -199,7 +199,7 @@ const EXPIRATION_TIME = maxUintForBits(32);
 const BORROW_AMOUNT = 1234_567_890n;
 const LOAN_ID = 123n;
 const ADDON_AMOUNT = 123456789n;
-const REPAY_AMOUNT = 12345678n;
+const REPAYMENT_AMOUNT = 12345678n;
 const LATE_FEE_RATE = 987654321n;
 const INTEREST_RATE_FACTOR = 10n ** 9n;
 
@@ -936,7 +936,7 @@ describe("Contract 'CreditLine'", async () => {
       await prepareLoan(market, { trackedBalance: 123n });
       const expectedBorrowerState: BorrowerState = { ...defaultBorrowerState };
 
-      await proveTx(market.callOnAfterLoanPaymentCreditLine(getAddress(creditLine), LOAN_ID, REPAY_AMOUNT));
+      await proveTx(market.callOnAfterLoanPaymentCreditLine(getAddress(creditLine), LOAN_ID, REPAYMENT_AMOUNT));
 
       const actualBorrowerState = await creditLine.getBorrowerState(borrower.address);
       checkEquality(actualBorrowerState, expectedBorrowerState);
@@ -954,7 +954,7 @@ describe("Contract 'CreditLine'", async () => {
       };
       await proveTx(creditLine.setBorrowerState(borrower.address, expectedBorrowerState));
 
-      await proveTx(market.callOnAfterLoanPaymentCreditLine(getAddress(creditLine), LOAN_ID, REPAY_AMOUNT));
+      await proveTx(market.callOnAfterLoanPaymentCreditLine(getAddress(creditLine), LOAN_ID, REPAYMENT_AMOUNT));
       processLoanClosing(expectedBorrowerState, BigInt(loanState.borrowAmount));
 
       const actualBorrowerState = await creditLine.getBorrowerState(borrower.address);
@@ -964,7 +964,7 @@ describe("Contract 'CreditLine'", async () => {
     it("Is reverted if caller is not the market", async () => {
       const { creditLine } = await setUpFixture(deployAndConfigureContractsWithBorrower);
 
-      await expect(connect(creditLine, attacker).onAfterLoanPayment(LOAN_ID, REPAY_AMOUNT))
+      await expect(connect(creditLine, attacker).onAfterLoanPayment(LOAN_ID, REPAYMENT_AMOUNT))
         .to.be.revertedWithCustomError(creditLine, ERROR_NAME_UNAUTHORIZED);
     });
 
@@ -975,7 +975,7 @@ describe("Contract 'CreditLine'", async () => {
       await expect(market.callOnAfterLoanPaymentCreditLine(
         getAddress(creditLine),
         LOAN_ID,
-        REPAY_AMOUNT
+        REPAYMENT_AMOUNT
       )).to.be.revertedWithCustomError(creditLine, ERROR_NAME_ENFORCED_PAUSED);
     });
   });

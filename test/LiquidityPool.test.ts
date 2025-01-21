@@ -67,7 +67,7 @@ const MINT_AMOUNT = 1000_000_000_000n;
 const DEPOSIT_AMOUNT = MINT_AMOUNT / 10n;
 const BORROW_AMOUNT = DEPOSIT_AMOUNT / 10n;
 const ADDON_AMOUNT = BORROW_AMOUNT / 10n;
-const REPAY_AMOUNT = BORROW_AMOUNT / 5n;
+const REPAYMENT_AMOUNT = BORROW_AMOUNT / 5n;
 const LOAN_ID = 123n;
 const EXPECTED_VERSION: Version = {
   major: 1,
@@ -641,10 +641,10 @@ describe("Contract 'LiquidityPool'", async () => {
       const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
       await proveTx(liquidityPool.deposit(DEPOSIT_AMOUNT));
 
-      await proveTx(market.callOnAfterLoanPaymentLiquidityPool(getAddress(liquidityPool), LOAN_ID, REPAY_AMOUNT));
+      await proveTx(market.callOnAfterLoanPaymentLiquidityPool(getAddress(liquidityPool), LOAN_ID, REPAYMENT_AMOUNT));
 
       const actualBalances = await liquidityPool.getBalances();
-      expect(actualBalances[0]).to.eq(DEPOSIT_AMOUNT + REPAY_AMOUNT);
+      expect(actualBalances[0]).to.eq(DEPOSIT_AMOUNT + REPAYMENT_AMOUNT);
       expect(actualBalances[1]).to.eq(0n);
     });
 
@@ -653,14 +653,14 @@ describe("Contract 'LiquidityPool'", async () => {
       await proveTx(liquidityPool.pause());
 
       await expect(
-        market.callOnAfterLoanPaymentLiquidityPool(getAddress(liquidityPool), LOAN_ID, REPAY_AMOUNT)
+        market.callOnAfterLoanPaymentLiquidityPool(getAddress(liquidityPool), LOAN_ID, REPAYMENT_AMOUNT)
       ).to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_ENFORCED_PAUSED);
     });
 
     it("Is reverted if the caller is not the market", async () => {
       const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
 
-      await expect(liquidityPool.onAfterLoanPayment(LOAN_ID, REPAY_AMOUNT))
+      await expect(liquidityPool.onAfterLoanPayment(LOAN_ID, REPAYMENT_AMOUNT))
         .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_UNAUTHORIZED);
     });
 

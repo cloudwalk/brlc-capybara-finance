@@ -116,8 +116,8 @@ interface ICreditLineHooks {
 
     /// @dev A hook that is triggered by the associated market after the loan payment.
     /// @param loanId The unique identifier of the loan being paid.
-    /// @param repayAmount The amount of tokens that was repaid.
-    function onAfterLoanPayment(uint256 loanId, uint256 repayAmount) external;
+    /// @param repaymentAmount The amount of tokens that was repaid.
+    function onAfterLoanPayment(uint256 loanId, uint256 repaymentAmount) external;
 
     /// @dev A hook that is triggered by the associated market after the loan revocation.
     /// @param loanId The unique identifier of the loan being revoked.

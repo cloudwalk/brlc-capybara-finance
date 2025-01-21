@@ -237,8 +237,8 @@ contract CreditLine is AccessControlExtUpgradeable, PausableUpgradeable, ICredit
     }
 
     /// @inheritdoc ICreditLineHooks
-    function onAfterLoanPayment(uint256 loanId, uint256 repayAmount) external whenNotPaused onlyMarket {
-        repayAmount; // To prevent compiler warning about unused variable
+    function onAfterLoanPayment(uint256 loanId, uint256 repaymentAmount) external whenNotPaused onlyMarket {
+        repaymentAmount; // To prevent compiler warning about unused variable
 
         Loan.State memory loan = ILendingMarket(_market).getLoanState(loanId);
         if (loan.trackedBalance == 0) {

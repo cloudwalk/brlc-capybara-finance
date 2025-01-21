@@ -22,7 +22,7 @@ contract LiquidityPoolMock {
     // -------------------------------------------- //
 
     event OnBeforeLoanTakenCalled(uint256 indexed loanId);
-    event OnAfterLoanPaymentCalled(uint256 indexed loanId, uint256 indexed repayAmount);
+    event OnAfterLoanPaymentCalled(uint256 indexed loanId, uint256 indexed repaymentAmount);
     event OnAfterLoanRevocationCalled(uint256 indexed loanId);
 
     // -------------------------------------------- //
@@ -33,8 +33,8 @@ contract LiquidityPoolMock {
         emit OnBeforeLoanTakenCalled(loanId);
     }
 
-    function onAfterLoanPayment(uint256 loanId, uint256 repayAmount) external {
-        emit OnAfterLoanPaymentCalled(loanId, repayAmount);
+    function onAfterLoanPayment(uint256 loanId, uint256 repaymentAmount) external {
+        emit OnAfterLoanPaymentCalled(loanId, repaymentAmount);
     }
 
     function onAfterLoanRevocation(uint256 loanId) external {

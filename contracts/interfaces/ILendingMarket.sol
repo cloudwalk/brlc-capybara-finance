@@ -63,13 +63,13 @@ interface ILendingMarketPrimary {
     /// @param loanId The unique identifier of the loan.
     /// @param repayer The address of the token source for the repayment (borrower or third-party).
     /// @param borrower The address of the borrower of the loan.
-    /// @param repayAmount The amount of the repayment.
+    /// @param repaymentAmount The amount of the repayment.
     /// @param trackedBalance The tracked balance of the loan after the repayment.
     event LoanRepayment(
         uint256 indexed loanId,
         address indexed repayer,
         address indexed borrower,
-        uint256 repayAmount,
+        uint256 repaymentAmount,
         uint256 trackedBalance
     );
 
@@ -173,8 +173,8 @@ interface ILendingMarketPrimary {
 
     /// @dev Repays a loan.
     /// @param loanId The unique identifier of the loan to repay.
-    /// @param repayAmount The amount to repay or `type(uint256).max` to repay the remaining balance of the loan.
-    function repayLoan(uint256 loanId, uint256 repayAmount) external;
+    /// @param repaymentAmount The amount to repay or `type(uint256).max` to repay the remaining balance of the loan.
+    function repayLoan(uint256 loanId, uint256 repaymentAmount) external;
 
     /// @dev Repays a batch of loans.
     ///

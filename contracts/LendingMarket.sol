@@ -295,8 +295,8 @@ contract LendingMarket is
     }
 
     /// @inheritdoc ILendingMarketPrimary
-    function repayLoan(uint256 loanId, uint256 repayAmount) external whenNotPaused onlyOngoingLoan(loanId) {
-        _repayLoan(loanId, repayAmount, msg.sender);
+    function repayLoan(uint256 loanId, uint256 repaymentAmount) external whenNotPaused onlyOngoingLoan(loanId) {
+        _repayLoan(loanId, repaymentAmount, msg.sender);
     }
 
     /// @inheritdoc ILendingMarketPrimary
