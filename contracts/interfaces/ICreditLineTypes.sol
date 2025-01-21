@@ -13,7 +13,7 @@ interface ICreditLineTypes {
     /// - SingleActiveLoan = 0 -------- Only one active loan is allowed; additional loan requests will be rejected.
     /// - MultipleActiveLoans = 1 ----- Multiple active loans are allowed, with no limit on the total borrowed amount.
     /// - TotalActiveAmountLimit = 2 -- Multiple active loans are allowed, but their total borrowed amount cannot
-    ///                                 exceed the maximum borrow amount of a single loan specified for the borrower.
+    ///                                 exceed the maximum borrowed amount of a single loan specified for the borrower.
     ///
     /// Note: In all cases, each individual loan must comply with the minimum and maximum amount limits.
     enum BorrowPolicy {
@@ -26,8 +26,8 @@ interface ICreditLineTypes {
     ///
     /// Fields:
     ///
-    /// - minBorrowAmount ----------- The minimum amount of tokens the borrower can take as a loan.
-    /// - maxBorrowAmount ----------- The maximum amount of tokens the borrower can take as a loan.
+    /// - minBorrowedAmount --------- The minimum amount of tokens the borrower can take as a loan.
+    /// - maxBorrowedAmount --------- The maximum amount of tokens the borrower can take as a loan.
     /// - minInterestRatePrimary ---- The minimum primary interest rate to be applied to the loan.
     /// - maxInterestRatePrimary ---- The maximum primary interest rate to be applied to the loan.
     /// - minInterestRateSecondary -- The minimum secondary interest rate to be applied to the loan.
@@ -45,8 +45,8 @@ interface ICreditLineTypes {
     /// deprecated since version 1.9.0 and must be set to zero.
     struct CreditLineConfig {
         // Slot 1
-        uint64 minBorrowAmount;
-        uint64 maxBorrowAmount;
+        uint64 minBorrowedAmount;
+        uint64 maxBorrowedAmount;
         uint32 minInterestRatePrimary;
         uint32 maxInterestRatePrimary;
         uint32 minInterestRateSecondary;
@@ -68,8 +68,8 @@ interface ICreditLineTypes {
     /// - expiration ------------- The expiration date of the configuration.
     /// - minDurationInPeriods --- The minimum duration of the loan determined in periods.
     /// - maxDurationInPeriods --- The maximum duration of the loan determined in periods.
-    /// - minBorrowAmount -------- The minimum amount of tokens the borrower can take as a loan.
-    /// - maxBorrowAmount -------- The maximum amount of tokens the borrower can take as a loan.
+    /// - minBorrowedAmount ------ The minimum amount of tokens the borrower can take as a loan.
+    /// - maxBorrowedAmount ------ The maximum amount of tokens the borrower can take as a loan.
     /// - borrowPolicy ----------- The borrow policy to be applied to the borrower.
     /// - interestRatePrimary ---- The primary interest rate to be applied to the loan.
     /// - interestRateSecondary -- The secondary interest rate to be applied to the loan.
@@ -83,8 +83,8 @@ interface ICreditLineTypes {
         uint32 expiration;
         uint32 minDurationInPeriods;
         uint32 maxDurationInPeriods;
-        uint64 minBorrowAmount;
-        uint64 maxBorrowAmount;
+        uint64 minBorrowedAmount;
+        uint64 maxBorrowedAmount;
         BorrowPolicy borrowPolicy;
         // uint24 __reserved;
         // Slot 2

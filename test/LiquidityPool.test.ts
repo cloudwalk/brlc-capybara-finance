@@ -7,7 +7,7 @@ import { checkEquality, maxUintForBits, setUpFixture } from "../test-utils/commo
 
 interface LoanState {
   programId: bigint;
-  borrowAmount: bigint;
+  borrowedAmount: bigint;
   addonAmount: bigint;
   startTimestamp: bigint;
   durationInPeriods: bigint;
@@ -65,9 +65,9 @@ const MAX_ALLOWANCE = ethers.MaxUint256;
 const ZERO_ALLOWANCE = 0;
 const MINT_AMOUNT = 1000_000_000_000n;
 const DEPOSIT_AMOUNT = MINT_AMOUNT / 10n;
-const BORROW_AMOUNT = DEPOSIT_AMOUNT / 10n;
-const ADDON_AMOUNT = BORROW_AMOUNT / 10n;
-const REPAYMENT_AMOUNT = BORROW_AMOUNT / 5n;
+const BORROWED_AMOUNT = DEPOSIT_AMOUNT / 10n;
+const ADDON_AMOUNT = BORROWED_AMOUNT / 10n;
+const REPAYMENT_AMOUNT = BORROWED_AMOUNT / 5n;
 const LOAN_ID = 123n;
 const EXPECTED_VERSION: Version = {
   major: 1,
@@ -77,7 +77,7 @@ const EXPECTED_VERSION: Version = {
 
 const defaultLoanState: LoanState = {
   programId: 0n,
-  borrowAmount: 0n,
+  borrowedAmount: 0n,
   addonAmount: 0n,
   startTimestamp: 0n,
   durationInPeriods: 0n,
@@ -163,14 +163,14 @@ describe("Contract 'LiquidityPool'", async () => {
   async function prepareLoan(
     loanProps: {
       loanId: bigint;
-      borrowAmount: bigint;
+      borrowedAmount: bigint;
       addonAmount: bigint;
       repaidAmount?: bigint;
     }
   ) {
     const loanState: LoanState = {
       ...defaultLoanState,
-      borrowAmount: loanProps.borrowAmount,
+      borrowedAmount: loanProps.borrowedAmount,
       addonAmount: loanProps.addonAmount,
       repaidAmount: loanProps.repaidAmount || 0n
     };
@@ -182,9 +182,9 @@ describe("Contract 'LiquidityPool'", async () => {
     addonBalance: bigint;
   }) {
     const addonAmount = props.addonBalance;
-    const depositAmount = props.borrowableBalance + BORROW_AMOUNT + props.addonBalance;
+    const depositAmount = props.borrowableBalance + BORROWED_AMOUNT + props.addonBalance;
     await proveTx(liquidityPool.deposit(depositAmount));
-    await prepareLoan({ borrowAmount: BORROW_AMOUNT, loanId: LOAN_ID, addonAmount });
+    await prepareLoan({ borrowedAmount: BORROWED_AMOUNT, loanId: LOAN_ID, addonAmount });
     await proveTx(market.callOnBeforeLoanTakenLiquidityPool(getAddress(liquidityPool), LOAN_ID));
   }
 
@@ -471,9 +471,9 @@ describe("Contract 'LiquidityPool'", async () => {
   describe("Function 'withdraw()'", async () => {
     it("Executes as expected if only the borrowable balance is withdrawn", async () => {
       const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
-      const borrowableBalance = BORROW_AMOUNT * 2n;
+      const borrowableBalance = BORROWED_AMOUNT * 2n;
       const addonBalance = ADDON_AMOUNT * 2n;
-      const borrowableAmount = (BORROW_AMOUNT);
+      const borrowableAmount = (BORROWED_AMOUNT);
       const addonAmount = 0n;
 
       await prepareCertainBalances(liquidityPool, { borrowableBalance, addonBalance });
@@ -588,14 +588,14 @@ describe("Contract 'LiquidityPool'", async () => {
       if (addonTreasuryAddress !== ZERO_ADDRESS) {
         await proveTx(liquidityPool.setAddonTreasury(addonTreasuryAddress));
       }
-      await prepareLoan({ loanId: LOAN_ID, borrowAmount: BORROW_AMOUNT, addonAmount: ADDON_AMOUNT });
+      await prepareLoan({ loanId: LOAN_ID, borrowedAmount: BORROWED_AMOUNT, addonAmount: ADDON_AMOUNT });
       await proveTx(liquidityPool.deposit(DEPOSIT_AMOUNT));
 
       await proveTx(market.callOnBeforeLoanTakenLiquidityPool(getAddress(liquidityPool), LOAN_ID));
 
       const actualBalances = await liquidityPool.getBalances();
 
-      expect(actualBalances[0]).to.eq(DEPOSIT_AMOUNT - BORROW_AMOUNT - ADDON_AMOUNT);
+      expect(actualBalances[0]).to.eq(DEPOSIT_AMOUNT - BORROWED_AMOUNT - ADDON_AMOUNT);
       expect(actualBalances[1]).to.eq(0);
     }
 
@@ -628,7 +628,7 @@ describe("Contract 'LiquidityPool'", async () => {
 
     it("Is reverted if there is not enough borrowable balance", async () => {
       const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
-      await prepareLoan({ loanId: LOAN_ID, borrowAmount: DEPOSIT_AMOUNT + 1n, addonAmount: 0n });
+      await prepareLoan({ loanId: LOAN_ID, borrowedAmount: DEPOSIT_AMOUNT + 1n, addonAmount: 0n });
       await proveTx(liquidityPool.deposit(DEPOSIT_AMOUNT));
 
       await expect(market.callOnBeforeLoanTakenLiquidityPool(getAddress(liquidityPool), LOAN_ID))
@@ -687,7 +687,7 @@ describe("Contract 'LiquidityPool'", async () => {
       const { repaidAmount, addonTreasuryAddress } = props;
       const poolAddress = getAddress(liquidityPool);
       await proveTx(liquidityPool.deposit(DEPOSIT_AMOUNT));
-      await prepareLoan({ loanId: LOAN_ID, borrowAmount: BORROW_AMOUNT, addonAmount: ADDON_AMOUNT, repaidAmount });
+      await prepareLoan({ loanId: LOAN_ID, borrowedAmount: BORROWED_AMOUNT, addonAmount: ADDON_AMOUNT, repaidAmount });
       await proveTx(market.callOnBeforeLoanTakenLiquidityPool(poolAddress, LOAN_ID));
       await proveTx(market.callOnAfterLoanPaymentLiquidityPool(poolAddress, LOAN_ID, repaidAmount));
 
@@ -696,7 +696,7 @@ describe("Contract 'LiquidityPool'", async () => {
       }
 
       const actualBalancesBefore: bigint[] = await liquidityPool.getBalances();
-      expect(actualBalancesBefore[0]).to.eq(DEPOSIT_AMOUNT - BORROW_AMOUNT - ADDON_AMOUNT + repaidAmount);
+      expect(actualBalancesBefore[0]).to.eq(DEPOSIT_AMOUNT - BORROWED_AMOUNT - ADDON_AMOUNT + repaidAmount);
       expect(actualBalancesBefore[1]).to.eq(0n);
 
       await proveTx(market.callOnAfterLoanRevocationLiquidityPool(poolAddress, LOAN_ID));
@@ -713,39 +713,45 @@ describe("Contract 'LiquidityPool'", async () => {
     }
 
     describe("Executes as expected if the addon treasure address is zero and", async () => {
-      it("The addon treasure address is zero and the repaid amount is less than the borrow amount", async () => {
+      it("The addon treasure address is zero and the repaid amount is less than the borrowed amount", async () => {
         const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
-        await executeAndCheck(liquidityPool, { repaidAmount: BORROW_AMOUNT / 3n, addonTreasuryAddress: ZERO_ADDRESS });
+        await executeAndCheck(liquidityPool, {
+          repaidAmount: BORROWED_AMOUNT / 3n,
+          addonTreasuryAddress: ZERO_ADDRESS
+        });
       });
 
-      it("The repaid amount is greater than the borrow amount", async () => {
+      it("The repaid amount is greater than the borrowed amount", async () => {
         const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
-        await executeAndCheck(liquidityPool, { repaidAmount: BORROW_AMOUNT * 3n, addonTreasuryAddress: ZERO_ADDRESS });
+        await executeAndCheck(liquidityPool, {
+          repaidAmount: BORROWED_AMOUNT * 3n,
+          addonTreasuryAddress: ZERO_ADDRESS
+        });
       });
 
-      it("The repaid amount equals the borrow amount", async () => {
+      it("The repaid amount equals the borrowed amount", async () => {
         const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
-        await executeAndCheck(liquidityPool, { repaidAmount: BORROW_AMOUNT, addonTreasuryAddress: ZERO_ADDRESS });
+        await executeAndCheck(liquidityPool, { repaidAmount: BORROWED_AMOUNT, addonTreasuryAddress: ZERO_ADDRESS });
       });
     });
 
     describe("Executes as expected if the addon treasure address is non-zero and", async () => {
-      it("The addon treasure address is zero and the repaid amount is less than the borrow amount", async () => {
+      it("The addon treasure address is zero and the repaid amount is less than the borrowed amount", async () => {
         const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
         const addonTreasuryAddress = addonTreasury.address;
-        await executeAndCheck(liquidityPool, { repaidAmount: BORROW_AMOUNT / 3n, addonTreasuryAddress });
+        await executeAndCheck(liquidityPool, { repaidAmount: BORROWED_AMOUNT / 3n, addonTreasuryAddress });
       });
 
-      it("The repaid amount is greater than the borrow amount", async () => {
+      it("The repaid amount is greater than the borrowed amount", async () => {
         const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
         const addonTreasuryAddress = addonTreasury.address;
-        await executeAndCheck(liquidityPool, { repaidAmount: BORROW_AMOUNT * 3n, addonTreasuryAddress });
+        await executeAndCheck(liquidityPool, { repaidAmount: BORROWED_AMOUNT * 3n, addonTreasuryAddress });
       });
 
-      it("The repaid amount equals the borrow amount", async () => {
+      it("The repaid amount equals the borrowed amount", async () => {
         const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
         const addonTreasuryAddress = addonTreasury.address;
-        await executeAndCheck(liquidityPool, { repaidAmount: BORROW_AMOUNT, addonTreasuryAddress });
+        await executeAndCheck(liquidityPool, { repaidAmount: BORROWED_AMOUNT, addonTreasuryAddress });
       });
     });
 

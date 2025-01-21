@@ -249,7 +249,7 @@ contract LiquidityPool is
     /// @inheritdoc ILiquidityPoolHooks
     function onBeforeLoanTaken(uint256 loanId) external whenNotPaused onlyMarket {
         Loan.State memory loan = ILendingMarket(_market).getLoanState(loanId);
-        uint64 principalAmount = loan.borrowAmount + loan.addonAmount;
+        uint64 principalAmount = loan.borrowedAmount + loan.addonAmount;
         if (principalAmount > _borrowableBalance) {
             revert InsufficientBalance();
         }
@@ -267,10 +267,10 @@ contract LiquidityPool is
     /// @inheritdoc ILiquidityPoolHooks
     function onAfterLoanRevocation(uint256 loanId) external whenNotPaused onlyMarket {
         Loan.State memory loan = ILendingMarket(_market).getLoanState(loanId);
-        if (loan.borrowAmount > loan.repaidAmount) {
-            _borrowableBalance = _borrowableBalance + (loan.borrowAmount - loan.repaidAmount) + loan.addonAmount;
+        if (loan.borrowedAmount > loan.repaidAmount) {
+            _borrowableBalance = _borrowableBalance + (loan.borrowedAmount - loan.repaidAmount) + loan.addonAmount;
         } else {
-            _borrowableBalance = _borrowableBalance - (loan.repaidAmount - loan.borrowAmount) + loan.addonAmount;
+            _borrowableBalance = _borrowableBalance - (loan.repaidAmount - loan.borrowedAmount) + loan.addonAmount;
         }
     }
 

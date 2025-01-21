@@ -20,7 +20,7 @@ library Loan {
     ///
     /// Fields:
     /// - programId -------------- The unique identifier of the program.
-    /// - borrowAmount ----------- The initial borrow amount of the loan, excluding the addon.
+    /// - borrowedAmount --------- The initial borrowed amount of the loan, excluding the addon.
     /// - addonAmount ------------ The amount of the loan addon (extra charges or fees).
     /// - startTimestamp --------- The timestamp when the loan was created (stated).
     /// - durationInPeriods ------ The total duration of the loan determined by the number of periods.
@@ -29,7 +29,7 @@ library Loan {
     /// - interestRatePrimary ---- The primary interest rate that is applied to the loan.
     /// - interestRateSecondary -- The secondary interest rate that is applied to the loan.
     /// - repaidAmount ----------- The amount that has been repaid on the loan over its lifetime.
-    /// - trackedBalance --------- The borrow balance of the loan that is tracked over its lifetime.
+    /// - trackedBalance --------- The borrowed balance of the loan that is tracked over its lifetime.
     /// - trackedTimestamp ------- The timestamp when the loan was last paid or its balance was updated.
     /// - freezeTimestamp -------- The timestamp when the loan was frozen. Zero value for unfrozen loans.
     /// - firstInstallmentId ----- The ID of the first installment for sub-loans or zero for ordinary loans.
@@ -39,7 +39,7 @@ library Loan {
     struct State {
         // Slot1
         uint32 programId;
-        uint64 borrowAmount;
+        uint64 borrowedAmount;
         uint64 addonAmount;
         uint32 startTimestamp;
         uint32 durationInPeriods;
@@ -77,7 +77,7 @@ library Loan {
     /// Note:
     /// The `addonAmount` field has been deprecated since version 1.9.0 and is always zero.
     /// The addon amount of a loan is no longer calculated in the contract.
-    /// It is passed as a parameter of a borrow function instead.
+    /// It is passed as a parameter of a borrowing function instead.
     struct Terms {
         address token;
         uint256 addonAmount;
@@ -107,7 +107,7 @@ library Loan {
     /// - periodIndex ------------ The period index that matches the preview timestamp.
     /// - trackedBalance --------- The tracked balance of the loan at the previewed period.
     /// - outstandingBalance ----- The outstanding balance of the loan at the previewed period.
-    /// - borrowAmount ----------- The borrow amount of the loan at the previewed period.
+    /// - borrowedAmount --------- The borrowed amount of the loan at the previewed period.
     /// - addonAmount ------------ The addon amount of the loan at the previewed period.
     /// - repaidAmount ----------- The repaid amount of the loan at the previewed period.
     /// - lateFeeAmount ---------- The late fee amount of the loan at the previewed period.
@@ -130,7 +130,7 @@ library Loan {
         uint256 periodIndex;
         uint256 trackedBalance;
         uint256 outstandingBalance;
-        uint256 borrowAmount;
+        uint256 borrowedAmount;
         uint256 addonAmount;
         uint256 repaidAmount;
         uint256 lateFeeAmount;
@@ -159,7 +159,7 @@ library Loan {
     /// - periodIndex -------------- The period index that matches the preview timestamp.
     /// - totalTrackedBalance ------ The total tracked balance of all installments.
     /// - totalOutstandingBalance -- The total outstanding balance of all installments
-    /// - totalBorrowAmount -------- The total borrow amount of all installments.
+    /// - totalBorrowedAmount ------ The total borrowed amount of all installments.
     /// - totalAddonAmount --------- The total addon amount of all installments.
     /// - totalRepaidAmount -------- The total repaid amount of all installments.
     /// - totalLateFeeAmount ------- The total late fee amount of all installments.
@@ -173,7 +173,7 @@ library Loan {
     /// - periodIndex -------------- The period index that matches the preview timestamp.
     /// - totalTrackedBalance ------ The tracked balance of the loan.
     /// - totalOutstandingBalance -- The outstanding balance of the loan.
-    /// - totalBorrowAmount -------- The borrow amount of the loan.
+    /// - totalBorrowedAmount ------ The borrowed amount of the loan.
     /// - totalAddonAmount --------- The addon amount of the loan.
     /// - totalRepaidAmount -------- The repaid amount of the loan.
     /// - totalLateFeeAmount ------- The late fee amount of the loan.
@@ -191,7 +191,7 @@ library Loan {
         uint256 periodIndex;
         uint256 totalTrackedBalance;
         uint256 totalOutstandingBalance;
-        uint256 totalBorrowAmount;
+        uint256 totalBorrowedAmount;
         uint256 totalAddonAmount;
         uint256 totalRepaidAmount;
         uint256 totalLateFeeAmount;

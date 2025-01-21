@@ -60,10 +60,10 @@ contract CreditLineMock {
 
     function determineLoanTerms(
         address borrower,
-        uint256 borrowAmount,
+        uint256 borrowedAmount,
         uint256 durationInPeriods
     ) external view returns (Loan.Terms memory terms) {
-        borrowAmount; // To prevent compiler warning about unused variable
+        borrowedAmount; // To prevent compiler warning about unused variable
         terms = _loanTerms[borrower];
         terms.durationInPeriods = uint32(durationInPeriods);
     }

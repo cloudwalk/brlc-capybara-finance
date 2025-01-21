@@ -230,20 +230,20 @@ contract LendingMarket is
     function takeLoanFor(
         address borrower,
         uint32 programId,
-        uint256 borrowAmount,
+        uint256 borrowedAmount,
         uint256 addonAmount,
         uint256 durationInPeriods
     ) external whenNotPaused returns (uint256) {
-        _checkMainLoanParameters(borrower, programId, borrowAmount, addonAmount);
+        _checkMainLoanParameters(borrower, programId, borrowedAmount, addonAmount);
         _checkSender(msg.sender, programId);
         uint256 loanId = _takeLoan(
             borrower, // Tools: this comment prevents Prettier from formatting into a single line.
             programId,
-            borrowAmount,
+            borrowedAmount,
             addonAmount,
             durationInPeriods
         );
-        _transferTokensOnLoanTaking(loanId, borrowAmount, addonAmount);
+        _transferTokensOnLoanTaking(loanId, borrowedAmount, addonAmount);
         return loanId;
     }
 
@@ -251,15 +251,15 @@ contract LendingMarket is
     function takeInstallmentLoanFor(
         address borrower,
         uint32 programId,
-        uint256[] calldata borrowAmounts,
+        uint256[] calldata borrowedAmounts,
         uint256[] calldata addonAmounts,
         uint256[] calldata durationsInPeriods
     ) external whenNotPaused returns (uint256 firstInstallmentId, uint256 installmentCount) {
-        uint256 totalBorrowAmount = _sumArray(borrowAmounts);
+        uint256 totalBorrowedAmount = _sumArray(borrowedAmounts);
         uint256 totalAddonAmount = _sumArray(addonAmounts);
-        installmentCount = borrowAmounts.length;
+        installmentCount = borrowedAmounts.length;
 
-        _checkMainLoanParameters(borrower, programId, totalBorrowAmount, totalAddonAmount);
+        _checkMainLoanParameters(borrower, programId, totalBorrowedAmount, totalAddonAmount);
         _checkSender(msg.sender, programId);
         _checkDurationArray(durationsInPeriods);
         _checkInstallmentCount(installmentCount);
@@ -272,7 +272,7 @@ contract LendingMarket is
             uint256 loanId = _takeLoan(
                 borrower, // Tools: this comment prevents Prettier from formatting into a single line.
                 programId,
-                borrowAmounts[i],
+                borrowedAmounts[i],
                 addonAmounts[i],
                 durationsInPeriods[i]
             );
@@ -287,11 +287,11 @@ contract LendingMarket is
             borrower,
             programId,
             installmentCount,
-            totalBorrowAmount,
+            totalBorrowedAmount,
             totalAddonAmount
         );
 
-        _transferTokensOnLoanTaking(firstInstallmentId, totalBorrowAmount, totalAddonAmount);
+        _transferTokensOnLoanTaking(firstInstallmentId, totalBorrowedAmount, totalAddonAmount);
     }
 
     /// @inheritdoc ILendingMarketPrimary
@@ -325,7 +325,7 @@ contract LendingMarket is
         Loan.State storage loan = _loans[loanId];
         _checkLoanType(loan, uint256(Loan.Type.Ordinary));
         _revokeLoan(loanId, loan);
-        _transferTokensOnLoanRevocation(loan, loan.borrowAmount, loan.addonAmount, loan.repaidAmount);
+        _transferTokensOnLoanRevocation(loan, loan.borrowedAmount, loan.addonAmount, loan.repaidAmount);
     }
 
     /// @inheritdoc ILendingMarketPrimary
@@ -359,7 +359,7 @@ contract LendingMarket is
 
         _transferTokensOnLoanRevocation(
             loan,
-            installmentLoanPreview.totalBorrowAmount,
+            installmentLoanPreview.totalBorrowedAmount,
             installmentLoanPreview.totalAddonAmount,
             installmentLoanPreview.totalRepaidAmount
         );
@@ -620,14 +620,14 @@ contract LendingMarket is
     /// @dev Takes a loan for a provided account internally.
     /// @param borrower The account for whom the loan is taken.
     /// @param programId The identifier of the program to take the loan from.
-    /// @param borrowAmount The desired amount of tokens to borrow.
+    /// @param borrowedAmount The desired amount of tokens to borrow.
     /// @param addonAmount The off-chain calculated addon amount (extra charges or fees) for the loan,
     /// @param durationInPeriods The desired duration of the loan in periods.
     /// @return The unique identifier of the loan.
     function _takeLoan(
         address borrower,
         uint32 programId,
-        uint256 borrowAmount,
+        uint256 borrowedAmount,
         uint256 addonAmount,
         uint256 durationInPeriods
     ) internal returns (uint256) {
@@ -646,11 +646,11 @@ contract LendingMarket is
 
         Loan.Terms memory terms = ICreditLine(creditLine).determineLoanTerms(
             borrower, // Tools: this comment prevents Prettier from formatting into a single line.
-            borrowAmount,
+            borrowedAmount,
             durationInPeriods
         );
         terms.addonAmount = addonAmount;
-        uint256 principalAmount = borrowAmount + terms.addonAmount;
+        uint256 principalAmount = borrowedAmount + terms.addonAmount;
         uint32 blockTimestamp = _blockTimestamp().toUint32();
 
         Loan.State storage loan = _loans[id];
@@ -661,7 +661,7 @@ contract LendingMarket is
         loan.durationInPeriods = terms.durationInPeriods.toUint32();
         loan.interestRatePrimary = terms.interestRatePrimary.toUint32();
         loan.interestRateSecondary = terms.interestRateSecondary.toUint32();
-        loan.borrowAmount = borrowAmount.toUint64();
+        loan.borrowedAmount = borrowedAmount.toUint64();
         loan.trackedBalance = principalAmount.toUint64();
         loan.trackedTimestamp = blockTimestamp;
         loan.addonAmount = terms.addonAmount.toUint64();
@@ -786,12 +786,12 @@ contract LendingMarket is
     /// @dev Validates the main parameters of the loan.
     /// @param borrower The address of the borrower.
     /// @param programId The ID of the lending program.
-    /// @param borrowAmount The amount to borrow.
+    /// @param borrowedAmount The amount to borrow.
     /// @param addonAmount The addon amount of the loan.
     function _checkMainLoanParameters(
         address borrower,
         uint32 programId,
-        uint256 borrowAmount,
+        uint256 borrowedAmount,
         uint256 addonAmount
     ) internal pure {
         if (programId == 0) {
@@ -800,10 +800,10 @@ contract LendingMarket is
         if (borrower == address(0)) {
             revert Error.ZeroAddress();
         }
-        if (borrowAmount == 0) {
+        if (borrowedAmount == 0) {
             revert Error.InvalidAmount();
         }
-        if (borrowAmount != Rounding.roundMath(borrowAmount, Constants.ACCURACY_FACTOR)) {
+        if (borrowedAmount != Rounding.roundMath(borrowedAmount, Constants.ACCURACY_FACTOR)) {
             revert Error.InvalidAmount();
         }
         if (addonAmount != Rounding.roundMath(addonAmount, Constants.ACCURACY_FACTOR)) {
@@ -1019,7 +1019,7 @@ contract LendingMarket is
             timestamp
         );
         preview.outstandingBalance = Rounding.roundMath(preview.trackedBalance, Constants.ACCURACY_FACTOR);
-        preview.borrowAmount = loan.borrowAmount;
+        preview.borrowedAmount = loan.borrowedAmount;
         preview.addonAmount = loan.addonAmount;
         preview.repaidAmount = loan.repaidAmount;
         preview.lateFeeAmount += loan.lateFeeAmount;
@@ -1068,7 +1068,7 @@ contract LendingMarket is
             singleLoanPreview = _getLoanPreviewExtended(loanId, timestamp);
             preview.totalTrackedBalance += singleLoanPreview.trackedBalance;
             preview.totalOutstandingBalance += singleLoanPreview.outstandingBalance;
-            preview.totalBorrowAmount += singleLoanPreview.borrowAmount;
+            preview.totalBorrowedAmount += singleLoanPreview.borrowedAmount;
             preview.totalAddonAmount += singleLoanPreview.addonAmount;
             preview.totalRepaidAmount += singleLoanPreview.repaidAmount;
             preview.totalLateFeeAmount += singleLoanPreview.lateFeeAmount;
@@ -1155,9 +1155,9 @@ contract LendingMarket is
 
     /// @dev Transfers tokens from the liquidity pool to the borrower and the addon treasury.
     /// @param loanId The ID of the loan.
-    /// @param borrowAmount The amount of tokens to borrow.
+    /// @param borrowedAmount The amount of tokens to borrow.
     /// @param addonAmount The addon amount of the loan.
-    function _transferTokensOnLoanTaking(uint256 loanId, uint256 borrowAmount, uint256 addonAmount) internal {
+    function _transferTokensOnLoanTaking(uint256 loanId, uint256 borrowedAmount, uint256 addonAmount) internal {
         Loan.State storage loan = _loans[loanId];
         address liquidityPool = _programLiquidityPools[loan.programId];
         address token = loan.token;
@@ -1165,7 +1165,7 @@ contract LendingMarket is
         if (addonTreasury == address(0)) {
             revert AddonTreasuryAddressZero();
         }
-        IERC20(token).safeTransferFrom(liquidityPool, loan.borrower, borrowAmount);
+        IERC20(token).safeTransferFrom(liquidityPool, loan.borrower, borrowedAmount);
         if (addonAmount != 0) {
             IERC20(token).safeTransferFrom(liquidityPool, addonTreasury, addonAmount);
         }
@@ -1173,12 +1173,12 @@ contract LendingMarket is
 
     /// @dev Transfers tokens from the borrower and the addon treasury back to the liquidity pool.
     /// @param loan The storage state of the loan.
-    /// @param borrowAmount The amount of tokens to borrow.
+    /// @param borrowedAmount The amount of tokens to borrow.
     /// @param addonAmount The addon amount of the loan.
     /// @param repaidAmount The repaid amount of the loan.
     function _transferTokensOnLoanRevocation(
         Loan.State storage loan,
-        uint256 borrowAmount,
+        uint256 borrowedAmount,
         uint256 addonAmount,
         uint256 repaidAmount
     ) internal {
@@ -1188,10 +1188,10 @@ contract LendingMarket is
         if (addonTreasury == address(0)) {
             revert AddonTreasuryAddressZero();
         }
-        if (repaidAmount < borrowAmount) {
-            IERC20(loan.token).safeTransferFrom(loan.borrower, liquidityPool, borrowAmount - repaidAmount);
-        } else if (repaidAmount != borrowAmount) {
-            IERC20(loan.token).safeTransferFrom(liquidityPool, loan.borrower, repaidAmount - borrowAmount);
+        if (repaidAmount < borrowedAmount) {
+            IERC20(loan.token).safeTransferFrom(loan.borrower, liquidityPool, borrowedAmount - repaidAmount);
+        } else if (repaidAmount != borrowedAmount) {
+            IERC20(loan.token).safeTransferFrom(liquidityPool, loan.borrower, repaidAmount - borrowedAmount);
         }
         if (addonAmount != 0) {
             IERC20(token).safeTransferFrom(addonTreasury, liquidityPool, addonAmount);

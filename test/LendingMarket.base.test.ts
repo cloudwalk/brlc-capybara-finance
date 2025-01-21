@@ -34,7 +34,7 @@ interface LoanConfig {
 
 interface LoanState {
   programId: number;
-  borrowAmount: number;
+  borrowedAmount: number;
   addonAmount: number;
   startTimestamp: number;
   durationInPeriods: number;
@@ -72,7 +72,7 @@ interface LoanPreviewExtended {
   periodIndex: number;
   trackedBalance: number;
   outstandingBalance: number;
-  borrowAmount: number;
+  borrowedAmount: number;
   addonAmount: number;
   repaidAmount: number;
   lateFeeAmount: number;
@@ -98,7 +98,7 @@ interface InstallmentLoanPreview {
   periodIndex: number;
   totalTrackedBalance: number;
   totalOutstandingBalance: number;
-  totalBorrowAmount: number;
+  totalBorrowedAmount: number;
   totalAddonAmount: number;
   totalRepaidAmount: number;
   totalLateFeeAmount: number;
@@ -187,7 +187,7 @@ const OWNER_ROLE = ethers.id("OWNER_ROLE");
 const ZERO_ADDRESS = ethers.ZeroAddress;
 const ACCURACY_FACTOR = 10_000;
 const INITIAL_BALANCE = 1000_000_000_000;
-const BORROW_AMOUNT = 100_000_000_000;
+const BORROWED_AMOUNT = 100_000_000_000;
 const ADDON_AMOUNT = 100_000;
 const REPAYMENT_AMOUNT = 50_000_000_000;
 const DISCOUNT_AMOUNT = 10_000_000_000;
@@ -205,7 +205,7 @@ const NEGATIVE_TIME_OFFSET = 3 * 60 * 60; // 3 hours
 const COOLDOWN_IN_PERIODS = 3;
 
 const INSTALLMENT_COUNT = 3;
-const BORROW_AMOUNTS: number[] = [BORROW_AMOUNT * 3 - 2, BORROW_AMOUNT * 2 + 1, BORROW_AMOUNT + 1];
+const BORROWED_AMOUNTS: number[] = [BORROWED_AMOUNT * 3 - 2, BORROWED_AMOUNT * 2 + 1, BORROWED_AMOUNT + 1];
 const ADDON_AMOUNTS: number[] = [ADDON_AMOUNT * 3 - 2, ADDON_AMOUNT * 2 + 1, ADDON_AMOUNT + 1];
 const DURATIONS_IN_PERIODS: number[] = [0, DURATION_IN_PERIODS / 2, DURATION_IN_PERIODS];
 
@@ -217,7 +217,7 @@ const EXPECTED_VERSION: Version = {
 
 const defaultLoanState: LoanState = {
   programId: 0,
-  borrowAmount: 0,
+  borrowedAmount: 0,
   addonAmount: 0,
   startTimestamp: 0,
   durationInPeriods: 0,
@@ -355,7 +355,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
 
   function createLoan(props: {
     id: number;
-    borrowAmount: number;
+    borrowedAmount: number;
     addonAmount: number;
     lateFeeAmount: number;
     timestamp: number;
@@ -364,7 +364,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
     const loanState: LoanState = {
       ...defaultLoanState,
       programId: PROGRAM_ID,
-      borrowAmount: props.borrowAmount,
+      borrowedAmount: props.borrowedAmount,
       addonAmount: props.addonAmount,
       startTimestamp: timestampWithOffset,
       durationInPeriods: DURATION_IN_PERIODS,
@@ -372,7 +372,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       borrower: borrower.address,
       interestRatePrimary: INTEREST_RATE_PRIMARY,
       interestRateSecondary: INTEREST_RATE_SECONDARY,
-      trackedBalance: props.borrowAmount + props.addonAmount,
+      trackedBalance: props.borrowedAmount + props.addonAmount,
       trackedTimestamp: timestampWithOffset
     };
     const loanConfig: LoanConfig = {
@@ -388,7 +388,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
 
   function createInstallmentLoanParts(props: {
     firstInstallmentId: number;
-    borrowAmounts: number[];
+    borrowedAmounts: number[];
     addonAmounts: number[];
     durations: number[];
     lateFeeAmount: number;
@@ -396,11 +396,11 @@ describe("Contract 'LendingMarket': base tests", async () => {
   }): Loan[] {
     const timestampWithOffset = calculateTimestampWithOffset(props.timestamp);
     const loans: Loan[] = [];
-    for (let i = 0; i < props.borrowAmounts.length; ++i) {
+    for (let i = 0; i < props.borrowedAmounts.length; ++i) {
       const loanState = {
         ...defaultLoanState,
         programId: PROGRAM_ID,
-        borrowAmount: props.borrowAmounts[i],
+        borrowedAmount: props.borrowedAmounts[i],
         addonAmount: props.addonAmounts[i],
         startTimestamp: timestampWithOffset,
         durationInPeriods: DURATIONS_IN_PERIODS[i],
@@ -408,10 +408,10 @@ describe("Contract 'LendingMarket': base tests", async () => {
         borrower: borrower.address,
         interestRatePrimary: INTEREST_RATE_PRIMARY,
         interestRateSecondary: INTEREST_RATE_SECONDARY,
-        trackedBalance: props.borrowAmounts[i] + props.addonAmounts[i],
+        trackedBalance: props.borrowedAmounts[i] + props.addonAmounts[i],
         trackedTimestamp: timestampWithOffset,
         firstInstallmentId: props.firstInstallmentId,
-        installmentCount: props.borrowAmounts.length
+        installmentCount: props.borrowedAmounts.length
       };
       const loanConfig: LoanConfig = {
         ...defaultLoanConfig,
@@ -507,7 +507,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       periodIndex: loanPreview.periodIndex,
       trackedBalance: loanPreview.trackedBalance,
       outstandingBalance: loanPreview.outstandingBalance,
-      borrowAmount: loan.state.borrowAmount,
+      borrowedAmount: loan.state.borrowedAmount,
       addonAmount: loan.state.addonAmount,
       repaidAmount: loan.state.repaidAmount,
       discountAmount: loan.state.discountAmount,
@@ -538,7 +538,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       totalOutstandingBalance: loanPreviews
         .map(preview => preview.outstandingBalance)
         .reduce((sum, amount) => sum + amount),
-      totalBorrowAmount: loans.map(loan => loan.state.borrowAmount).reduce((sum, amount) => sum + amount),
+      totalBorrowedAmount: loans.map(loan => loan.state.borrowedAmount).reduce((sum, amount) => sum + amount),
       totalAddonAmount: loans.map(loan => loan.state.addonAmount).reduce((sum, amount) => sum + amount),
       totalRepaidAmount: loans.map(loan => loan.state.repaidAmount).reduce((sum, amount) => sum + amount),
       totalLateFeeAmount: loanPreviews.map(preview => preview.lateFeeAmount).reduce((sum, amount) => sum + amount),
@@ -628,7 +628,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
     await proveTx(marketUnderLender.configureAlias(alias.address, ALIAS_STATUS_CONFIGURED));
 
     // mock configurations
-    await proveTx(creditLine.mockLoanTerms(borrower.address, BORROW_AMOUNT, creatLoanTerms()));
+    await proveTx(creditLine.mockLoanTerms(borrower.address, BORROWED_AMOUNT, creatLoanTerms()));
     await proveTx(liquidityPool.mockAddonTreasury(addonTreasury.address));
 
     // supply tokens
@@ -658,13 +658,13 @@ describe("Contract 'LendingMarket': base tests", async () => {
     const txReceipt1 = await proveTx(marketUnderLender.takeLoanFor(
       borrower.address,
       PROGRAM_ID,
-      BORROW_AMOUNT,
+      BORROWED_AMOUNT,
       ADDON_AMOUNT,
       DURATION_IN_PERIODS
     ));
     fixture.ordinaryLoan = createLoan({
       id: ordinaryLoanId,
-      borrowAmount: BORROW_AMOUNT,
+      borrowedAmount: BORROWED_AMOUNT,
       addonAmount: ADDON_AMOUNT,
       lateFeeAmount,
       timestamp: await getBlockTimestamp(txReceipt1.blockNumber)
@@ -676,7 +676,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
     const txReceipt2 = await proveTx(marketUnderLender.takeInstallmentLoanFor(
       borrower.address,
       PROGRAM_ID,
-      BORROW_AMOUNTS,
+      BORROWED_AMOUNTS,
       ADDON_AMOUNTS,
       DURATIONS_IN_PERIODS
     ));
@@ -684,7 +684,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
     const timestamp = await getBlockTimestamp(txReceipt2.blockNumber);
     fixture.installmentLoanParts = createInstallmentLoanParts({
       firstInstallmentId,
-      borrowAmounts: BORROW_AMOUNTS,
+      borrowedAmounts: BORROWED_AMOUNTS,
       addonAmounts: ADDON_AMOUNTS,
       durations: DURATIONS_IN_PERIODS,
       lateFeeAmount,
@@ -1151,15 +1151,15 @@ describe("Contract 'LendingMarket': base tests", async () => {
     async function executeAndCheck(props: { isAddonAmountZero: boolean }) {
       const { market } = await setUpFixture(deployLendingMarketAndConfigureItForLoan);
 
-      const addonAmount = props.isAddonAmountZero ? 0 : BORROW_AMOUNT / 100;
-      const principalAmount = BORROW_AMOUNT + addonAmount;
+      const addonAmount = props.isAddonAmountZero ? 0 : BORROWED_AMOUNT / 100;
+      const principalAmount = BORROWED_AMOUNT + addonAmount;
       const expectedLoanId = 0;
 
       // Check the returned value of the function for the first loan initiated by the lender
       let actualLoanId: bigint = await connect(market, lender).takeLoanFor.staticCall(
         borrower.address,
         PROGRAM_ID,
-        BORROW_AMOUNT,
+        BORROWED_AMOUNT,
         addonAmount,
         DURATION_IN_PERIODS
       );
@@ -1169,7 +1169,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       actualLoanId = await connect(market, alias).takeLoanFor.staticCall(
         borrower.address,
         PROGRAM_ID,
-        BORROW_AMOUNT,
+        BORROWED_AMOUNT,
         addonAmount,
         DURATION_IN_PERIODS
       );
@@ -1178,7 +1178,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       const tx: Promise<TransactionResponse> = connect(market, lender).takeLoanFor(
         borrower.address,
         PROGRAM_ID,
-        BORROW_AMOUNT,
+        BORROWED_AMOUNT,
         addonAmount,
         DURATION_IN_PERIODS
       );
@@ -1186,7 +1186,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       const actualLoanState: LoanState = await market.getLoanState(expectedLoanId);
       const expectedLoan: Loan = createLoan({
         id: expectedLoanId,
-        borrowAmount: BORROW_AMOUNT,
+        borrowedAmount: BORROWED_AMOUNT,
         addonAmount,
         lateFeeAmount: LATE_FEE_AMOUNT,
         timestamp
@@ -1198,7 +1198,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       await expect(tx).to.changeTokenBalances(
         token,
         [liquidityPool, borrower, addonTreasury, market],
-        [-principalAmount, +BORROW_AMOUNT, +addonAmount, 0]
+        [-principalAmount, +BORROWED_AMOUNT, +addonAmount, 0]
       );
       if (addonAmount != 0) {
         expect(await getNumberOfEvents(tx, token, EVENT_NAME_TRANSFER)).to.eq(2);
@@ -1218,7 +1218,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       const nextActualLoanId: bigint = await connect(market, lender).takeLoanFor.staticCall(
         borrower.address,
         PROGRAM_ID,
-        BORROW_AMOUNT,
+        BORROWED_AMOUNT,
         addonAmount,
         DURATION_IN_PERIODS
       );
@@ -1244,7 +1244,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
           marketUnderLender.takeLoanFor(
             borrower.address,
             PROGRAM_ID,
-            BORROW_AMOUNT,
+            BORROWED_AMOUNT,
             ADDON_AMOUNT,
             DURATION_IN_PERIODS
           )
@@ -1259,7 +1259,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
           marketUnderLender.takeLoanFor(
             wrongBorrowerAddress,
             PROGRAM_ID,
-            BORROW_AMOUNT,
+            BORROWED_AMOUNT,
             ADDON_AMOUNT,
             DURATION_IN_PERIODS
           )
@@ -1274,7 +1274,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
           marketUnderLender.takeLoanFor(
             borrower.address,
             wrongProgramId,
-            BORROW_AMOUNT,
+            BORROWED_AMOUNT,
             ADDON_AMOUNT,
             DURATION_IN_PERIODS
           )
@@ -1289,38 +1289,38 @@ describe("Contract 'LendingMarket': base tests", async () => {
           marketUnderLender.takeLoanFor(
             borrower.address,
             wrongProgramId,
-            BORROW_AMOUNT,
+            BORROWED_AMOUNT,
             ADDON_AMOUNT,
             DURATION_IN_PERIODS
           )
         ).to.be.revertedWithCustomError(marketUnderLender, ERROR_NAME_UNAUTHORIZED);
       });
 
-      it("The borrow amount is zero", async () => {
+      it("The borrowed amount is zero", async () => {
         const { marketUnderLender } = await setUpFixture(deployLendingMarketAndConfigureItForLoan);
-        const wrongBorrowAmount = 0;
+        const wrongBorrowedAmount = 0;
 
         await expect(
           marketUnderLender.takeLoanFor(
             borrower.address,
             PROGRAM_ID,
-            wrongBorrowAmount,
+            wrongBorrowedAmount,
             ADDON_AMOUNT,
             DURATION_IN_PERIODS
           )
         ).to.be.revertedWithCustomError(marketUnderLender, ERROR_NAME_INVALID_AMOUNT);
       });
 
-      it("The borrow amount is not rounded according to the accuracy factor", async () => {
+      it("The borrowed amount is not rounded according to the accuracy factor", async () => {
         const { marketUnderLender } = await setUpFixture(deployLendingMarketAndConfigureItForLoan);
-        const wrongBorrowAmount = BORROW_AMOUNT - 1;
-        expect(wrongBorrowAmount % ACCURACY_FACTOR).not.to.eq(0);
+        const wrongBorrowedAmount = BORROWED_AMOUNT - 1;
+        expect(wrongBorrowedAmount % ACCURACY_FACTOR).not.to.eq(0);
 
         await expect(
           marketUnderLender.takeLoanFor(
             borrower.address,
             PROGRAM_ID,
-            wrongBorrowAmount,
+            wrongBorrowedAmount,
             ADDON_AMOUNT,
             DURATION_IN_PERIODS
           )
@@ -1336,7 +1336,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
           marketUnderLender.takeLoanFor(
             borrower.address,
             PROGRAM_ID,
-            BORROW_AMOUNT,
+            BORROWED_AMOUNT,
             wrongAddonAmount,
             DURATION_IN_PERIODS
           )
@@ -1350,7 +1350,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
           connect(market, borrower).takeLoanFor(
             borrower.address,
             PROGRAM_ID,
-            BORROW_AMOUNT,
+            BORROWED_AMOUNT,
             ADDON_AMOUNT,
             DURATION_IN_PERIODS
           )
@@ -1367,7 +1367,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
           marketUnderLender.takeLoanFor(
             borrower.address,
             PROGRAM_ID,
-            BORROW_AMOUNT,
+            BORROWED_AMOUNT,
             ADDON_AMOUNT,
             DURATION_IN_PERIODS
           )
@@ -1384,7 +1384,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
           marketUnderLender.takeLoanFor(
             borrower.address,
             PROGRAM_ID,
-            BORROW_AMOUNT,
+            BORROWED_AMOUNT,
             ADDON_AMOUNT,
             DURATION_IN_PERIODS
           )
@@ -1399,7 +1399,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
           marketUnderLender.takeLoanFor(
             borrower.address,
             PROGRAM_ID,
-            BORROW_AMOUNT,
+            BORROWED_AMOUNT,
             ADDON_AMOUNT,
             DURATION_IN_PERIODS
           )
@@ -1414,7 +1414,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
           marketUnderLender.takeLoanFor(
             borrower.address,
             PROGRAM_ID,
-            BORROW_AMOUNT,
+            BORROWED_AMOUNT,
             ADDON_AMOUNT,
             DURATION_IN_PERIODS
           )
@@ -1425,14 +1425,14 @@ describe("Contract 'LendingMarket': base tests", async () => {
 
   describe("Function 'takeInstallmentLoanFor()'", async () => {
     before(async () => {
-      const totalBorrowAmount = BORROW_AMOUNTS.reduce((sum, amount) => sum + amount);
+      const totalBorrowedAmount = BORROWED_AMOUNTS.reduce((sum, amount) => sum + amount);
       const totalAddonAmount = ADDON_AMOUNTS.reduce((sum, amount) => sum + amount);
 
       // Check rounding of amounts
-      expect(totalBorrowAmount % ACCURACY_FACTOR).to.eq(0, `totalBorrowAmount is unrounded, but must be`);
+      expect(totalBorrowedAmount % ACCURACY_FACTOR).to.eq(0, `totalBorrowedAmount is unrounded, but must be`);
       expect(totalAddonAmount % ACCURACY_FACTOR).to.eq(0, `totalAddonAmount is unrounded, but must be`);
       for (let i = 0; i < INSTALLMENT_COUNT; ++i) {
-        expect(BORROW_AMOUNTS[i] % ACCURACY_FACTOR).not.to.eq(0, `borrowAmounts[${i}] is rounded, but must not be`);
+        expect(BORROWED_AMOUNTS[i] % ACCURACY_FACTOR).not.to.eq(0, `borrowedAmounts[${i}] is rounded, but must not be`);
         expect(ADDON_AMOUNTS[i] % ACCURACY_FACTOR).not.to.eq(0, `addonAmounts[${i}] is rounded, but must not be`);
       }
     });
@@ -1447,7 +1447,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       expect(installmentCount).not.greaterThan(INSTALLMENT_COUNT);
 
       const expectedLoanIds = Array.from({ length: installmentCount }, (_, i) => i);
-      const borrowAmounts = BORROW_AMOUNTS.slice(0, installmentCount);
+      const borrowedAmounts = BORROWED_AMOUNTS.slice(0, installmentCount);
       const addonAmounts = ADDON_AMOUNTS.slice(0, installmentCount);
       const durationsInPeriods = DURATIONS_IN_PERIODS.slice(0, installmentCount);
 
@@ -1456,27 +1456,27 @@ describe("Contract 'LendingMarket': base tests", async () => {
         addonAmounts[2] += 1; // Fix total addon amount rounding
       }
       if (installmentCount == 1) {
-        borrowAmounts[0] = BORROW_AMOUNT;
+        borrowedAmounts[0] = BORROWED_AMOUNT;
         addonAmounts[0] = ADDON_AMOUNT;
       }
       if (areAddonAmountsZero) {
         addonAmounts.fill(0);
       }
       const expectedLoanIdRange = [BigInt(expectedLoanIds[0]), BigInt(expectedLoanIds.length)];
-      const totalBorrowAmount = borrowAmounts.reduce((sum, amount) => sum + amount);
+      const totalBorrowedAmount = borrowedAmounts.reduce((sum, amount) => sum + amount);
       const totalAddonAmount = addonAmounts.reduce((sum, amount) => sum + amount);
-      const principalAmounts: number[] = borrowAmounts.map((amount, i) => amount + addonAmounts[i]);
+      const principalAmounts: number[] = borrowedAmounts.map((amount, i) => amount + addonAmounts[i]);
       const totalPrincipal = principalAmounts.reduce((sum, amount) => sum + amount);
 
       // Check rounding of amounts
-      expect(totalBorrowAmount % ACCURACY_FACTOR).to.eq(0, `totalBorrowAmount is unrounded, but must be`);
+      expect(totalBorrowedAmount % ACCURACY_FACTOR).to.eq(0, `totalBorrowedAmount is unrounded, but must be`);
       expect(totalAddonAmount % ACCURACY_FACTOR).to.eq(0, `totalAddonAmount is unrounded, but must be`);
 
       // Check the returned value of the function for the first loan initiated by the lender
       let actualLoanIdRange: bigint[] = await connect(market, lender).takeInstallmentLoanFor.staticCall(
         borrower.address,
         PROGRAM_ID,
-        borrowAmounts,
+        borrowedAmounts,
         addonAmounts,
         durationsInPeriods
       );
@@ -1486,7 +1486,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       actualLoanIdRange = await connect(market, alias).takeInstallmentLoanFor.staticCall(
         borrower.address,
         PROGRAM_ID,
-        borrowAmounts,
+        borrowedAmounts,
         addonAmounts,
         durationsInPeriods
       );
@@ -1495,7 +1495,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       const tx: Promise<TransactionResponse> = connect(market, lender).takeInstallmentLoanFor(
         borrower.address,
         PROGRAM_ID,
-        borrowAmounts,
+        borrowedAmounts,
         addonAmounts,
         durationsInPeriods
       );
@@ -1503,7 +1503,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       const actualLoanStates: LoanState[] = await getLoanStates(market, expectedLoanIds);
       const expectedLoans: Loan[] = createInstallmentLoanParts({
         firstInstallmentId: expectedLoanIds[0],
-        borrowAmounts,
+        borrowedAmounts,
         addonAmounts,
         durations: durationsInPeriods,
         lateFeeAmount: LATE_FEE_AMOUNT,
@@ -1527,7 +1527,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
           borrower.address,
           PROGRAM_ID,
           installmentCount,
-          totalBorrowAmount,
+          totalBorrowedAmount,
           totalAddonAmount
         );
       expect(await market.loanCounter()).to.eq(expectedLoanIds[installmentCount - 1] + 1);
@@ -1535,7 +1535,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       await expect(tx).to.changeTokenBalances(
         token,
         [liquidityPool, borrower, addonTreasury, market],
-        [-totalPrincipal, +totalBorrowAmount, +totalAddonAmount, 0]
+        [-totalPrincipal, +totalBorrowedAmount, +totalAddonAmount, 0]
       );
       if (totalAddonAmount != 0) {
         expect(await getNumberOfEvents(tx, token, EVENT_NAME_TRANSFER)).to.eq(2);
@@ -1547,7 +1547,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       const nextActualLoanId: bigint = await connect(market, lender).takeLoanFor.staticCall(
         borrower.address,
         PROGRAM_ID,
-        BORROW_AMOUNT,
+        BORROWED_AMOUNT,
         ADDON_AMOUNT,
         DURATION_IN_PERIODS
       );
@@ -1577,7 +1577,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
           marketUnderLender.takeInstallmentLoanFor(
             borrower.address,
             PROGRAM_ID,
-            BORROW_AMOUNTS,
+            BORROWED_AMOUNTS,
             ADDON_AMOUNTS,
             DURATIONS_IN_PERIODS
           )
@@ -1592,7 +1592,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
           marketUnderLender.takeInstallmentLoanFor(
             wrongBorrowerAddress,
             PROGRAM_ID,
-            BORROW_AMOUNTS,
+            BORROWED_AMOUNTS,
             ADDON_AMOUNTS,
             DURATIONS_IN_PERIODS
           )
@@ -1607,7 +1607,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
           marketUnderLender.takeInstallmentLoanFor(
             borrower.address,
             wrongProgramId,
-            BORROW_AMOUNTS,
+            BORROWED_AMOUNTS,
             ADDON_AMOUNTS,
             DURATIONS_IN_PERIODS
           )
@@ -1622,54 +1622,54 @@ describe("Contract 'LendingMarket': base tests", async () => {
           marketUnderLender.takeInstallmentLoanFor(
             borrower.address,
             wrongProgramId,
-            BORROW_AMOUNTS,
+            BORROWED_AMOUNTS,
             ADDON_AMOUNTS,
             DURATIONS_IN_PERIODS
           )
         ).to.be.revertedWithCustomError(marketUnderLender, ERROR_NAME_UNAUTHORIZED);
       });
 
-      it("The input borrow amount array is empty", async () => {
+      it("The input borrowed amount array is empty", async () => {
         const { marketUnderLender } = await setUpFixture(deployLendingMarketAndConfigureItForLoan);
-        const wrongBorrowAmounts: number[] = [];
+        const wrongBorrowedAmounts: number[] = [];
 
         await expect(
           marketUnderLender.takeInstallmentLoanFor(
             borrower.address,
             PROGRAM_ID,
-            wrongBorrowAmounts,
+            wrongBorrowedAmounts,
             ADDON_AMOUNTS,
             DURATIONS_IN_PERIODS
           )
         ).to.be.revertedWithCustomError(marketUnderLender, ERROR_NAME_INVALID_AMOUNT);
       });
 
-      it("Is reverted if one of the borrow amount values is zero", async () => {
+      it("Is reverted if one of the borrowed amount values is zero", async () => {
         const { marketUnderLender } = await setUpFixture(deployLendingMarketAndConfigureItForLoan);
-        const wrongBorrowAmounts = [...BORROW_AMOUNTS];
-        wrongBorrowAmounts[INSTALLMENT_COUNT - 1] = 0;
+        const wrongBorrowedAmounts = [...BORROWED_AMOUNTS];
+        wrongBorrowedAmounts[INSTALLMENT_COUNT - 1] = 0;
 
         await expect(
           marketUnderLender.takeInstallmentLoanFor(
             borrower.address,
             PROGRAM_ID,
-            wrongBorrowAmounts,
+            wrongBorrowedAmounts,
             ADDON_AMOUNTS,
             DURATIONS_IN_PERIODS
           )
         ).to.be.revertedWithCustomError(marketUnderLender, ERROR_NAME_INVALID_AMOUNT);
       });
 
-      it("The total borrow amount is not rounded according to the accuracy factor", async () => {
+      it("The total borrowed amount is not rounded according to the accuracy factor", async () => {
         const { marketUnderLender } = await setUpFixture(deployLendingMarketAndConfigureItForLoan);
-        const wrongBorrowAmounts = [...BORROW_AMOUNTS];
-        wrongBorrowAmounts[INSTALLMENT_COUNT - 1] += 1;
+        const wrongBorrowedAmounts = [...BORROWED_AMOUNTS];
+        wrongBorrowedAmounts[INSTALLMENT_COUNT - 1] += 1;
 
         await expect(
           marketUnderLender.takeInstallmentLoanFor(
             borrower.address,
             PROGRAM_ID,
-            wrongBorrowAmounts,
+            wrongBorrowedAmounts,
             ADDON_AMOUNTS,
             DURATIONS_IN_PERIODS
           )
@@ -1685,7 +1685,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
           marketUnderLender.takeInstallmentLoanFor(
             borrower.address,
             PROGRAM_ID,
-            BORROW_AMOUNTS,
+            BORROWED_AMOUNTS,
             wrongAddonAmounts,
             DURATIONS_IN_PERIODS
           )
@@ -1699,7 +1699,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
           connect(market, borrower).takeInstallmentLoanFor(
             borrower.address,
             PROGRAM_ID,
-            BORROW_AMOUNTS,
+            BORROWED_AMOUNTS,
             ADDON_AMOUNTS,
             DURATIONS_IN_PERIODS
           )
@@ -1715,7 +1715,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
           marketUnderLender.takeInstallmentLoanFor(
             borrower.address,
             PROGRAM_ID,
-            BORROW_AMOUNTS,
+            BORROWED_AMOUNTS,
             ADDON_AMOUNTS,
             wrongDurations
           )
@@ -1730,7 +1730,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
           marketUnderLender.takeInstallmentLoanFor(
             borrower.address,
             PROGRAM_ID,
-            BORROW_AMOUNTS,
+            BORROWED_AMOUNTS,
             ADDON_AMOUNTS,
             DURATIONS_IN_PERIODS
           )
@@ -1746,7 +1746,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
           marketUnderLender.takeInstallmentLoanFor(
             borrower.address,
             PROGRAM_ID,
-            BORROW_AMOUNTS,
+            BORROWED_AMOUNTS,
             wrongAddonAmounts,
             DURATIONS_IN_PERIODS
           )
@@ -1756,7 +1756,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
           marketUnderLender.takeInstallmentLoanFor(
             borrower.address,
             PROGRAM_ID,
-            BORROW_AMOUNTS,
+            BORROWED_AMOUNTS,
             ADDON_AMOUNTS,
             wrongDurations
           )
@@ -1773,7 +1773,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
           marketUnderLender.takeInstallmentLoanFor(
             borrower.address,
             PROGRAM_ID,
-            BORROW_AMOUNTS,
+            BORROWED_AMOUNTS,
             ADDON_AMOUNTS,
             DURATIONS_IN_PERIODS
           )
@@ -1790,7 +1790,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
           marketUnderLender.takeInstallmentLoanFor(
             borrower.address,
             PROGRAM_ID,
-            BORROW_AMOUNTS,
+            BORROWED_AMOUNTS,
             ADDON_AMOUNTS,
             DURATIONS_IN_PERIODS
           )
@@ -1805,7 +1805,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
           marketUnderLender.takeInstallmentLoanFor(
             borrower.address,
             PROGRAM_ID,
-            BORROW_AMOUNTS,
+            BORROWED_AMOUNTS,
             ADDON_AMOUNTS,
             DURATIONS_IN_PERIODS
           )
@@ -1820,7 +1820,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
           marketUnderLender.takeInstallmentLoanFor(
             borrower.address,
             PROGRAM_ID,
-            BORROW_AMOUNTS,
+            BORROWED_AMOUNTS,
             ADDON_AMOUNTS,
             DURATIONS_IN_PERIODS
           )
@@ -1965,7 +1965,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
 
       it("The repayment amount is bigger than outstanding balance", async () => {
         const { market, ordinaryLoan: loan } = await setUpFixture(deployLendingMarketAndTakeLoans);
-        const wrongRepaymentAmount = BORROW_AMOUNT + ADDON_AMOUNT + ACCURACY_FACTOR;
+        const wrongRepaymentAmount = BORROWED_AMOUNT + ADDON_AMOUNT + ACCURACY_FACTOR;
 
         await expect(market.repayLoan(loan.id, wrongRepaymentAmount))
           .to.be.revertedWithCustomError(market, ERROR_NAME_INVALID_AMOUNT);
@@ -2229,7 +2229,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
         const repaymentAmounts: number[] = Array(loans.length).fill(REPAYMENT_AMOUNT);
         const lastLoan = loans[loans.length - 1];
         repaymentAmounts[loans.length - 1] = Number(roundMath(
-          lastLoan.state.borrowAmount + lastLoan.state.addonAmount,
+          lastLoan.state.borrowedAmount + lastLoan.state.addonAmount,
           ACCURACY_FACTOR
         )) + ACCURACY_FACTOR;
 
@@ -2423,7 +2423,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
         const discountAmounts: number[] = Array(loans.length).fill(DISCOUNT_AMOUNT);
         const lastLoan = loans[loans.length - 1];
         discountAmounts[loans.length - 1] = Number(roundMath(
-          lastLoan.state.borrowAmount + lastLoan.state.addonAmount,
+          lastLoan.state.borrowedAmount + lastLoan.state.addonAmount,
           ACCURACY_FACTOR
         )) + ACCURACY_FACTOR;
 
@@ -2867,7 +2867,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
     }) {
       const { market } = fixture;
       const expectedLoan = clone(props.currentLoan);
-      const borrowerBalanceChange = expectedLoan.state.repaidAmount - expectedLoan.state.borrowAmount;
+      const borrowerBalanceChange = expectedLoan.state.repaidAmount - expectedLoan.state.borrowedAmount;
 
       if (props.revoker === lender) {
         // Check it can be called by an alias too
@@ -2920,11 +2920,11 @@ describe("Contract 'LendingMarket': base tests", async () => {
           });
         });
 
-        it("Is called by the lender with a repayment that is less than the borrow amount", async () => {
+        it("Is called by the lender with a repayment that is less than the borrowed amount", async () => {
           const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
 
           const loan = clone(fixture.ordinaryLoan);
-          const repaymentAmount = Number(roundMath(loan.state.borrowAmount / 2, ACCURACY_FACTOR));
+          const repaymentAmount = Number(roundMath(loan.state.borrowedAmount / 2, ACCURACY_FACTOR));
           const tx = await proveTx(
             connect(fixture.market, borrower).repayLoan(loan.id, repaymentAmount)
           );
@@ -2942,11 +2942,11 @@ describe("Contract 'LendingMarket': base tests", async () => {
           });
         });
 
-        it("Is called by the lender with a repayment that equals the borrow amount", async () => {
+        it("Is called by the lender with a repayment that equals the borrowed amount", async () => {
           const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
 
           const loan = clone(fixture.ordinaryLoan);
-          const repaymentAmount = loan.state.borrowAmount;
+          const repaymentAmount = loan.state.borrowedAmount;
           const tx = await proveTx(connect(fixture.market, borrower).repayLoan(loan.id, repaymentAmount));
           processRepayment(loan, { repaymentAmount, repaymentTimestamp: await getBlockTimestamp(tx.blockNumber) });
 
@@ -2961,11 +2961,11 @@ describe("Contract 'LendingMarket': base tests", async () => {
           });
         });
 
-        it("Is called by the lender with a repayment that is greater than the borrow amount", async () => {
+        it("Is called by the lender with a repayment that is greater than the borrowed amount", async () => {
           const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
 
           const loan = clone(fixture.ordinaryLoan);
-          const repaymentAmount = loan.state.borrowAmount + ACCURACY_FACTOR;
+          const repaymentAmount = loan.state.borrowedAmount + ACCURACY_FACTOR;
           const tx = await proveTx(connect(fixture.market, borrower).repayLoan(loan.id, repaymentAmount));
           processRepayment(loan, { repaymentAmount, repaymentTimestamp: await getBlockTimestamp(tx.blockNumber) });
 
@@ -2994,11 +2994,11 @@ describe("Contract 'LendingMarket': base tests", async () => {
           });
         });
 
-        it("Is called by the borrower with a repayment that equals the borrow amount", async () => {
+        it("Is called by the borrower with a repayment that equals the borrowed amount", async () => {
           const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
 
           const loan = clone(fixture.ordinaryLoan);
-          const repaymentAmount = loan.state.borrowAmount;
+          const repaymentAmount = loan.state.borrowedAmount;
           const tx = await proveTx(connect(fixture.market, borrower).repayLoan(loan.id, repaymentAmount));
           processRepayment(loan, { repaymentAmount, repaymentTimestamp: await getBlockTimestamp(tx.blockNumber) });
 
@@ -3091,7 +3091,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       const loanIds = loans.map(loan => loan.id);
       const expectedLoans = props.currentLoans.map(loan => clone(loan));
       const borrowerBalanceChange = expectedLoans
-        .map(loan => loan.state.repaidAmount - loan.state.borrowAmount)
+        .map(loan => loan.state.repaidAmount - loan.state.borrowedAmount)
         .reduce((sum, amount) => sum + amount);
 
       if (props.areAddonAmountsZero) {
@@ -3205,7 +3205,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
             loans[0].state.startTimestamp + (COOLDOWN_IN_PERIODS - 1) * PERIOD_IN_SECONDS
           );
           for (const loan of loans) {
-            const repaymentAmount = roundMath(loan.state.borrowAmount, ACCURACY_FACTOR);
+            const repaymentAmount = roundMath(loan.state.borrowedAmount, ACCURACY_FACTOR);
             const tx = await proveTx(connect(fixture.market, borrower).repayLoan(loan.id, repaymentAmount));
             processRepayment(loan, { repaymentAmount, repaymentTimestamp: await getBlockTimestamp(tx.blockNumber) });
           }
@@ -3476,14 +3476,14 @@ describe("Contract 'LendingMarket': base tests", async () => {
     it("Function 'calculateTrackedBalance()' executes as expected", async () => {
       const { market } = await setUpFixture(deployLendingMarketAndTakeLoans);
       const actualBalance = await market.calculateTrackedBalance(
-        BORROW_AMOUNT,
+        BORROWED_AMOUNT,
         DURATION_IN_PERIODS,
         INTEREST_RATE_PRIMARY,
         INTEREST_RATE_FACTOR
       );
 
       const expectedBalance = calculateTrackedBalance(
-        BORROW_AMOUNT,
+        BORROWED_AMOUNT,
         DURATION_IN_PERIODS,
         INTEREST_RATE_PRIMARY
       );

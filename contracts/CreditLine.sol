@@ -167,7 +167,7 @@ contract CreditLine is AccessControlExtUpgradeable, PausableUpgradeable, ICredit
 
     /// @inheritdoc ICreditLineConfiguration
     function configureCreditLine(CreditLineConfig memory config) external onlyRole(OWNER_ROLE) {
-        if (config.minBorrowAmount > config.maxBorrowAmount) {
+        if (config.minBorrowedAmount > config.maxBorrowedAmount) {
             revert InvalidCreditLineConfiguration();
         }
         if (config.minDurationInPeriods > config.maxDurationInPeriods) {
@@ -269,13 +269,13 @@ contract CreditLine is AccessControlExtUpgradeable, PausableUpgradeable, ICredit
     /// @inheritdoc ICreditLinePrimary
     function determineLoanTerms(
         address borrower,
-        uint256 borrowAmount,
+        uint256 borrowedAmount,
         uint256 durationInPeriods
     ) public view returns (Loan.Terms memory terms) {
         if (borrower == address(0)) {
             revert Error.ZeroAddress();
         }
-        if (borrowAmount == 0) {
+        if (borrowedAmount == 0) {
             revert Error.InvalidAmount();
         }
 
@@ -284,10 +284,10 @@ contract CreditLine is AccessControlExtUpgradeable, PausableUpgradeable, ICredit
         if (_blockTimestamp() > borrowerConfig.expiration) {
             revert BorrowerConfigurationExpired();
         }
-        if (borrowAmount > borrowerConfig.maxBorrowAmount) {
+        if (borrowedAmount > borrowerConfig.maxBorrowedAmount) {
             revert Error.InvalidAmount();
         }
-        if (borrowAmount < borrowerConfig.minBorrowAmount) {
+        if (borrowedAmount < borrowerConfig.minBorrowedAmount) {
             revert Error.InvalidAmount();
         }
         if (durationInPeriods < borrowerConfig.minDurationInPeriods) {
@@ -303,8 +303,8 @@ contract CreditLine is AccessControlExtUpgradeable, PausableUpgradeable, ICredit
                 revert LimitViolationOnSingleActiveLoan();
             }
         } else if (borrowerConfig.borrowPolicy == BorrowPolicy.TotalActiveAmountLimit) {
-            uint256 newTotalActiveLoanAmount = borrowAmount + borrowerState.totalActiveLoanAmount;
-            if (newTotalActiveLoanAmount > borrowerConfig.maxBorrowAmount) {
+            uint256 newTotalActiveLoanAmount = borrowedAmount + borrowerState.totalActiveLoanAmount;
+            if (newTotalActiveLoanAmount > borrowerConfig.maxBorrowedAmount) {
                 revert LimitViolationOnTotalActiveLoanAmount(newTotalActiveLoanAmount);
             }
         } // else borrowerConfig.borrowPolicy == BorrowPolicy.MultipleActiveLoans
@@ -372,13 +372,13 @@ contract CreditLine is AccessControlExtUpgradeable, PausableUpgradeable, ICredit
         // NOTE: We don't check for expiration here, because
         // it can be used for disabling a borrower by setting it to 0.
 
-        if (config.minBorrowAmount > config.maxBorrowAmount) {
+        if (config.minBorrowedAmount > config.maxBorrowedAmount) {
             revert InvalidBorrowerConfiguration();
         }
-        if (config.minBorrowAmount < _config.minBorrowAmount) {
+        if (config.minBorrowedAmount < _config.minBorrowedAmount) {
             revert InvalidBorrowerConfiguration();
         }
-        if (config.maxBorrowAmount > _config.maxBorrowAmount) {
+        if (config.maxBorrowedAmount > _config.maxBorrowedAmount) {
             revert InvalidBorrowerConfiguration();
         }
 
@@ -430,7 +430,7 @@ contract CreditLine is AccessControlExtUpgradeable, PausableUpgradeable, ICredit
 
         unchecked {
             uint256 newActiveLoanCount = uint256(borrowerState.activeLoanCount) + 1;
-            uint256 newTotalActiveLoanAmount = uint256(borrowerState.totalActiveLoanAmount) + loan.borrowAmount;
+            uint256 newTotalActiveLoanAmount = uint256(borrowerState.totalActiveLoanAmount) + loan.borrowedAmount;
             if (
                 newActiveLoanCount + borrowerState.closedLoanCount > type(uint16).max ||
                 newTotalActiveLoanAmount + borrowerState.totalClosedLoanAmount > type(uint64).max
@@ -448,8 +448,8 @@ contract CreditLine is AccessControlExtUpgradeable, PausableUpgradeable, ICredit
         BorrowerState storage borrowerState = _borrowerStates[loan.borrower];
         borrowerState.activeLoanCount -= 1;
         borrowerState.closedLoanCount += 1;
-        borrowerState.totalActiveLoanAmount -= loan.borrowAmount;
-        borrowerState.totalClosedLoanAmount += loan.borrowAmount;
+        borrowerState.totalActiveLoanAmount -= loan.borrowedAmount;
+        borrowerState.totalClosedLoanAmount += loan.borrowedAmount;
     }
 
     /// @dev The upgrade validation function for the UUPSExtUpgradeable contract.

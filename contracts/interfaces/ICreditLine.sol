@@ -38,12 +38,12 @@ interface ICreditLinePrimary is ICreditLineTypes {
 
     /// @dev Retrieves the loan terms for the provided borrower, amount, and loan duration.
     /// @param borrower The address of the borrower.
-    /// @param borrowAmount The desired amount of tokens to borrow.
+    /// @param borrowedAmount The desired amount of tokens to borrow.
     /// @param durationInPeriods The desired duration of the loan in periods.
     /// @return terms The struct containing the terms of the loan.
     function determineLoanTerms(
         address borrower,
-        uint256 borrowAmount,
+        uint256 borrowedAmount,
         uint256 durationInPeriods
     ) external view returns (Loan.Terms memory terms);
 
@@ -143,7 +143,7 @@ interface ICreditLineErrors {
     /// @dev Thrown when another loan is requested by an account but only one active loan is allowed.
     error LimitViolationOnSingleActiveLoan();
 
-    /// @dev Thrown when the total borrowed amount of active loans exceeds the maximum borrow amount of a single loan.
+    /// @dev Thrown when the total borrowed amount of active loans exceeds the maximum borrowed amount of a single loan.
     error LimitViolationOnTotalActiveLoanAmount(uint256 newTotalActiveLoanAmount);
 
     /// @dev Thrown when the borrower state counters or amounts would overflow their maximum values.
