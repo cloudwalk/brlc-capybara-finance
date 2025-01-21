@@ -894,7 +894,7 @@ contract LendingMarket is
     /// @dev Checks if the loan exists.
     /// @param loan The storage state of the loan.
     function _checkLoanExistence(Loan.State storage loan) internal view {
-        if (loan.token == address(0)) {
+        if (loan.borrower == address(0)) {
             revert LoanNotExist();
         }
     }
