@@ -6,7 +6,7 @@ pragma solidity 0.8.24;
 /// @author CloudWalk Inc. (See https://cloudwalk.io)
 /// @dev Defines types that are used in the credit line contract.
 interface ICreditLineTypes {
-    /// @dev Defines the available borrow policies.
+    /// @dev Defines the available borrowing policies.
     ///
     /// Possible values:
     ///
@@ -16,7 +16,7 @@ interface ICreditLineTypes {
     ///                                 exceed the maximum borrowed amount of a single loan specified for the borrower.
     ///
     /// Note: In all cases, each individual loan must comply with the minimum and maximum amount limits.
-    enum BorrowPolicy {
+    enum BorrowingPolicy {
         SingleActiveLoan,
         MultipleActiveLoans,
         TotalActiveAmountLimit
@@ -70,7 +70,7 @@ interface ICreditLineTypes {
     /// - maxDurationInPeriods --- The maximum duration of the loan determined in periods.
     /// - minBorrowedAmount ------ The minimum amount of tokens the borrower can take as a loan.
     /// - maxBorrowedAmount ------ The maximum amount of tokens the borrower can take as a loan.
-    /// - borrowPolicy ----------- The borrow policy to be applied to the borrower.
+    /// - borrowingPolicy -------- The borrowing policy to be applied to the borrower.
     /// - interestRatePrimary ---- The primary interest rate to be applied to the loan.
     /// - interestRateSecondary -- The secondary interest rate to be applied to the loan.
     /// - addonFixedRate --------- The fixed rate for the loan addon calculation (extra charges or fees).
@@ -85,7 +85,7 @@ interface ICreditLineTypes {
         uint32 maxDurationInPeriods;
         uint64 minBorrowedAmount;
         uint64 maxBorrowedAmount;
-        BorrowPolicy borrowPolicy;
+        BorrowingPolicy borrowingPolicy;
         // uint24 __reserved;
         // Slot 2
         uint32 interestRatePrimary;

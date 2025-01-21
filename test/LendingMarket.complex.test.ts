@@ -20,7 +20,7 @@ const PERIOD_IN_SECONDS = 86400;
 const PROGRAM_ID = 1;
 const NEGATIVE_TIME_OFFSET = 3 * 60 * 60; // 3 hours
 
-enum BorrowPolicy {
+enum BorrowingPolicy {
   // SingleActiveLoan = 0,
   // MultipleActiveLoans = 1
   TotalActiveAmountLimit = 2
@@ -102,13 +102,13 @@ interface BorrowerConfig {
   maxDurationInPeriods: number;
   minBorrowedAmount: number;
   maxBorrowedAmount: number;
-  borrowPolicy: BorrowPolicy;
+  borrowingPolicy: BorrowingPolicy;
   interestRatePrimary: number;
   interestRateSecondary: number;
   addonFixedRate: number;
   addonPeriodRate: number;
 
-  [key: string]: number | BorrowPolicy; // Index signature
+  [key: string]: number | BorrowingPolicy; // Index signature
 }
 
 const testScenarioDefault: TestScenario = {
@@ -318,7 +318,7 @@ describe("Contract 'LendingMarket': complex tests", async () => {
       interestRateSecondary: scenario.interestRateSecondary,
       addonFixedRate: 0,
       addonPeriodRate: 0,
-      borrowPolicy: BorrowPolicy.TotalActiveAmountLimit,
+      borrowingPolicy: BorrowingPolicy.TotalActiveAmountLimit,
       expiration: 2 ** 32 - 1
     };
   }

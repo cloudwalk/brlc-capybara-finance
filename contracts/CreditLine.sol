@@ -298,16 +298,16 @@ contract CreditLine is AccessControlExtUpgradeable, PausableUpgradeable, ICredit
         }
 
         BorrowerState storage borrowerState = _borrowerStates[borrower];
-        if (borrowerConfig.borrowPolicy == BorrowPolicy.SingleActiveLoan) {
+        if (borrowerConfig.borrowingPolicy == BorrowingPolicy.SingleActiveLoan) {
             if (borrowerState.activeLoanCount > 0) {
                 revert LimitViolationOnSingleActiveLoan();
             }
-        } else if (borrowerConfig.borrowPolicy == BorrowPolicy.TotalActiveAmountLimit) {
+        } else if (borrowerConfig.borrowingPolicy == BorrowingPolicy.TotalActiveAmountLimit) {
             uint256 newTotalActiveLoanAmount = borrowedAmount + borrowerState.totalActiveLoanAmount;
             if (newTotalActiveLoanAmount > borrowerConfig.maxBorrowedAmount) {
                 revert LimitViolationOnTotalActiveLoanAmount(newTotalActiveLoanAmount);
             }
-        } // else borrowerConfig.borrowPolicy == BorrowPolicy.MultipleActiveLoans
+        } // else borrowerConfig.borrowingPolicy == BorrowingPolicy.MultipleActiveLoans
 
         terms.token = _token;
         terms.durationInPeriods = durationInPeriods;

@@ -5,7 +5,7 @@ import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import { checkContractUupsUpgrading, connect, getAddress, getLatestBlockTimestamp, proveTx } from "../test-utils/eth";
 import { checkEquality, maxUintForBits, setUpFixture } from "../test-utils/common";
 
-enum BorrowPolicy {
+enum BorrowingPolicy {
   SingleActiveLoan = 0,
   MultipleActiveLoans = 1,
   TotalActiveAmountLimit = 2
@@ -35,13 +35,13 @@ interface BorrowerConfig {
   maxDurationInPeriods: bigint;
   minBorrowedAmount: bigint;
   maxBorrowedAmount: bigint;
-  borrowPolicy: BorrowPolicy;
+  borrowingPolicy: BorrowingPolicy;
   interestRatePrimary: bigint;
   interestRateSecondary: bigint;
   addonFixedRate: bigint;
   addonPeriodRate: bigint;
 
-  [key: string]: bigint | BorrowPolicy; // Index signature
+  [key: string]: bigint | BorrowingPolicy; // Index signature
 }
 
 interface BorrowerState {
@@ -125,7 +125,7 @@ const defaultBorrowerConfig: BorrowerConfig = {
   maxDurationInPeriods: 0n,
   minBorrowedAmount: 0n,
   maxBorrowedAmount: 0n,
-  borrowPolicy: BorrowPolicy.SingleActiveLoan,
+  borrowingPolicy: BorrowingPolicy.SingleActiveLoan,
   interestRatePrimary: 0n,
   interestRateSecondary: 0n,
   addonFixedRate: 0n,
@@ -315,7 +315,7 @@ describe("Contract 'CreditLine'", async () => {
   }
 
   function createBorrowerConfiguration(
-    borrowPolicy: BorrowPolicy = BorrowPolicy.MultipleActiveLoans
+    borrowingPolicy: BorrowingPolicy = BorrowingPolicy.MultipleActiveLoans
   ): BorrowerConfig {
     return {
       expiration: EXPIRATION_TIME,
@@ -323,7 +323,7 @@ describe("Contract 'CreditLine'", async () => {
       maxDurationInPeriods: MAX_DURATION_IN_PERIODS,
       minBorrowedAmount: MIN_BORROWED_AMOUNT,
       maxBorrowedAmount: MAX_BORROWED_AMOUNT,
-      borrowPolicy: borrowPolicy,
+      borrowingPolicy: borrowingPolicy,
       interestRatePrimary: MIN_INTEREST_RATE_PRIMARY,
       interestRateSecondary: MIN_INTEREST_RATE_SECONDARY,
       addonFixedRate: 0n,
@@ -1018,19 +1018,19 @@ describe("Contract 'CreditLine'", async () => {
   });
 
   describe("Function 'determineLoanTerms()'", async () => {
-    async function executeAndCheck(borrowPolicy: BorrowPolicy) {
+    async function executeAndCheck(borrowingPolicy: BorrowingPolicy) {
       const fixture = await setUpFixture(deployAndConfigureContractsWithBorrower);
       const { creditLine, creditLineUnderAdmin, borrowerConfig } = fixture;
       const borrowedAmount = (borrowerConfig.minBorrowedAmount + borrowerConfig.maxBorrowedAmount) / 2n;
       const durationInPeriods = (borrowerConfig.minDurationInPeriods + borrowerConfig.maxDurationInPeriods) / 2n;
       const borrowerState: BorrowerState = {
         ...defaultBorrowerState,
-        activeLoanCount: borrowPolicy == BorrowPolicy.SingleActiveLoan ? 0n : maxUintForBits(16),
+        activeLoanCount: borrowingPolicy == BorrowingPolicy.SingleActiveLoan ? 0n : maxUintForBits(16),
         closedLoanCount: maxUintForBits(16),
         totalActiveLoanAmount: maxUintForBits(64),
         totalClosedLoanAmount: maxUintForBits(64)
       };
-      if (borrowPolicy == BorrowPolicy.TotalActiveAmountLimit) {
+      if (borrowingPolicy == BorrowingPolicy.TotalActiveAmountLimit) {
         borrowerState.totalActiveLoanAmount = BigInt(borrowerConfig.maxBorrowedAmount) - BigInt(borrowedAmount);
       }
       await proveTx(creditLineUnderAdmin.configureBorrower(borrower.address, borrowerConfig));
@@ -1047,15 +1047,15 @@ describe("Contract 'CreditLine'", async () => {
     }
 
     it("Executes as expected if the borrowing policy is 'SingleActiveLoan'", async () => {
-      await executeAndCheck(BorrowPolicy.SingleActiveLoan);
+      await executeAndCheck(BorrowingPolicy.SingleActiveLoan);
     });
 
     it("Executes as expected if the borrowing policy is 'MultipleActiveLoan'", async () => {
-      await executeAndCheck(BorrowPolicy.MultipleActiveLoans);
+      await executeAndCheck(BorrowingPolicy.MultipleActiveLoans);
     });
 
     it("Executes as expected if the borrowing policy is 'TotalActiveAmountLimit'", async () => {
-      await executeAndCheck(BorrowPolicy.TotalActiveAmountLimit);
+      await executeAndCheck(BorrowingPolicy.TotalActiveAmountLimit);
     });
 
     it("Is reverted if the borrower address is zero", async () => {
@@ -1127,10 +1127,10 @@ describe("Contract 'CreditLine'", async () => {
       )).to.be.revertedWithCustomError(creditLine, ERROR_NAME_LOAN_DURATION_OUT_OF_RANGE);
     });
 
-    it("Is reverted if the borrow policy is 'SingleActiveLoan' but there is another active loan", async () => {
+    it("Is reverted if the borrowing policy is 'SingleActiveLoan' but there is another active loan", async () => {
       const fixture = await setUpFixture(deployAndConfigureContractsWithBorrower);
       const { creditLine, creditLineUnderAdmin, borrowerConfig } = fixture;
-      const borrowerConfigNew = { ...borrowerConfig, borrowPolicy: BorrowPolicy.SingleActiveLoan };
+      const borrowerConfigNew = { ...borrowerConfig, borrowingPolicy: BorrowingPolicy.SingleActiveLoan };
       const borrowerState: BorrowerState = {
         ...defaultBorrowerState,
         activeLoanCount: 1n
@@ -1145,10 +1145,10 @@ describe("Contract 'CreditLine'", async () => {
       )).to.revertedWithCustomError(creditLine, ERROR_NAME_LIMIT_VIOLATION_ON_SINGLE_ACTIVE_LOAN);
     });
 
-    it("Is reverted if the borrow policy is 'TotalActiveAmountLimit' but total amount excess happens", async () => {
+    it("Is reverted if the borrowing policy is 'TotalActiveAmountLimit' but total amount excess happens", async () => {
       const fixture = await setUpFixture(deployAndConfigureContractsWithBorrower);
       const { creditLine, creditLineUnderAdmin, borrowerConfig } = fixture;
-      const borrowerConfigNew = { ...borrowerConfig, borrowPolicy: BorrowPolicy.TotalActiveAmountLimit };
+      const borrowerConfigNew = { ...borrowerConfig, borrowingPolicy: BorrowingPolicy.TotalActiveAmountLimit };
       const borrowerState: BorrowerState = {
         ...defaultBorrowerState,
         totalActiveLoanAmount: borrowerConfig.maxBorrowedAmount - BORROWED_AMOUNT + 1n
