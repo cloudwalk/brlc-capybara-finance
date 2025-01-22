@@ -741,7 +741,7 @@ contract LendingMarket is
     function _processTrackedBalanceChange(
         Loan.State storage loan,
         uint256 changeAmount
-    ) internal returns (uint256 newTrackedBalance, uint256 actualChangeAmount){
+    ) internal returns (uint256 newTrackedBalance, uint256 actualChangeAmount) {
         if (changeAmount == 0) {
             revert Error.InvalidAmount();
         }
