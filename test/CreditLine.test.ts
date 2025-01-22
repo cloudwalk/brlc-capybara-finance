@@ -1037,7 +1037,8 @@ describe("Contract 'CreditLine'", async () => {
   describe("Function 'determineLoanTerms()'", async () => {
     async function executeAndCheck(borrowingPolicy: BorrowingPolicy) {
       const fixture = await setUpFixture(deployAndConfigureContractsWithBorrower);
-      const { creditLine, creditLineUnderAdmin, borrowerConfig } = fixture;
+      const { creditLine, creditLineUnderAdmin } = fixture;
+      const borrowerConfig = { ...fixture.borrowerConfig, borrowingPolicy };
       const borrowedAmount = (borrowerConfig.minBorrowedAmount + borrowerConfig.maxBorrowedAmount) / 2n;
       const durationInPeriods = (borrowerConfig.minDurationInPeriods + borrowerConfig.maxDurationInPeriods) / 2n;
       const borrowerState: BorrowerState = {
