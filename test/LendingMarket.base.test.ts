@@ -1841,23 +1841,23 @@ describe("Contract 'LendingMarket': base tests", async () => {
       payerKind: PayerKind
     ): Promise<Loan> {
       const expectedLoan: Loan = clone(currentLoan);
-      const { market, ordinaryLoan: loan } = fixture;
+      const { market } = fixture;
       let tx: Promise<TransactionResponse>;
       let payer: HardhatEthersSigner;
       switch (payerKind) {
         case PayerKind.Borrower:
-          tx = connect(market, borrower).repayLoan(loan.id, repaymentAmount);
+          tx = connect(market, borrower).repayLoan(expectedLoan.id, repaymentAmount);
           payer = borrower;
           break;
         default:
-          tx = connect(market, stranger).repayLoan(loan.id, repaymentAmount);
+          tx = connect(market, stranger).repayLoan(expectedLoan.id, repaymentAmount);
           payer = stranger;
       }
       const repaidAmountBefore = expectedLoan.state.repaidAmount;
       processRepayment(expectedLoan, { repaymentAmount, repaymentTimestamp: await getTxTimestamp(tx) });
       repaymentAmount = expectedLoan.state.repaidAmount - repaidAmountBefore;
 
-      const actualLoanStateAfterRepayment = await market.getLoanState(loan.id);
+      const actualLoanStateAfterRepayment = await market.getLoanState(expectedLoan.id);
       checkEquality(actualLoanStateAfterRepayment, expectedLoan.state);
 
       await expect(tx).to.changeTokenBalances(
@@ -1867,7 +1867,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       );
 
       await expect(tx).to.emit(market, EVENT_NAME_LOAN_REPAYMENT).withArgs(
-        loan.id,
+        expectedLoan.id,
         payer.address,
         borrower.address,
         repaymentAmount,
@@ -1875,8 +1875,12 @@ describe("Contract 'LendingMarket': base tests", async () => {
       );
 
       // Check that the appropriate market hook functions are called
-      await expect(tx).to.emit(liquidityPool, EVENT_NAME_ON_AFTER_LOAN_PAYMENT).withArgs(loan.id, repaymentAmount);
-      await expect(tx).to.emit(creditLine, EVENT_NAME_ON_AFTER_LOAN_PAYMENT).withArgs(loan.id, repaymentAmount);
+      await expect(tx)
+        .to.emit(liquidityPool, EVENT_NAME_ON_AFTER_LOAN_PAYMENT)
+        .withArgs(expectedLoan.id, repaymentAmount);
+      await expect(tx)
+        .to.emit(creditLine, EVENT_NAME_ON_AFTER_LOAN_PAYMENT)
+        .withArgs(expectedLoan.id, repaymentAmount);
 
       return expectedLoan;
     }
@@ -1923,6 +1927,18 @@ describe("Contract 'LendingMarket': base tests", async () => {
         const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
         await increaseBlockTimestampToPeriodIndex(fixture.ordinaryLoanStartPeriod + 1);
         await repayLoanAndCheck(fixture, fixture.ordinaryLoan, FULL_REPAYMENT_AMOUNT, PayerKind.Borrower);
+      });
+
+      it("There is a partial repayment for a frozen loan", async () => {
+        const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
+        const loan = clone(fixture.ordinaryLoan);
+        let periodIndex = fixture.ordinaryLoanStartPeriod + loan.state.durationInPeriods / 2;
+        await increaseBlockTimestampToPeriodIndex(periodIndex);
+        const tx = fixture.marketUnderLender.freeze(loan.id);
+        loan.state.freezeTimestamp = calculateTimestampWithOffset(await getTxTimestamp(tx));
+        periodIndex += loan.state.durationInPeriods;
+        await increaseBlockTimestampToPeriodIndex(periodIndex);
+        await repayLoanAndCheck(fixture, loan, REPAYMENT_AMOUNT, PayerKind.Stranger);
       });
     });
 
@@ -2102,6 +2118,22 @@ describe("Contract 'LendingMarket': base tests", async () => {
         ];
         const repaymentAmounts = [REPAYMENT_AMOUNT, FULL_REPAYMENT_AMOUNT];
         await increaseBlockTimestampToPeriodIndex(fixture.installmentLoanStartPeriodIndex + 3);
+        await executeAndCheck(fixture, currentLoans, repaymentAmounts, PayerKind.Borrower);
+      });
+
+      it("There is a partial repayment for a frozen loan", async () => {
+        const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
+        const currentLoans: Loan[] = [
+          fixture.ordinaryLoan,
+          clone(fixture.installmentLoanParts[fixture.installmentLoanParts.length - 1])
+        ];
+        const repaymentAmounts = [REPAYMENT_AMOUNT, REPAYMENT_AMOUNT / 2];
+        let periodIndex = fixture.installmentLoanStartPeriodIndex + 1;
+        await increaseBlockTimestampToPeriodIndex(periodIndex);
+        const tx = fixture.marketUnderLender.freeze(currentLoans[1].id);
+        currentLoans[1].state.freezeTimestamp = calculateTimestampWithOffset(await getTxTimestamp(tx));
+        periodIndex += Math.round(currentLoans[1].state.durationInPeriods / 2);
+        await increaseBlockTimestampToPeriodIndex(periodIndex);
         await executeAndCheck(fixture, currentLoans, repaymentAmounts, PayerKind.Borrower);
       });
 
@@ -2318,6 +2350,22 @@ describe("Contract 'LendingMarket': base tests", async () => {
         const discountAmounts = Array(loans.length).fill(FULL_REPAYMENT_AMOUNT);
 
         await executeAndCheck(fixture, loans, discountAmounts);
+      });
+
+      it("There is a partial discount for a frozen loan", async () => {
+        const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
+        const currentLoans: Loan[] = [
+          fixture.ordinaryLoan,
+          clone(fixture.installmentLoanParts[fixture.installmentLoanParts.length - 1])
+        ];
+        const discountAmounts = [DISCOUNT_AMOUNT, DISCOUNT_AMOUNT / 2];
+        let periodIndex = fixture.installmentLoanStartPeriodIndex + currentLoans[1].state.durationInPeriods / 2;
+        await increaseBlockTimestampToPeriodIndex(periodIndex);
+        const tx = fixture.marketUnderLender.freeze(currentLoans[1].id);
+        currentLoans[1].state.freezeTimestamp = calculateTimestampWithOffset(await getTxTimestamp(tx));
+        periodIndex += currentLoans[1].state.durationInPeriods;
+        await increaseBlockTimestampToPeriodIndex(periodIndex);
+        await executeAndCheck(fixture, currentLoans, discountAmounts);
       });
 
       it("There are empty input arrays", async () => {
@@ -2981,6 +3029,28 @@ describe("Contract 'LendingMarket': base tests", async () => {
             revoker: lender
           });
         });
+
+        it("Is called by the lender for a partially repaid loan after freezing", async () => {
+          const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
+
+          const loan = clone(fixture.ordinaryLoan);
+          const repaymentAmount = roundSpecific(loan.state.borrowedAmount / 2);
+          let tx = connect(fixture.market, borrower).repayLoan(loan.id, repaymentAmount);
+          processRepayment(loan, { repaymentAmount, repaymentTimestamp: await getTxTimestamp(tx) });
+
+          let periodIndex = fixture.ordinaryLoanStartPeriod + loan.state.durationInPeriods / 2;
+          await increaseBlockTimestampToPeriodIndex(periodIndex);
+          tx = fixture.marketUnderLender.freeze(loan.id);
+          loan.state.freezeTimestamp = calculateTimestampWithOffset(await getTxTimestamp(tx));
+          periodIndex += loan.state.durationInPeriods;
+          await increaseBlockTimestampToPeriodIndex(periodIndex);
+
+          await revokeAndCheck(fixture, {
+            isAddonAmountZero: false,
+            currentLoan: loan,
+            revoker: lender
+          });
+        });
       });
 
       describe("The addon amount is zero and", async () => {
@@ -3160,13 +3230,37 @@ describe("Contract 'LendingMarket': base tests", async () => {
               revoker: borrower
             });
           });
+
+          it("Is called by the lender for partially repaid installments and after one of them is frozen", async () => {
+            const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
+            const loans = fixture.installmentLoanParts.map(loan => clone(loan));
+            for (const loan of loans) {
+              const repaymentAmount = roundSpecific(Math.round(loan.state.borrowedAmount / 2));
+              const tx = connect(fixture.market, borrower).repayLoan(loan.id, repaymentAmount);
+              const repaymentTimestamp = await getTxTimestamp(tx);
+              processRepayment(loan, { repaymentAmount, repaymentTimestamp });
+            }
+
+            let periodIndex = fixture.installmentLoanStartPeriodIndex + loans[1].state.durationInPeriods / 2;
+            await increaseBlockTimestampToPeriodIndex(periodIndex);
+            const tx = fixture.marketUnderLender.freeze(loans[1].id);
+            loans[1].state.freezeTimestamp = calculateTimestampWithOffset(await getTxTimestamp(tx));
+            periodIndex += loans[1].state.durationInPeriods;
+            await increaseBlockTimestampToPeriodIndex(periodIndex);
+
+            await revokeAndCheck(fixture, {
+              areAddonAmountsZero: false,
+              currentLoans: loans,
+              revoker: lender
+            });
+          });
         });
 
         describe("All installments are repaid except the last one", async () => {
           async function repayInstalmentsExceptLastOne(
             market: Contract,
             loans: Loan[]
-          ): Promise<{ totalRepaymentAmount: number, totalBorrowedAmount: number }> {
+          ): Promise<{ totalRepaymentAmount: number; totalBorrowedAmount: number }> {
             let totalRepaymentAmount = 0;
             let totalBorrowedAmount = 0;
             for (let i = 0; i < loans.length - 1; ++i) {
