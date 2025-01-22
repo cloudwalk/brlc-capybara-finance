@@ -114,7 +114,7 @@ contract LiquidityPool is
         address market_,
         address token_
     ) external initializer {
-        __LiquidityPoolAccountable_init(lender_, market_, token_);
+        __LiquidityPool_init(lender_, market_, token_);
     }
 
     /// @dev Internal initializer of the upgradable contract.
@@ -122,7 +122,7 @@ contract LiquidityPool is
     /// @param market_ The address of the lending market.
     /// @param token_ The address of the token.
     /// See details https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable.
-    function __LiquidityPoolAccountable_init(
+    function __LiquidityPool_init(
         address lender_,
         address market_,
         address token_
@@ -132,7 +132,7 @@ contract LiquidityPool is
         __AccessControl_init_unchained();
         __AccessControlExt_init_unchained();
         __Pausable_init_unchained();
-        __LiquidityPoolAccountable_init_unchained(lender_, market_, token_);
+        __LiquidityPool_init_unchained(lender_, market_, token_);
     }
 
     /// @dev Unchained internal initializer of the upgradable contract.
@@ -140,7 +140,7 @@ contract LiquidityPool is
     /// @param market_ The address of the lending market.
     /// @param token_ The address of the token.
     /// See details https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable.
-    function __LiquidityPoolAccountable_init_unchained(
+    function __LiquidityPool_init_unchained(
         address lender_,
         address market_,
         address token_
