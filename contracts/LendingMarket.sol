@@ -684,37 +684,13 @@ contract LendingMarket is
         uint256 repaymentAmount,
         address repayer
     ) internal {
-        if (repaymentAmount == 0) {
-            revert Error.InvalidAmount();
-        }
         Loan.State storage loan = _loans[loanId];
-        (uint256 oldTrackedBalance, uint256 lateFeeAmount, ) = _calculateTrackedBalance(loan, _blockTimestamp());
-        uint256 outstandingBalance = Rounding.roundMath(oldTrackedBalance, Constants.ACCURACY_FACTOR);
-        uint256 newTrackedBalance = 0; // Full repayment by default
-
-        if (repaymentAmount == type(uint256).max) {
-            repaymentAmount = outstandingBalance;
-        } else {
-            if (repaymentAmount != Rounding.roundMath(repaymentAmount, Constants.ACCURACY_FACTOR)) {
-                revert Error.InvalidAmount();
-            }
-            if (repaymentAmount > outstandingBalance) {
-                revert Error.InvalidAmount();
-            }
-            // Not a full repayment
-            if (repaymentAmount < outstandingBalance) {
-                newTrackedBalance = oldTrackedBalance - repaymentAmount;
-            }
-            // Else full repayment
-        }
+        uint256 newTrackedBalance;
+        (newTrackedBalance, repaymentAmount) = _processTrackedBalanceChange(loan, repaymentAmount);
+        loan.repaidAmount += repaymentAmount.toUint64();
 
         address creditLine = _programCreditLines[loan.programId];
         address liquidityPool = _programLiquidityPools[loan.programId];
-
-        loan.repaidAmount += repaymentAmount.toUint64();
-        loan.trackedBalance = newTrackedBalance.toUint64();
-        loan.trackedTimestamp = _blockTimestamp().toUint32();
-        _updateStoredLateFee(lateFeeAmount, loan);
 
         IERC20(loan.token).safeTransferFrom(repayer, liquidityPool, repaymentAmount);
 
@@ -751,36 +727,49 @@ contract LendingMarket is
         Loan.State storage loan,
         uint256 discountAmount
     ) internal {
-        if (discountAmount == 0) {
+        uint256 newTrackedBalance;
+        (newTrackedBalance, discountAmount) = _processTrackedBalanceChange(loan, discountAmount);
+        loan.discountAmount += discountAmount.toUint64();
+        emit LoanDiscounted(loanId, discountAmount, newTrackedBalance);
+    }
+
+    /// @dev Processes a change in the tracked balance of a loan and updates the loan state accordingly.
+    /// @param loan The storage state of the loan.
+    /// @param changeAmount The amount of the change or type(uint256).max if it is a full repayment or a full discount.
+    /// @return newTrackedBalance The new tracked balance.
+    /// @return actualChangeAmount The actual change amount.
+    function _processTrackedBalanceChange(
+        Loan.State storage loan,
+        uint256 changeAmount
+    ) internal returns (uint256 newTrackedBalance, uint256 actualChangeAmount){
+        if (changeAmount == 0) {
             revert Error.InvalidAmount();
         }
-
-        (uint256 oldTrackedBalance, uint256 lateFeeAmount, ) = _calculateTrackedBalance(loan, _blockTimestamp());
+        uint256 timestamp = _blockTimestamp();
+        (uint256 oldTrackedBalance, uint256 lateFeeAmount, ) = _calculateTrackedBalance(loan, timestamp);
         uint256 outstandingBalance = Rounding.roundMath(oldTrackedBalance, Constants.ACCURACY_FACTOR);
-        uint256 newTrackedBalance = 0; // Full discount by default
+        newTrackedBalance = 0; // Full repayment or full discount by default
 
-        if (discountAmount == type(uint256).max) {
-            discountAmount = outstandingBalance;
+        if (changeAmount == type(uint256).max) {
+            changeAmount = outstandingBalance;
         } else {
-            if (discountAmount != Rounding.roundMath(discountAmount, Constants.ACCURACY_FACTOR)) {
+            if (changeAmount != Rounding.roundMath(changeAmount, Constants.ACCURACY_FACTOR)) {
                 revert Error.InvalidAmount();
             }
-            if (discountAmount > outstandingBalance) {
+            if (changeAmount > outstandingBalance) {
                 revert Error.InvalidAmount();
             }
-            // Not a full discount
-            if (discountAmount < outstandingBalance) {
-                newTrackedBalance = oldTrackedBalance - discountAmount;
+            // Not a full repayment or a full discount
+            if (changeAmount < outstandingBalance) {
+                newTrackedBalance = oldTrackedBalance - changeAmount;
             }
-            // Else full discount
+            // Else full repayment or full discount
         }
+        actualChangeAmount = changeAmount;
 
-        loan.discountAmount += discountAmount.toUint64();
         loan.trackedBalance = newTrackedBalance.toUint64();
-        loan.trackedTimestamp = _blockTimestamp().toUint32();
+        loan.trackedTimestamp = timestamp.toUint32();
         _updateStoredLateFee(lateFeeAmount, loan);
-
-        emit LoanDiscounted(loanId, discountAmount, newTrackedBalance);
     }
 
     /// @dev Validates the main parameters of the loan.
