@@ -6,7 +6,6 @@ import {
   checkContractUupsUpgrading,
   connect,
   getAddress,
-  getBlockTimestamp,
   getLatestBlockTimestamp,
   getNumberOfEvents,
   getTxTimestamp,
@@ -56,6 +55,7 @@ interface LoanState {
 
 interface Loan {
   id: number;
+  startPeriod: number;
   config: LoanConfig;
   state: LoanState;
 }
@@ -113,9 +113,7 @@ interface Fixture {
   marketUnderLender: Contract;
   marketAddress: string;
   ordinaryLoan: Loan;
-  ordinaryLoanStartPeriod: number;
   installmentLoanParts: Loan[];
-  installmentLoanStartPeriodIndex: number;
 }
 
 interface Version {
@@ -240,16 +238,18 @@ const defaultLoanConfig: LoanConfig = {
 };
 
 const defaultLoan: Loan = {
+  id: 0,
+  startPeriod: 0,
   state: defaultLoanState,
-  config: defaultLoanConfig,
-  id: 0
+  config: defaultLoanConfig
 };
 
 function clone(originLoan: Loan): Loan {
   return {
+    id: originLoan.id,
+    startPeriod: originLoan.startPeriod,
     state: { ...originLoan.state },
-    config: { ...originLoan.config },
-    id: originLoan.id
+    config: { ...originLoan.config }
   };
 }
 
@@ -385,6 +385,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
     };
     return {
       id: props.id,
+      startPeriod: calculatePeriodIndex(timestampWithOffset),
       state: loanState,
       config: loanConfig
     };
@@ -399,6 +400,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
     timestamp: number;
   }): Loan[] {
     const timestampWithOffset = calculateTimestampWithOffset(props.timestamp);
+    const startPeriod = calculatePeriodIndex(timestampWithOffset);
     const loans: Loan[] = [];
     for (let i = 0; i < props.borrowedAmounts.length; ++i) {
       const loanState = {
@@ -421,7 +423,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
         ...defaultLoanConfig,
         lateFeeAmount: props.lateFeeAmount
       };
-      loans.push({ id: props.firstInstallmentId + i, state: loanState, config: loanConfig });
+      loans.push({ id: props.firstInstallmentId + i, startPeriod, state: loanState, config: loanConfig });
     }
     return loans;
   }
@@ -613,9 +615,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       marketUnderLender,
       marketAddress,
       ordinaryLoan: defaultLoan,
-      ordinaryLoanStartPeriod: -1,
-      installmentLoanParts: [],
-      installmentLoanStartPeriodIndex: -1
+      installmentLoanParts: []
     };
   }
 
@@ -659,43 +659,39 @@ describe("Contract 'LendingMarket': base tests", async () => {
 
     // Take an ordinary loan
     const ordinaryLoanId = Number(await market.loanCounter());
-    const txReceipt1 = await proveTx(marketUnderLender.takeLoanFor(
+    const tx1 = marketUnderLender.takeLoanFor(
       borrower.address,
       PROGRAM_ID,
       BORROWED_AMOUNT,
       ADDON_AMOUNT,
       DURATION_IN_PERIODS
-    ));
+    );
     fixture.ordinaryLoan = createLoan({
       id: ordinaryLoanId,
       borrowedAmount: BORROWED_AMOUNT,
       addonAmount: ADDON_AMOUNT,
       lateFeeAmount,
-      timestamp: await getBlockTimestamp(txReceipt1.blockNumber)
+      timestamp: await getTxTimestamp(tx1)
     });
-    fixture.ordinaryLoanStartPeriod = calculatePeriodIndex(fixture.ordinaryLoan.state.startTimestamp);
 
     // Take an installment loan
     const firstInstallmentId = Number(await market.loanCounter());
-    const txReceipt2 = await proveTx(marketUnderLender.takeInstallmentLoanFor(
+    const tx2 = marketUnderLender.takeInstallmentLoanFor(
       borrower.address,
       PROGRAM_ID,
       BORROWED_AMOUNTS,
       ADDON_AMOUNTS,
       DURATIONS_IN_PERIODS
-    ));
+    );
 
-    const timestamp = await getBlockTimestamp(txReceipt2.blockNumber);
     fixture.installmentLoanParts = createInstallmentLoanParts({
       firstInstallmentId,
       borrowedAmounts: BORROWED_AMOUNTS,
       addonAmounts: ADDON_AMOUNTS,
       durations: DURATIONS_IN_PERIODS,
       lateFeeAmount,
-      timestamp
+      timestamp: await getTxTimestamp(tx2)
     });
-    fixture.installmentLoanStartPeriodIndex =
-      calculatePeriodIndex(fixture.installmentLoanParts[0].state.startTimestamp);
     return fixture;
   }
 
@@ -1836,11 +1832,11 @@ describe("Contract 'LendingMarket': base tests", async () => {
   describe("Function 'repayLoan()'", async () => {
     async function repayLoanAndCheck(
       fixture: Fixture,
-      currentLoan: Loan,
+      loans: Loan,
       repaymentAmount: number | bigint,
       payerKind: PayerKind
     ): Promise<Loan> {
-      const expectedLoan: Loan = clone(currentLoan);
+      const expectedLoan: Loan = clone(loans);
       const { market } = fixture;
       let tx: Promise<TransactionResponse>;
       let payer: HardhatEthersSigner;
@@ -1893,31 +1889,31 @@ describe("Contract 'LendingMarket': base tests", async () => {
 
       it("There is a partial repayment from a stranger before the loan is defaulted", async () => {
         const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
-        const periodIndex = fixture.ordinaryLoanStartPeriod + fixture.ordinaryLoan.state.durationInPeriods / 2;
+        const periodIndex = fixture.ordinaryLoan.startPeriod + fixture.ordinaryLoan.state.durationInPeriods / 2;
         await increaseBlockTimestampToPeriodIndex(periodIndex);
         await repayLoanAndCheck(fixture, fixture.ordinaryLoan, REPAYMENT_AMOUNT, PayerKind.Stranger);
       });
 
       it("There is a partial repayment from a borrower after the loan is defaulted", async () => {
         const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
-        const periodIndex = fixture.ordinaryLoanStartPeriod + fixture.ordinaryLoan.state.durationInPeriods + 1;
+        const periodIndex = fixture.ordinaryLoan.startPeriod + fixture.ordinaryLoan.state.durationInPeriods + 1;
         await increaseBlockTimestampToPeriodIndex(periodIndex);
         await repayLoanAndCheck(fixture, fixture.ordinaryLoan, REPAYMENT_AMOUNT, PayerKind.Borrower);
       });
 
       it("There is a partial repayment from the borrower at the due date and another one a day after", async () => {
         const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
-        const periodIndex = fixture.ordinaryLoanStartPeriod + fixture.ordinaryLoan.state.durationInPeriods;
+        const periodIndex = fixture.ordinaryLoan.startPeriod + fixture.ordinaryLoan.state.durationInPeriods;
         await increaseBlockTimestampToPeriodIndex(periodIndex);
-        let currentLoan = fixture.ordinaryLoan;
-        currentLoan = await repayLoanAndCheck(fixture, currentLoan, REPAYMENT_AMOUNT, PayerKind.Borrower);
+        let loan = fixture.ordinaryLoan;
+        loan = await repayLoanAndCheck(fixture, loan, REPAYMENT_AMOUNT, PayerKind.Borrower);
         await increaseBlockTimestampToPeriodIndex(periodIndex + 1);
-        await repayLoanAndCheck(fixture, currentLoan, REPAYMENT_AMOUNT, PayerKind.Borrower);
+        await repayLoanAndCheck(fixture, loan, REPAYMENT_AMOUNT, PayerKind.Borrower);
       });
 
       it("There is a full repayment through the amount matches the outstanding balance", async () => {
         const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
-        const futureTimestamp = await increaseBlockTimestampToPeriodIndex(fixture.ordinaryLoanStartPeriod + 1);
+        const futureTimestamp = await increaseBlockTimestampToPeriodIndex(fixture.ordinaryLoan.startPeriod + 1);
         const loanPreview: LoanPreview = determineLoanPreview(fixture.ordinaryLoan, futureTimestamp);
         const repaymentAmount = loanPreview.outstandingBalance;
         await repayLoanAndCheck(fixture, fixture.ordinaryLoan, repaymentAmount, PayerKind.Borrower);
@@ -1925,14 +1921,14 @@ describe("Contract 'LendingMarket': base tests", async () => {
 
       it("There is a full repayment through the amount equals max uint256 value", async () => {
         const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
-        await increaseBlockTimestampToPeriodIndex(fixture.ordinaryLoanStartPeriod + 1);
+        await increaseBlockTimestampToPeriodIndex(fixture.ordinaryLoan.startPeriod + 1);
         await repayLoanAndCheck(fixture, fixture.ordinaryLoan, FULL_REPAYMENT_AMOUNT, PayerKind.Borrower);
       });
 
       it("There is a partial repayment for a frozen loan", async () => {
         const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
         const loan = clone(fixture.ordinaryLoan);
-        let periodIndex = fixture.ordinaryLoanStartPeriod + loan.state.durationInPeriods / 2;
+        let periodIndex = loan.startPeriod + loan.state.durationInPeriods / 2;
         await increaseBlockTimestampToPeriodIndex(periodIndex);
         const tx = fixture.marketUnderLender.freeze(loan.id);
         loan.state.freezeTimestamp = calculateTimestampWithOffset(await getTxTimestamp(tx));
@@ -1996,11 +1992,11 @@ describe("Contract 'LendingMarket': base tests", async () => {
   describe("Function 'repayLoanForBatch()'", async () => {
     async function executeAndCheck(
       fixture: Fixture,
-      currentLoans: Loan[],
+      loans: Loan[],
       repaymentAmounts: (number | bigint)[],
       payerKind: PayerKind
     ): Promise<Loan[]> {
-      const expectedLoans: Loan[] = currentLoans.map(loan => clone(loan));
+      const expectedLoans: Loan[] = loans.map(loan => clone(loan));
       const loanIds: number[] = expectedLoans.map(loan => loan.id);
       const { marketUnderLender } = fixture;
       let tx: Promise<TransactionResponse>;
@@ -2064,85 +2060,85 @@ describe("Contract 'LendingMarket': base tests", async () => {
     describe("Executes as expected if", async () => {
       it("There are partial repayments from the borrower on the same period the loan is taken", async () => {
         const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
-        const currentLoans: Loan[] = [
+        const loans: Loan[] = [
           fixture.ordinaryLoan,
           fixture.installmentLoanParts[fixture.installmentLoanParts.length - 1]
         ];
         const repaymentAmounts = [REPAYMENT_AMOUNT, REPAYMENT_AMOUNT / 2];
-        await executeAndCheck(fixture, currentLoans, repaymentAmounts, PayerKind.Borrower);
+        await executeAndCheck(fixture, loans, repaymentAmounts, PayerKind.Borrower);
       });
 
       it("There are partial repayments from a stranger before the loan is defaulted", async () => {
         const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
-        const currentLoans: Loan[] = [
+        const loans: Loan[] = [
           fixture.ordinaryLoan,
           fixture.installmentLoanParts[fixture.installmentLoanParts.length - 1]
         ];
         const repaymentAmounts = [REPAYMENT_AMOUNT, REPAYMENT_AMOUNT / 2];
-        const periodIndex = fixture.ordinaryLoanStartPeriod + fixture.ordinaryLoan.state.durationInPeriods / 2;
+        const periodIndex = loans[0].startPeriod + loans[0].state.durationInPeriods / 2;
         await increaseBlockTimestampToPeriodIndex(periodIndex);
-        await executeAndCheck(fixture, currentLoans, repaymentAmounts, PayerKind.Stranger);
+        await executeAndCheck(fixture, loans, repaymentAmounts, PayerKind.Stranger);
       });
 
       it("There are partial repayment from the borrower at the due date and another one a day after", async () => {
         const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
-        const periodIndex = fixture.ordinaryLoanStartPeriod + fixture.ordinaryLoan.state.durationInPeriods;
-        await increaseBlockTimestampToPeriodIndex(periodIndex);
-        let currentLoans: Loan[] = [
+        let loans: Loan[] = [
           fixture.ordinaryLoan,
           fixture.installmentLoanParts[fixture.installmentLoanParts.length - 1]
         ];
+        const periodIndex = loans[0].startPeriod + loans[0].state.durationInPeriods;
+        await increaseBlockTimestampToPeriodIndex(periodIndex);
         const repaymentAmounts = [REPAYMENT_AMOUNT, REPAYMENT_AMOUNT / 2];
-        currentLoans = await executeAndCheck(fixture, currentLoans, repaymentAmounts, PayerKind.Borrower);
+        loans = await executeAndCheck(fixture, loans, repaymentAmounts, PayerKind.Borrower);
         await increaseBlockTimestampToPeriodIndex(periodIndex + 1);
-        await executeAndCheck(fixture, currentLoans, repaymentAmounts, PayerKind.Borrower);
+        await executeAndCheck(fixture, loans, repaymentAmounts, PayerKind.Borrower);
       });
 
       it("There is a full repayment through the amount matches the outstanding balance", async () => {
         const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
-        const futureTimestamp = await increaseBlockTimestampToPeriodIndex(fixture.ordinaryLoanStartPeriod + 1);
-        const loanPreview: LoanPreview = determineLoanPreview(fixture.ordinaryLoan, futureTimestamp);
-        const currentLoans: Loan[] = [
+        const loans: Loan[] = [
           fixture.ordinaryLoan,
           fixture.installmentLoanParts[fixture.installmentLoanParts.length - 1]
         ];
+        const futureTimestamp = await increaseBlockTimestampToPeriodIndex(loans[0].startPeriod + 1);
+        const loanPreview: LoanPreview = determineLoanPreview(fixture.ordinaryLoan, futureTimestamp);
         const repaymentAmounts = [loanPreview.outstandingBalance, REPAYMENT_AMOUNT];
-        await executeAndCheck(fixture, currentLoans, repaymentAmounts, PayerKind.Borrower);
+        await executeAndCheck(fixture, loans, repaymentAmounts, PayerKind.Borrower);
       });
 
       it("There is a full repayment through the amount equals max uint256 value", async () => {
         const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
-        const currentLoans: Loan[] = [
+        const loans: Loan[] = [
           fixture.ordinaryLoan,
           fixture.installmentLoanParts[fixture.installmentLoanParts.length - 1]
         ];
         const repaymentAmounts = [REPAYMENT_AMOUNT, FULL_REPAYMENT_AMOUNT];
-        await increaseBlockTimestampToPeriodIndex(fixture.installmentLoanStartPeriodIndex + 3);
-        await executeAndCheck(fixture, currentLoans, repaymentAmounts, PayerKind.Borrower);
+        await increaseBlockTimestampToPeriodIndex(loans[1].startPeriod + 3);
+        await executeAndCheck(fixture, loans, repaymentAmounts, PayerKind.Borrower);
       });
 
       it("There is a partial repayment for a frozen loan", async () => {
         const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
-        const currentLoans: Loan[] = [
+        const loans: Loan[] = [
           fixture.ordinaryLoan,
           clone(fixture.installmentLoanParts[fixture.installmentLoanParts.length - 1])
         ];
         const repaymentAmounts = [REPAYMENT_AMOUNT, REPAYMENT_AMOUNT / 2];
-        let periodIndex = fixture.installmentLoanStartPeriodIndex + 1;
+        let periodIndex = loans[1].startPeriod + 1;
         await increaseBlockTimestampToPeriodIndex(periodIndex);
-        const tx = fixture.marketUnderLender.freeze(currentLoans[1].id);
-        currentLoans[1].state.freezeTimestamp = calculateTimestampWithOffset(await getTxTimestamp(tx));
-        periodIndex += Math.round(currentLoans[1].state.durationInPeriods / 2);
+        const tx = fixture.marketUnderLender.freeze(loans[1].id);
+        loans[1].state.freezeTimestamp = calculateTimestampWithOffset(await getTxTimestamp(tx));
+        periodIndex += Math.round(loans[1].state.durationInPeriods / 2);
         await increaseBlockTimestampToPeriodIndex(periodIndex);
-        await executeAndCheck(fixture, currentLoans, repaymentAmounts, PayerKind.Borrower);
+        await executeAndCheck(fixture, loans, repaymentAmounts, PayerKind.Borrower);
       });
 
       it("There are empty input arrays", async () => {
         const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
-        const currentLoans: Loan[] = [];
+        const loans: Loan[] = [];
         const repaymentAmounts: number[] = [];
-        await increaseBlockTimestampToPeriodIndex(fixture.installmentLoanStartPeriodIndex + 3);
-        await executeAndCheck(fixture, currentLoans, repaymentAmounts, PayerKind.Borrower);
+        await increaseBlockTimestampToPeriodIndex(fixture.installmentLoanParts[0].startPeriod + 3);
+        await executeAndCheck(fixture, loans, repaymentAmounts, PayerKind.Borrower);
       });
     });
 
@@ -2276,10 +2272,10 @@ describe("Contract 'LendingMarket': base tests", async () => {
   describe("Function 'discountLoanForBatch()'", () => {
     async function executeAndCheck(
       fixture: Fixture,
-      currentLoans: Loan[],
+      loans: Loan[],
       discountAmounts: (number | bigint)[]
     ): Promise<Loan[]> {
-      const expectedLoans: Loan[] = currentLoans.map(loan => clone(loan));
+      const expectedLoans: Loan[] = loans.map(loan => clone(loan));
       const loanIds: number[] = expectedLoans.map(loan => loan.id);
       const { marketUnderLender } = fixture;
 
@@ -2317,29 +2313,26 @@ describe("Contract 'LendingMarket': base tests", async () => {
 
       it("There are partial discounts at the due date and another one a day after", async () => {
         const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
-        const periodIndex = fixture.ordinaryLoanStartPeriod + fixture.ordinaryLoan.state.durationInPeriods;
-        await increaseBlockTimestampToPeriodIndex(periodIndex);
-        let currentLoans: Loan[] = [
+        let loans: Loan[] = [
           fixture.ordinaryLoan,
           fixture.installmentLoanParts[fixture.installmentLoanParts.length - 1]
         ];
+        const periodIndex = loans[0].startPeriod + loans[0].state.durationInPeriods;
+        await increaseBlockTimestampToPeriodIndex(periodIndex);
         const discountAmounts = [DISCOUNT_AMOUNT, DISCOUNT_AMOUNT / 2];
 
-        currentLoans = await executeAndCheck(fixture, currentLoans, discountAmounts);
+        loans = await executeAndCheck(fixture, loans, discountAmounts);
         await increaseBlockTimestampToPeriodIndex(periodIndex + 1);
-        await executeAndCheck(fixture, currentLoans, discountAmounts);
+        await executeAndCheck(fixture, loans, discountAmounts);
       });
 
-      it("There is a full discount through the amount matches the outstanding balance", async () => {
+      it("There are full discounts through the amount matches the outstanding balance", async () => {
         const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
         const loans = fixture.installmentLoanParts;
 
-        const discountAmounts: number[] = await Promise.all(
-          loans.map(async loan => {
-            const preview = await fixture.marketUnderLender.getLoanPreview(loan.id, 0);
-            return Number(preview.outstandingBalance);
-          })
-        );
+        const timestamp = await getLatestBlockTimestamp();
+        const loanPreviews: LoanPreview[] = loans.map(loan => determineLoanPreview(loan, timestamp));
+        const discountAmounts = loanPreviews.map(preview => preview.outstandingBalance);
 
         await executeAndCheck(fixture, loans, discountAmounts);
       });
@@ -2354,18 +2347,18 @@ describe("Contract 'LendingMarket': base tests", async () => {
 
       it("There is a partial discount for a frozen loan", async () => {
         const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
-        const currentLoans: Loan[] = [
+        const loans: Loan[] = [
           fixture.ordinaryLoan,
           clone(fixture.installmentLoanParts[fixture.installmentLoanParts.length - 1])
         ];
         const discountAmounts = [DISCOUNT_AMOUNT, DISCOUNT_AMOUNT / 2];
-        let periodIndex = fixture.installmentLoanStartPeriodIndex + currentLoans[1].state.durationInPeriods / 2;
+        let periodIndex = loans[1].startPeriod + loans[1].state.durationInPeriods / 2;
         await increaseBlockTimestampToPeriodIndex(periodIndex);
-        const tx = fixture.marketUnderLender.freeze(currentLoans[1].id);
-        currentLoans[1].state.freezeTimestamp = calculateTimestampWithOffset(await getTxTimestamp(tx));
-        periodIndex += currentLoans[1].state.durationInPeriods;
+        const tx = fixture.marketUnderLender.freeze(loans[1].id);
+        loans[1].state.freezeTimestamp = calculateTimestampWithOffset(await getTxTimestamp(tx));
+        periodIndex += loans[1].state.durationInPeriods;
         await increaseBlockTimestampToPeriodIndex(periodIndex);
-        await executeAndCheck(fixture, currentLoans, discountAmounts);
+        await executeAndCheck(fixture, loans, discountAmounts);
       });
 
       it("There are empty input arrays", async () => {
@@ -2910,11 +2903,11 @@ describe("Contract 'LendingMarket': base tests", async () => {
   describe("Function 'revokeLoan()'", async () => {
     async function revokeAndCheck(fixture: Fixture, props: {
       isAddonAmountZero: boolean;
-      currentLoan: Loan;
+      loan: Loan;
       revoker: HardhatEthersSigner;
     }) {
       const { market } = fixture;
-      const expectedLoan = clone(props.currentLoan);
+      const expectedLoan = clone(props.loan);
       const borrowerBalanceChange = expectedLoan.state.repaidAmount - expectedLoan.state.borrowedAmount;
 
       if (props.revoker === lender) {
@@ -2957,15 +2950,8 @@ describe("Contract 'LendingMarket': base tests", async () => {
       describe("The addon amount is NOT zero and", async () => {
         it("Is called by the borrower before the cooldown expiration and with no repayments", async () => {
           const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
-          const timestamp = removeTimestampOffset(
-            fixture.ordinaryLoan.state.startTimestamp + (COOLDOWN_IN_PERIODS - 1) * PERIOD_IN_SECONDS
-          );
-          await increaseBlockTimestampTo(timestamp);
-          await revokeAndCheck(fixture, {
-            isAddonAmountZero: false,
-            currentLoan: fixture.ordinaryLoan,
-            revoker: borrower
-          });
+          await increaseBlockTimestampToPeriodIndex(fixture.ordinaryLoan.startPeriod + COOLDOWN_IN_PERIODS - 1);
+          await revokeAndCheck(fixture, { isAddonAmountZero: false, loan: fixture.ordinaryLoan, revoker: borrower });
         });
 
         it("Is called by the lender after a repayment that is less than the borrowed amount", async () => {
@@ -2974,21 +2960,11 @@ describe("Contract 'LendingMarket': base tests", async () => {
           const loan = clone(fixture.ordinaryLoan);
           const repaymentAmount = roundSpecific(loan.state.borrowedAmount / 2);
           expect(repaymentAmount).lessThan(loan.state.borrowedAmount);
-          const tx = await proveTx(
-            connect(fixture.market, borrower).repayLoan(loan.id, repaymentAmount)
-          );
-          processRepayment(loan, { repaymentAmount, repaymentTimestamp: await getBlockTimestamp(tx.blockNumber) });
+          const tx = connect(fixture.market, borrower).repayLoan(loan.id, repaymentAmount);
+          processRepayment(loan, { repaymentAmount, repaymentTimestamp: await getTxTimestamp(tx) });
+          await increaseBlockTimestampToPeriodIndex(loan.startPeriod + COOLDOWN_IN_PERIODS + 1);
 
-          const timestamp = removeTimestampOffset(
-            loan.state.startTimestamp + (COOLDOWN_IN_PERIODS) * PERIOD_IN_SECONDS + 1
-          );
-          await increaseBlockTimestampTo(timestamp);
-
-          await revokeAndCheck(fixture, {
-            isAddonAmountZero: false,
-            currentLoan: loan,
-            revoker: lender
-          });
+          await revokeAndCheck(fixture, { isAddonAmountZero: false, loan, revoker: lender });
         });
 
         it("Is called by the lender after a repayment that equals the borrowed amount", async () => {
@@ -2997,18 +2973,11 @@ describe("Contract 'LendingMarket': base tests", async () => {
           const loan = clone(fixture.ordinaryLoan);
           const repaymentAmount = loan.state.borrowedAmount;
           expect(repaymentAmount).lessThan(loan.state.borrowedAmount + loan.state.addonAmount);
-          const tx = await proveTx(connect(fixture.market, borrower).repayLoan(loan.id, repaymentAmount));
-          processRepayment(loan, { repaymentAmount, repaymentTimestamp: await getBlockTimestamp(tx.blockNumber) });
+          const tx = connect(fixture.market, borrower).repayLoan(loan.id, repaymentAmount);
+          processRepayment(loan, { repaymentAmount, repaymentTimestamp: await getTxTimestamp(tx) });
+          await increaseBlockTimestampToPeriodIndex(loan.startPeriod + 1);
 
-          const timestamp =
-            removeTimestampOffset(loan.state.startTimestamp + PERIOD_IN_SECONDS / 2);
-          await increaseBlockTimestampTo(timestamp);
-
-          await revokeAndCheck(fixture, {
-            isAddonAmountZero: false,
-            currentLoan: loan,
-            revoker: lender
-          });
+          await revokeAndCheck(fixture, { isAddonAmountZero: false, loan, revoker: lender });
         });
 
         it("Is called by the lender after a repayment that is greater than the borrowed amount", async () => {
@@ -3017,17 +2986,11 @@ describe("Contract 'LendingMarket': base tests", async () => {
           const loan = clone(fixture.ordinaryLoan);
           const repaymentAmount = loan.state.borrowedAmount + ACCURACY_FACTOR;
           expect(repaymentAmount).lessThan(loan.state.borrowedAmount + loan.state.addonAmount);
-          const tx = await proveTx(connect(fixture.market, borrower).repayLoan(loan.id, repaymentAmount));
-          processRepayment(loan, { repaymentAmount, repaymentTimestamp: await getBlockTimestamp(tx.blockNumber) });
+          const tx = connect(fixture.market, borrower).repayLoan(loan.id, repaymentAmount);
+          processRepayment(loan, { repaymentAmount, repaymentTimestamp: await getTxTimestamp(tx) });
+          await increaseBlockTimestampToPeriodIndex(loan.startPeriod + COOLDOWN_IN_PERIODS);
 
-          const timestamp = removeTimestampOffset(loan.state.startTimestamp + COOLDOWN_IN_PERIODS * PERIOD_IN_SECONDS);
-          await increaseBlockTimestampTo(timestamp);
-
-          await revokeAndCheck(fixture, {
-            isAddonAmountZero: false,
-            currentLoan: loan,
-            revoker: lender
-          });
+          await revokeAndCheck(fixture, { isAddonAmountZero: false, loan, revoker: lender });
         });
 
         it("Is called by the lender for a partially repaid loan after freezing", async () => {
@@ -3038,33 +3001,23 @@ describe("Contract 'LendingMarket': base tests", async () => {
           let tx = connect(fixture.market, borrower).repayLoan(loan.id, repaymentAmount);
           processRepayment(loan, { repaymentAmount, repaymentTimestamp: await getTxTimestamp(tx) });
 
-          let periodIndex = fixture.ordinaryLoanStartPeriod + loan.state.durationInPeriods / 2;
+          let periodIndex = loan.startPeriod + loan.state.durationInPeriods / 2;
           await increaseBlockTimestampToPeriodIndex(periodIndex);
           tx = fixture.marketUnderLender.freeze(loan.id);
           loan.state.freezeTimestamp = calculateTimestampWithOffset(await getTxTimestamp(tx));
           periodIndex += loan.state.durationInPeriods;
           await increaseBlockTimestampToPeriodIndex(periodIndex);
 
-          await revokeAndCheck(fixture, {
-            isAddonAmountZero: false,
-            currentLoan: loan,
-            revoker: lender
-          });
+          await revokeAndCheck(fixture, { isAddonAmountZero: false, loan, revoker: lender });
         });
       });
 
       describe("The addon amount is zero and", async () => {
         it("Is called by the lender before the cooldown expiration and with no repayments", async () => {
           const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
-          const timestamp = removeTimestampOffset(
-            fixture.ordinaryLoan.state.startTimestamp + (COOLDOWN_IN_PERIODS - 1) * PERIOD_IN_SECONDS
-          );
-          await increaseBlockTimestampTo(timestamp);
-          await revokeAndCheck(fixture, {
-            isAddonAmountZero: true,
-            currentLoan: fixture.ordinaryLoan,
-            revoker: lender
-          });
+          const loan = fixture.ordinaryLoan;
+          await increaseBlockTimestampToPeriodIndex(loan.startPeriod + (COOLDOWN_IN_PERIODS - 1));
+          await revokeAndCheck(fixture, { isAddonAmountZero: true, loan: loan, revoker: lender });
         });
 
         it("Is called by the borrower with a repayment that equals the borrowed amount", async () => {
@@ -3072,18 +3025,11 @@ describe("Contract 'LendingMarket': base tests", async () => {
 
           const loan = clone(fixture.ordinaryLoan);
           const repaymentAmount = loan.state.borrowedAmount;
-          const tx = await proveTx(connect(fixture.market, borrower).repayLoan(loan.id, repaymentAmount));
-          processRepayment(loan, { repaymentAmount, repaymentTimestamp: await getBlockTimestamp(tx.blockNumber) });
+          const tx = connect(fixture.market, borrower).repayLoan(loan.id, repaymentAmount);
+          processRepayment(loan, { repaymentAmount, repaymentTimestamp: await getTxTimestamp(tx) });
+          await increaseBlockTimestampToPeriodIndex(loan.startPeriod + COOLDOWN_IN_PERIODS - 1);
 
-          const timestamp =
-            removeTimestampOffset(loan.state.startTimestamp + (COOLDOWN_IN_PERIODS - 1) * PERIOD_IN_SECONDS);
-          await increaseBlockTimestampTo(timestamp);
-
-          await revokeAndCheck(fixture, {
-            isAddonAmountZero: true,
-            currentLoan: loan,
-            revoker: borrower
-          });
+          await revokeAndCheck(fixture, { isAddonAmountZero: true, loan: loan, revoker: borrower });
         });
       });
     });
@@ -3129,9 +3075,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       it("The cooldown period has passed when it is called by the borrower", async () => {
         const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
         const { market, ordinaryLoan: loan } = fixture;
-        const timestampAfterCooldown =
-          removeTimestampOffset(loan.state.startTimestamp) + COOLDOWN_IN_PERIODS * PERIOD_IN_SECONDS;
-        await increaseBlockTimestampTo(timestampAfterCooldown);
+        await increaseBlockTimestampToPeriodIndex(loan.startPeriod + COOLDOWN_IN_PERIODS);
 
         await expect(connect(market, borrower).revokeLoan(loan.id))
           .to.be.revertedWithCustomError(market, ERROR_NAME_COOLDOWN_PERIOD_PASSED);
@@ -3157,12 +3101,12 @@ describe("Contract 'LendingMarket': base tests", async () => {
   describe("Function 'revokeInstallmentLoan()'", async () => {
     async function revokeAndCheck(fixture: Fixture, props: {
       areAddonAmountsZero: boolean;
-      currentLoans: Loan[];
+      loans: Loan[];
       revoker: HardhatEthersSigner;
     }) {
       const { market, installmentLoanParts: loans } = fixture;
       const loanIds = loans.map(loan => loan.id);
-      const expectedLoans = props.currentLoans.map(loan => clone(loan));
+      const expectedLoans = props.loans.map(loan => clone(loan));
       const borrowerBalanceChange = expectedLoans
         .map(loan => loan.state.repaidAmount - loan.state.borrowedAmount)
         .reduce((sum, amount) => sum + amount);
@@ -3220,15 +3164,9 @@ describe("Contract 'LendingMarket': base tests", async () => {
           it("Is called by the borrower before the cooldown expiration", async () => {
             const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
             const loans = fixture.installmentLoanParts;
-            const timestamp = removeTimestampOffset(
-              loans[0].state.startTimestamp + (COOLDOWN_IN_PERIODS - 1) * PERIOD_IN_SECONDS
-            );
-            await increaseBlockTimestampTo(timestamp);
-            await revokeAndCheck(fixture, {
-              areAddonAmountsZero: false,
-              currentLoans: loans,
-              revoker: borrower
-            });
+            const periodIndex = loans[0].startPeriod + COOLDOWN_IN_PERIODS - 1;
+            await increaseBlockTimestampToPeriodIndex(periodIndex);
+            await revokeAndCheck(fixture, { areAddonAmountsZero: false, loans, revoker: borrower });
           });
 
           it("Is called by the lender for partially repaid installments and after one of them is frozen", async () => {
@@ -3241,18 +3179,14 @@ describe("Contract 'LendingMarket': base tests", async () => {
               processRepayment(loan, { repaymentAmount, repaymentTimestamp });
             }
 
-            let periodIndex = fixture.installmentLoanStartPeriodIndex + loans[1].state.durationInPeriods / 2;
+            let periodIndex = loans[1].startPeriod + loans[1].state.durationInPeriods / 2;
             await increaseBlockTimestampToPeriodIndex(periodIndex);
             const tx = fixture.marketUnderLender.freeze(loans[1].id);
             loans[1].state.freezeTimestamp = calculateTimestampWithOffset(await getTxTimestamp(tx));
             periodIndex += loans[1].state.durationInPeriods;
             await increaseBlockTimestampToPeriodIndex(periodIndex);
 
-            await revokeAndCheck(fixture, {
-              areAddonAmountsZero: false,
-              currentLoans: loans,
-              revoker: lender
-            });
+            await revokeAndCheck(fixture, { areAddonAmountsZero: false, loans, revoker: lender });
           });
         });
 
@@ -3265,8 +3199,8 @@ describe("Contract 'LendingMarket': base tests", async () => {
             let totalBorrowedAmount = 0;
             for (let i = 0; i < loans.length - 1; ++i) {
               const loan = loans[i];
-              const tx = await proveTx(connect(market, borrower).repayLoan(loan.id, FULL_REPAYMENT_AMOUNT));
-              const repaymentTimestamp = await getBlockTimestamp(tx.blockNumber);
+              const tx = connect(market, borrower).repayLoan(loan.id, FULL_REPAYMENT_AMOUNT);
+              const repaymentTimestamp = await getTxTimestamp(tx);
               processRepayment(loan, { repaymentAmount: FULL_REPAYMENT_AMOUNT, repaymentTimestamp });
               totalRepaymentAmount += loan.state.repaidAmount;
               totalBorrowedAmount += loan.state.borrowedAmount;
@@ -3292,17 +3226,10 @@ describe("Contract 'LendingMarket': base tests", async () => {
             expect(repaymentAmount + totalRepaymentAmount).lessThan(totalBorrowedAmount);
             const tx = connect(fixture.market, borrower).repayLoan(lastLoan.id, repaymentAmount);
             processRepayment(lastLoan, { repaymentAmount, repaymentTimestamp: await getTxTimestamp(tx) });
+            const periodIndex = loans[0].startPeriod + COOLDOWN_IN_PERIODS + 1;
+            await increaseBlockTimestampToPeriodIndex(periodIndex);
 
-            const timestamp = removeTimestampOffset(
-              lastLoan.state.startTimestamp + (COOLDOWN_IN_PERIODS) * PERIOD_IN_SECONDS + 1
-            );
-            await increaseBlockTimestampTo(timestamp);
-
-            await revokeAndCheck(fixture, {
-              areAddonAmountsZero: false,
-              currentLoans: loans,
-              revoker: lender
-            });
+            await revokeAndCheck(fixture, { areAddonAmountsZero: false, loans, revoker: lender });
           });
 
           it("Is called by the lender after a repayment that equals the borrowed amount", async () => {
@@ -3319,16 +3246,9 @@ describe("Contract 'LendingMarket': base tests", async () => {
             const tx = connect(fixture.market, borrower).repayLoan(lastLoan.id, repaymentAmount);
             processRepayment(lastLoan, { repaymentAmount, repaymentTimestamp: await getTxTimestamp(tx) });
 
-            const timestamp = removeTimestampOffset(
-              lastLoan.state.startTimestamp + (COOLDOWN_IN_PERIODS) * PERIOD_IN_SECONDS + 1
-            );
-            await increaseBlockTimestampTo(timestamp);
+            await increaseBlockTimestampToPeriodIndex(loans[0].startPeriod + COOLDOWN_IN_PERIODS);
 
-            await revokeAndCheck(fixture, {
-              areAddonAmountsZero: false,
-              currentLoans: loans,
-              revoker: lender
-            });
+            await revokeAndCheck(fixture, { areAddonAmountsZero: false, loans, revoker: lender });
           });
 
           it("Is called by the lender after a repayment that is greater than the borrowed amount", async () => {
@@ -3345,16 +3265,9 @@ describe("Contract 'LendingMarket': base tests", async () => {
             const tx = connect(fixture.market, borrower).repayLoan(lastLoan.id, repaymentAmount);
             processRepayment(lastLoan, { repaymentAmount, repaymentTimestamp: await getTxTimestamp(tx) });
 
-            const timestamp = removeTimestampOffset(
-              lastLoan.state.startTimestamp + (COOLDOWN_IN_PERIODS) * PERIOD_IN_SECONDS + 1
-            );
-            await increaseBlockTimestampTo(timestamp);
+            await increaseBlockTimestampToPeriodIndex(loans[0].startPeriod + COOLDOWN_IN_PERIODS - 1);
 
-            await revokeAndCheck(fixture, {
-              areAddonAmountsZero: false,
-              currentLoans: loans,
-              revoker: lender
-            });
+            await revokeAndCheck(fixture, { areAddonAmountsZero: false, loans, revoker: lender });
           });
         });
       });
@@ -3364,34 +3277,21 @@ describe("Contract 'LendingMarket': base tests", async () => {
           it("Is called by the lender before the cooldown expiration", async () => {
             const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
             const loans = fixture.installmentLoanParts;
-            const timestamp = removeTimestampOffset(
-              loans[0].state.startTimestamp + (COOLDOWN_IN_PERIODS - 1) * PERIOD_IN_SECONDS
-            );
-            await increaseBlockTimestampTo(timestamp);
-            await revokeAndCheck(fixture, {
-              areAddonAmountsZero: true,
-              currentLoans: loans,
-              revoker: lender
-            });
+            await increaseBlockTimestampToPeriodIndex(loans[0].startPeriod + COOLDOWN_IN_PERIODS - 1);
+            await revokeAndCheck(fixture, { areAddonAmountsZero: true, loans, revoker: lender });
           });
 
           it("Is called by the borrower and for all loans the repaid amount is close to the borrowed one", async () => {
             const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
             const loans = fixture.installmentLoanParts.map(loan => clone(loan));
-            const timestamp = removeTimestampOffset(
-              loans[0].state.startTimestamp + (COOLDOWN_IN_PERIODS - 1) * PERIOD_IN_SECONDS
-            );
             for (const loan of loans) {
               const repaymentAmount = roundSpecific(loan.state.borrowedAmount);
               const tx = connect(fixture.market, borrower).repayLoan(loan.id, repaymentAmount);
               processRepayment(loan, { repaymentAmount, repaymentTimestamp: await getTxTimestamp(tx) });
             }
-            await increaseBlockTimestampTo(timestamp);
-            await revokeAndCheck(fixture, {
-              areAddonAmountsZero: true,
-              currentLoans: loans,
-              revoker: borrower
-            });
+            await increaseBlockTimestampToPeriodIndex(loans[0].startPeriod + COOLDOWN_IN_PERIODS - 1);
+
+            await revokeAndCheck(fixture, { areAddonAmountsZero: true, loans, revoker: borrower });
           });
         });
       });
@@ -3444,10 +3344,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
         const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
         const { market, installmentLoanParts: loans } = fixture;
         const lastLoanId = loans[loans.length - 1].id;
-        const timestampAfterCooldown =
-          removeTimestampOffset(loans[0].state.startTimestamp) +
-          COOLDOWN_IN_PERIODS * PERIOD_IN_SECONDS;
-        await increaseBlockTimestampTo(timestampAfterCooldown);
+        await increaseBlockTimestampToPeriodIndex(loans[0].startPeriod + COOLDOWN_IN_PERIODS);
 
         await expect(connect(market, borrower).revokeInstallmentLoan(lastLoanId))
           .to.be.revertedWithCustomError(market, ERROR_NAME_COOLDOWN_PERIOD_PASSED);
