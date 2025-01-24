@@ -38,23 +38,25 @@ interface ICreditLinePrimary is ICreditLineTypes {
 
     /// @dev Retrieves the loan terms for the provided borrower, amount, and loan duration.
     /// @param borrower The address of the borrower.
-    /// @param borrowAmount The desired amount of tokens to borrow.
+    /// @param borrowedAmount The desired amount of tokens to borrow.
     /// @param durationInPeriods The desired duration of the loan in periods.
     /// @return terms The struct containing the terms of the loan.
     function determineLoanTerms(
         address borrower,
-        uint256 borrowAmount,
+        uint256 borrowedAmount,
         uint256 durationInPeriods
     ) external view returns (Loan.Terms memory terms);
+
+    /// @dev Returns the late fee amount that might be applied to a loan if it is overdue.
+    /// @param loanTrackedBalance The tracked balance of the loan as the base to calculate the late fee amount.
+    /// @return The amount of the late fee.
+    function determineLateFeeAmount(uint256 loanTrackedBalance) external view returns (uint256);
 
     /// @dev Returns the address of the associated lending market.
     function market() external view returns (address);
 
     /// @dev Returns the address of the credit line token.
     function token() external view returns (address);
-
-    /// @dev Returns the late fee rate to be applied to loans taken out with this credit line.
-    function lateFeeRate() external view returns (uint256);
 
     /// @dev Retrieves the configuration of a borrower.
     /// @param borrower The address of the borrower to check.
@@ -110,16 +112,16 @@ interface ICreditLineConfiguration is ICreditLineTypes {
 interface ICreditLineHooks {
     /// @dev A hook that is triggered by the associated market before a loan is taken.
     /// @param loanId The unique identifier of the loan being taken.
-    function onBeforeLoanTaken(uint256 loanId) external returns (bool);
+    function onBeforeLoanTaken(uint256 loanId) external;
 
     /// @dev A hook that is triggered by the associated market after the loan payment.
     /// @param loanId The unique identifier of the loan being paid.
-    /// @param repayAmount The amount of tokens that was repaid.
-    function onAfterLoanPayment(uint256 loanId, uint256 repayAmount) external returns (bool);
+    /// @param repaymentAmount The amount of tokens that was repaid.
+    function onAfterLoanPayment(uint256 loanId, uint256 repaymentAmount) external;
 
     /// @dev A hook that is triggered by the associated market after the loan revocation.
     /// @param loanId The unique identifier of the loan being revoked.
-    function onAfterLoanRevocation(uint256 loanId) external returns (bool);
+    function onAfterLoanRevocation(uint256 loanId) external;
 }
 
 /// @title ICreditLineErrors interface
@@ -141,7 +143,7 @@ interface ICreditLineErrors {
     /// @dev Thrown when another loan is requested by an account but only one active loan is allowed.
     error LimitViolationOnSingleActiveLoan();
 
-    /// @dev Thrown when the total borrowed amount of active loans exceeds the maximum borrow amount of a single loan.
+    /// @dev Thrown when the total borrowed amount of active loans exceeds the maximum borrowed amount of a single loan.
     error LimitViolationOnTotalActiveLoanAmount(uint256 newTotalActiveLoanAmount);
 
     /// @dev Thrown when the borrower state counters or amounts would overflow their maximum values.

@@ -34,7 +34,7 @@ interface ILendingMarketPrimary {
     /// @dev Emitted when a loan is taken.
     /// @param loanId The unique identifier of the loan.
     /// @param borrower The address of the borrower of the loan.
-    /// @param principalAmount The initial principal amount of the loan, including the borrow amount and addon.
+    /// @param principalAmount The initial principal amount of the loan, including the borrowed amount and addon.
     /// @param durationInPeriods The duration of the loan in periods.
     event LoanTaken(
         uint256 indexed loanId, // Tools: this comment prevents Prettier from formatting into a single line.
@@ -48,14 +48,14 @@ interface ILendingMarketPrimary {
     /// @param borrower The address of the borrower.
     /// @param programId The ID of the lending program.
     /// @param installmentCount The total number of installments.
-    /// @param totalBorrowAmount The total amount borrowed.
+    /// @param totalBorrowedAmount The total amount borrowed.
     /// @param totalAddonAmount The total addon amount of the loan.
     event InstallmentLoanTaken(
         uint256 indexed firstInstallmentId,
         address indexed borrower,
         uint256 indexed programId,
         uint256 installmentCount,
-        uint256 totalBorrowAmount,
+        uint256 totalBorrowedAmount,
         uint256 totalAddonAmount
     );
 
@@ -63,14 +63,14 @@ interface ILendingMarketPrimary {
     /// @param loanId The unique identifier of the loan.
     /// @param repayer The address of the token source for the repayment (borrower or third-party).
     /// @param borrower The address of the borrower of the loan.
-    /// @param repayAmount The amount of the repayment.
-    /// @param outstandingBalance The outstanding balance of the loan after the repayment.
+    /// @param repaymentAmount The amount of the repayment.
+    /// @param trackedBalance The tracked balance of the loan after the repayment.
     event LoanRepayment(
         uint256 indexed loanId,
         address indexed repayer,
         address indexed borrower,
-        uint256 repayAmount,
-        uint256 outstandingBalance
+        uint256 repaymentAmount,
+        uint256 trackedBalance
     );
 
     /// @dev Emitted when a loan is revoked.
@@ -137,28 +137,17 @@ interface ILendingMarketPrimary {
     //  Transactional functions                     //
     // -------------------------------------------- //
 
-    /// @dev Takes an ordinary loan.
-    /// @param programId The identifier of the program to take the loan from.
-    /// @param borrowAmount The desired amount of tokens to borrow.
-    /// @param durationInPeriods The desired duration of the loan in periods.
-    /// @return The unique identifier of the loan.
-    function takeLoan(
-        uint32 programId, // Tools: this comment prevents Prettier from formatting into a single line.
-        uint256 borrowAmount,
-        uint256 durationInPeriods
-    ) external returns (uint256);
-
     /// @dev Takes an ordinary loan for a provided account. Can be called only by an account with a special role.
     /// @param borrower The account for whom the loan is taken.
     /// @param programId The identifier of the program to take the loan from.
-    /// @param borrowAmount The desired amount of tokens to borrow.
+    /// @param borrowedAmount The desired amount of tokens to borrow.
     /// @param addonAmount The off-chain calculated addon amount for the loan.
     /// @param durationInPeriods The desired duration of the loan in periods.
     /// @return The unique identifier of the loan.
     function takeLoanFor(
         address borrower,
         uint32 programId,
-        uint256 borrowAmount,
+        uint256 borrowedAmount,
         uint256 addonAmount,
         uint256 durationInPeriods
     ) external returns (uint256);
@@ -169,7 +158,7 @@ interface ILendingMarketPrimary {
     ///
     /// @param borrower The account for whom the loan is taken.
     /// @param programId The identifier of the program to take the loan from.
-    /// @param borrowAmounts The desired amounts of tokens to borrow for each installment.
+    /// @param borrowedAmounts The desired amounts of tokens to borrow for each installment.
     /// @param addonAmounts The off-chain calculated addon amounts for each installment.
     /// @param durationsInPeriods The desired duration of each installment in periods.
     /// @return firstInstallmentId The unique identifier of the first sub-loan of the installment loan.
@@ -177,15 +166,15 @@ interface ILendingMarketPrimary {
     function takeInstallmentLoanFor(
         address borrower,
         uint32 programId,
-        uint256[] calldata borrowAmounts,
+        uint256[] calldata borrowedAmounts,
         uint256[] calldata addonAmounts,
         uint256[] calldata durationsInPeriods
     ) external returns (uint256 firstInstallmentId, uint256 installmentCount);
 
     /// @dev Repays a loan.
     /// @param loanId The unique identifier of the loan to repay.
-    /// @param repayAmount The amount to repay or `type(uint256).max` to repay the remaining balance of the loan.
-    function repayLoan(uint256 loanId, uint256 repayAmount) external;
+    /// @param repaymentAmount The amount to repay or `type(uint256).max` to repay the remaining balance of the loan.
+    function repayLoan(uint256 loanId, uint256 repaymentAmount) external;
 
     /// @dev Repays a batch of loans.
     ///
@@ -431,6 +420,9 @@ interface ILendingMarketConfiguration {
 /// @author CloudWalk Inc. (See https://cloudwalk.io)
 /// @dev Defines the custom errors used in the lending market contract.
 interface ILendingMarketErrors {
+    /// @dev Thrown when the addon treasury address is zero.
+    error AddonTreasuryAddressZero();
+
     /// @dev Thrown when the loan ID exceeds the maximum allowed value.
     error LoanIdExcess();
 

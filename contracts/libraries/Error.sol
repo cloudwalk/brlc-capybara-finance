@@ -21,9 +21,6 @@ library Error {
     /// @dev Thrown when array lengths do not match each other.
     error ArrayLengthMismatch();
 
-    /// @dev Thrown when the called function is not implemented.
-    error NotImplemented();
-
     /// @dev Thrown if the provided new implementation address is not of a contract.
     error ImplementationAddressInvalid();
 }

@@ -167,7 +167,7 @@ contract CreditLine is AccessControlExtUpgradeable, PausableUpgradeable, ICredit
 
     /// @inheritdoc ICreditLineConfiguration
     function configureCreditLine(CreditLineConfig memory config) external onlyRole(OWNER_ROLE) {
-        if (config.minBorrowAmount > config.maxBorrowAmount) {
+        if (config.minBorrowedAmount > config.maxBorrowedAmount) {
             revert InvalidCreditLineConfiguration();
         }
         if (config.minDurationInPeriods > config.maxDurationInPeriods) {
@@ -179,10 +179,19 @@ contract CreditLine is AccessControlExtUpgradeable, PausableUpgradeable, ICredit
         if (config.minInterestRateSecondary > config.maxInterestRateSecondary) {
             revert InvalidCreditLineConfiguration();
         }
-        if (config.minAddonFixedRate > config.maxAddonFixedRate) {
+
+        // Check that fields `minAddonFixedRate`, `maxAddonFixedRate`, `minAddonPeriodRate`, `maxAddonPeriodRate`
+        // are zero because they have been deprecated since version 1.9.0
+        if (config.minAddonFixedRate != 0) {
             revert InvalidCreditLineConfiguration();
         }
-        if (config.minAddonPeriodRate > config.maxAddonPeriodRate) {
+        if (config.maxAddonFixedRate != 0) {
+            revert InvalidCreditLineConfiguration();
+        }
+        if (config.minAddonPeriodRate != 0) {
+            revert InvalidCreditLineConfiguration();
+        }
+        if (config.maxAddonPeriodRate != 0) {
             revert InvalidCreditLineConfiguration();
         }
 
@@ -222,29 +231,25 @@ contract CreditLine is AccessControlExtUpgradeable, PausableUpgradeable, ICredit
     // -------------------------------------------- //
 
     /// @inheritdoc ICreditLineHooks
-    function onBeforeLoanTaken(uint256 loanId) external whenNotPaused onlyMarket returns (bool) {
+    function onBeforeLoanTaken(uint256 loanId) external whenNotPaused onlyMarket {
         Loan.State memory loan = ILendingMarket(_market).getLoanState(loanId);
         _openLoan(loan);
-        return true;
     }
 
     /// @inheritdoc ICreditLineHooks
-    function onAfterLoanPayment(uint256 loanId, uint256 repayAmount) external whenNotPaused onlyMarket returns (bool) {
-        repayAmount; // To prevent compiler warning about unused variable
+    function onAfterLoanPayment(uint256 loanId, uint256 repaymentAmount) external whenNotPaused onlyMarket {
+        repaymentAmount; // To prevent compiler warning about unused variable
 
         Loan.State memory loan = ILendingMarket(_market).getLoanState(loanId);
         if (loan.trackedBalance == 0) {
             _closeLoan(loan);
         }
-
-        return true;
     }
 
     /// @inheritdoc ICreditLineHooks
-    function onAfterLoanRevocation(uint256 loanId) external whenNotPaused onlyMarket returns (bool) {
+    function onAfterLoanRevocation(uint256 loanId) external whenNotPaused onlyMarket {
         Loan.State memory loan = ILendingMarket(_market).getLoanState(loanId);
         _closeLoan(loan);
-        return true;
     }
 
     // -------------------------------------------- //
@@ -264,13 +269,13 @@ contract CreditLine is AccessControlExtUpgradeable, PausableUpgradeable, ICredit
     /// @inheritdoc ICreditLinePrimary
     function determineLoanTerms(
         address borrower,
-        uint256 borrowAmount,
+        uint256 borrowedAmount,
         uint256 durationInPeriods
     ) public view returns (Loan.Terms memory terms) {
         if (borrower == address(0)) {
             revert Error.ZeroAddress();
         }
-        if (borrowAmount == 0) {
+        if (borrowedAmount == 0) {
             revert Error.InvalidAmount();
         }
 
@@ -279,10 +284,10 @@ contract CreditLine is AccessControlExtUpgradeable, PausableUpgradeable, ICredit
         if (_blockTimestamp() > borrowerConfig.expiration) {
             revert BorrowerConfigurationExpired();
         }
-        if (borrowAmount > borrowerConfig.maxBorrowAmount) {
+        if (borrowedAmount > borrowerConfig.maxBorrowedAmount) {
             revert Error.InvalidAmount();
         }
-        if (borrowAmount < borrowerConfig.minBorrowAmount) {
+        if (borrowedAmount < borrowerConfig.minBorrowedAmount) {
             revert Error.InvalidAmount();
         }
         if (durationInPeriods < borrowerConfig.minDurationInPeriods) {
@@ -293,29 +298,22 @@ contract CreditLine is AccessControlExtUpgradeable, PausableUpgradeable, ICredit
         }
 
         BorrowerState storage borrowerState = _borrowerStates[borrower];
-        if (borrowerConfig.borrowPolicy == BorrowPolicy.SingleActiveLoan) {
+        if (borrowerConfig.borrowingPolicy == BorrowingPolicy.SingleActiveLoan) {
             if (borrowerState.activeLoanCount > 0) {
                 revert LimitViolationOnSingleActiveLoan();
             }
-        } else if (borrowerConfig.borrowPolicy == BorrowPolicy.TotalActiveAmountLimit) {
-            uint256 newTotalActiveLoanAmount = borrowAmount + borrowerState.totalActiveLoanAmount;
-            if (newTotalActiveLoanAmount > borrowerConfig.maxBorrowAmount) {
+        } else if (borrowerConfig.borrowingPolicy == BorrowingPolicy.TotalActiveAmountLimit) {
+            uint256 newTotalActiveLoanAmount = borrowedAmount + borrowerState.totalActiveLoanAmount;
+            if (newTotalActiveLoanAmount > borrowerConfig.maxBorrowedAmount) {
                 revert LimitViolationOnTotalActiveLoanAmount(newTotalActiveLoanAmount);
             }
-        } // else borrowerConfig.borrowPolicy == BorrowPolicy.MultipleActiveLoans
+        } // else borrowerConfig.borrowingPolicy == BorrowingPolicy.MultipleActiveLoans
 
         terms.token = _token;
-        terms.durationInPeriods = durationInPeriods.toUint32();
+        terms.durationInPeriods = durationInPeriods;
         terms.interestRatePrimary = borrowerConfig.interestRatePrimary;
         terms.interestRateSecondary = borrowerConfig.interestRateSecondary;
-        uint256 addonAmount = calculateAddonAmount(
-            borrowAmount,
-            durationInPeriods,
-            borrowerConfig.addonFixedRate,
-            borrowerConfig.addonPeriodRate,
-            Constants.INTEREST_RATE_FACTOR
-        );
-        terms.addonAmount = Rounding.roundMath(addonAmount, Constants.ACCURACY_FACTOR).toUint64();
+        // terms.addonAmount = 0 because the field has been deprecated since version 1.9.0
     }
 
     /// @inheritdoc ICreditLinePrimary
@@ -339,37 +337,22 @@ contract CreditLine is AccessControlExtUpgradeable, PausableUpgradeable, ICredit
     }
 
     /// @inheritdoc ICreditLinePrimary
-    function lateFeeRate() external view returns (uint256) {
-        return _config.lateFeeRate;
+    function determineLateFeeAmount(uint256 loanTrackedBalance) external view returns (uint256) {
+        // The equivalent formula: round(loanTrackedBalance * lateFeeRate / INTEREST_RATE_FACTOR)
+        // Where division operator `/` takes into account the fractional part and
+        // the `round()` function returns an integer rounded according to standard mathematical rules.
+        uint256 product = loanTrackedBalance * _config.lateFeeRate;
+        uint256 reminder = product % Constants.INTEREST_RATE_FACTOR;
+        uint256 result = product / Constants.INTEREST_RATE_FACTOR;
+        if (reminder >= (Constants.INTEREST_RATE_FACTOR / 2)) {
+            ++result;
+        }
+        return result;
     }
 
     // -------------------------------------------- //
     //  Pure functions                              //
     // -------------------------------------------- //
-
-    /// @dev Calculates the amount of a loan addon (extra charges or fees).
-    /// @param amount The initial principal amount of the loan.
-    /// @param durationInPeriods The duration of the loan in periods.
-    /// @param addonFixedRate The fixed rate of the loan addon (extra charges or fees).
-    /// @param addonPeriodRate The rate per period of the loan addon (extra charges or fees).
-    /// @param interestRateFactor The rate factor used together with interest rate.
-    /// @return The amount of the addon.
-    function calculateAddonAmount(
-        uint256 amount,
-        uint256 durationInPeriods,
-        uint256 addonFixedRate,
-        uint256 addonPeriodRate,
-        uint256 interestRateFactor
-    ) public pure returns (uint256) {
-        /// The initial formula for calculating the amount of the loan addon (extra charges or fees) is:
-        /// E = (A + E) * r (1)
-        /// where `A` -- the borrow amount, `E` -- addon, `r` -- the result addon rate (e.g. `1 %` => `0.01`),
-        /// Formula (1) can be rewritten as:
-        /// E = A * r / (1 - r) = A * (R / F) / (1 - R / F) = A * R / (F - R) (2)
-        /// where `R` -- the addon rate in units of the rate factor, `F` -- the interest rate factor.
-        uint256 addonRate = addonPeriodRate * durationInPeriods + addonFixedRate;
-        return (amount * addonRate) / (interestRateFactor - addonRate);
-    }
 
     /// @inheritdoc ICreditLinePrimary
     function proveCreditLine() external pure {}
@@ -389,13 +372,13 @@ contract CreditLine is AccessControlExtUpgradeable, PausableUpgradeable, ICredit
         // NOTE: We don't check for expiration here, because
         // it can be used for disabling a borrower by setting it to 0.
 
-        if (config.minBorrowAmount > config.maxBorrowAmount) {
+        if (config.minBorrowedAmount > config.maxBorrowedAmount) {
             revert InvalidBorrowerConfiguration();
         }
-        if (config.minBorrowAmount < _config.minBorrowAmount) {
+        if (config.minBorrowedAmount < _config.minBorrowedAmount) {
             revert InvalidBorrowerConfiguration();
         }
-        if (config.maxBorrowAmount > _config.maxBorrowAmount) {
+        if (config.maxBorrowedAmount > _config.maxBorrowedAmount) {
             revert InvalidBorrowerConfiguration();
         }
 
@@ -423,17 +406,10 @@ contract CreditLine is AccessControlExtUpgradeable, PausableUpgradeable, ICredit
             revert InvalidBorrowerConfiguration();
         }
 
-        if (config.addonFixedRate < _config.minAddonFixedRate) {
+        if (config.addonFixedRate != 0) {
             revert InvalidBorrowerConfiguration();
         }
-        if (config.addonFixedRate > _config.maxAddonFixedRate) {
-            revert InvalidBorrowerConfiguration();
-        }
-
-        if (config.addonPeriodRate < _config.minAddonPeriodRate) {
-            revert InvalidBorrowerConfiguration();
-        }
-        if (config.addonPeriodRate > _config.maxAddonPeriodRate) {
+        if (config.addonPeriodRate != 0) {
             revert InvalidBorrowerConfiguration();
         }
 
@@ -454,7 +430,7 @@ contract CreditLine is AccessControlExtUpgradeable, PausableUpgradeable, ICredit
 
         unchecked {
             uint256 newActiveLoanCount = uint256(borrowerState.activeLoanCount) + 1;
-            uint256 newTotalActiveLoanAmount = uint256(borrowerState.totalActiveLoanAmount) + loan.borrowAmount;
+            uint256 newTotalActiveLoanAmount = uint256(borrowerState.totalActiveLoanAmount) + loan.borrowedAmount;
             if (
                 newActiveLoanCount + borrowerState.closedLoanCount > type(uint16).max ||
                 newTotalActiveLoanAmount + borrowerState.totalClosedLoanAmount > type(uint64).max
@@ -472,8 +448,8 @@ contract CreditLine is AccessControlExtUpgradeable, PausableUpgradeable, ICredit
         BorrowerState storage borrowerState = _borrowerStates[loan.borrower];
         borrowerState.activeLoanCount -= 1;
         borrowerState.closedLoanCount += 1;
-        borrowerState.totalActiveLoanAmount -= loan.borrowAmount;
-        borrowerState.totalClosedLoanAmount += loan.borrowAmount;
+        borrowerState.totalActiveLoanAmount -= loan.borrowedAmount;
+        borrowerState.totalClosedLoanAmount += loan.borrowedAmount;
     }
 
     /// @dev The upgrade validation function for the UUPSExtUpgradeable contract.

@@ -16,25 +16,6 @@ contract LendingMarketMock {
     // -------------------------------------------- //
 
     mapping(uint256 => Loan.State) private _loanStates;
-    uint256 public repaymentCounter;
-
-    // -------------------------------------------- //
-    //  Events                                      //
-    // -------------------------------------------- //
-
-    event RepayLoanCalled(uint256 indexed loanId, uint256 repayAmount, uint256 repaymentCounter);
-    event HookCallResult(bool result);
-
-    // -------------------------------------------- //
-    //  Primary transactional functions             //
-    // -------------------------------------------- //
-
-    function repayLoan(uint256 loanId, uint256 repayAmount) external {
-        loanId; // To prevent compiler warning about unused variable
-        repayAmount; // To prevent compiler warning about unused variable
-        ++repaymentCounter;
-        emit RepayLoanCalled(loanId, repayAmount, repaymentCounter);
-    }
 
     // -------------------------------------------- //
     //  Mock transactional functions                //
@@ -45,27 +26,27 @@ contract LendingMarketMock {
     }
 
     function callOnBeforeLoanTakenLiquidityPool(address liquidityPool, uint256 loanId) external {
-        emit HookCallResult(ILiquidityPool(liquidityPool).onBeforeLoanTaken(loanId));
+        ILiquidityPool(liquidityPool).onBeforeLoanTaken(loanId);
     }
 
     function callOnBeforeLoanTakenCreditLine(address creditLine, uint256 loanId) external {
-        emit HookCallResult(ICreditLine(creditLine).onBeforeLoanTaken(loanId));
+        ICreditLine(creditLine).onBeforeLoanTaken(loanId);
     }
 
     function callOnAfterLoanPaymentLiquidityPool(address liquidityPool, uint256 loanId, uint256 amount) external {
-        emit HookCallResult(ILiquidityPool(liquidityPool).onAfterLoanPayment(loanId, amount));
+        ILiquidityPool(liquidityPool).onAfterLoanPayment(loanId, amount);
     }
 
-    function callOnAfterLoanPaymentCreditLine(address creditLine, uint256 loanId, uint256 repayAmount) external {
-        emit HookCallResult(ICreditLine(creditLine).onAfterLoanPayment(loanId, repayAmount));
+    function callOnAfterLoanPaymentCreditLine(address creditLine, uint256 loanId, uint256 repaymentAmount) external {
+        ICreditLine(creditLine).onAfterLoanPayment(loanId, repaymentAmount);
     }
 
     function callOnAfterLoanRevocationLiquidityPool(address liquidityPool, uint256 loanId) external {
-        emit HookCallResult(ILiquidityPool(liquidityPool).onAfterLoanRevocation(loanId));
+        ILiquidityPool(liquidityPool).onAfterLoanRevocation(loanId);
     }
 
     function callOnAfterLoanRevocationCreditLine(address creditLine, uint256 loanId) external {
-        emit HookCallResult(ICreditLine(creditLine).onAfterLoanRevocation(loanId));
+        ICreditLine(creditLine).onAfterLoanRevocation(loanId);
     }
 
     // -------------------------------------------- //

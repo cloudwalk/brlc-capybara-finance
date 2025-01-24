@@ -19,6 +19,20 @@ contract LendingMarketTestable is LendingMarket {
     //  Transactional functions                     //
     // -------------------------------------------- //
 
+    /// @dev Calls the internal initialize function of the parent contract to check
+    /// that the 'onlyInitializing' modifier is present.
+    /// @param owner_ The address of the owner.
+    function call_parent_initialize(address owner_) public {
+        __LendingMarket_init(owner_);
+    }
+
+    /// @dev Calls the internal initialize_unchained function of the parent contract
+    /// to check that the 'onlyInitializing' modifier is present.
+    /// @param owner_ The address of the owner.
+    function call_parent_initialize_unchained(address owner_) public {
+        __LendingMarket_init_unchained(owner_);
+    }
+
     /// @dev Sets a new loan ID counter for testing.
     /// @param newValue The new loan ID counter value.
     function setLoanIdCounter(uint256 newValue) external {
@@ -43,6 +57,15 @@ contract LendingMarketTestable is LendingMarket {
     /// @param newValue The new maximum number of installments.
     function setInstallmentCountMax(uint256 newValue) external {
         installmentCountMax = newValue;
+    }
+
+    /// @dev Set the zero addon amount for a batch of loans.
+    /// @param loanIds The unique identifiers of the loans to zero the addon amount.
+    function zeroAddonAmountBatch(uint256[] calldata loanIds) external {
+        uint256 len = loanIds.length;
+        for (uint256 i = 0; i < len; ++i) {
+            _loans[loanIds[i]].addonAmount = 0;
+        }
     }
 
     // -------------------------------------------- //

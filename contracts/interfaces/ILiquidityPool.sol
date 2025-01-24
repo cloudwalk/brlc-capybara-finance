@@ -16,17 +16,13 @@ interface ILiquidityPoolPrimary {
 
     /// @dev Emitted when tokens are withdrawn from the liquidity pool.
     /// @param borrowableAmount The amount of tokens withdrawn from the borrowable balance.
-    /// @param addonAmount The amount of tokens withdrawn from the addons balance.
+    /// @param addonAmount Deprecated since version 1.9.0. This amount is always zero now.
     event Withdrawal(uint256 borrowableAmount, uint256 addonAmount);
 
     /// @dev Emitted when tokens are rescued from the liquidity pool.
     /// @param token The address of the token rescued.
     /// @param amount The amount of tokens rescued.
     event Rescue(address indexed token, uint256 amount);
-
-    /// @dev Emitted when loan auto repayment was initiated.
-    /// @param numberOfLoans The number of loans repaid.
-    event AutoRepayment(uint256 numberOfLoans);
 
     // -------------------------------------------- //
     //  Transactional functions                     //
@@ -38,18 +34,14 @@ interface ILiquidityPoolPrimary {
 
     /// @dev Withdraws tokens from the liquidity pool.
     /// @param borrowableAmount The amount of tokens to withdraw from the borrowable balance.
-    /// @param addonAmount The amount of tokens to withdraw from the addons balance.
+    /// @param addonAmount This parameter has been deprecated since version 1.9.0 and must be zero.
+    ///        See the {addonTreasury} function comments for more details.
     function withdraw(uint256 borrowableAmount, uint256 addonAmount) external;
 
     /// @dev Rescues tokens from the liquidity pool.
     /// @param token The address of the token to rescue.
     /// @param amount The amount of tokens to rescue.
     function rescue(address token, uint256 amount) external;
-
-    /// @dev Executes auto repayment of loans in the batch mode.
-    /// @param loanIds The unique identifiers of the loans to repay.
-    /// @param amounts The payment amounts that correspond with given loan ids.
-    function autoRepay(uint256[] memory loanIds, uint256[] memory amounts) external;
 
     // -------------------------------------------- //
     //  View and pure functions                     //
@@ -63,17 +55,16 @@ interface ILiquidityPoolPrimary {
 
     /// @dev Returns the addon treasury address.
     ///
-    /// If the address is zero the addon amount of a loan is retained in the pool.
-    /// Otherwise the addon amount transfers to that treasury when a loan is taken and back when a loan is revoked.
+    /// Previously, this address affected the pool logic.
+    /// But since version 1.9.0, the ability to save the addon amount in the pool has become deprecated.
+    /// Now the addon amount must always be output to an external wallet. The addon balance of the pool is always zero.
     ///
     /// @return The current address of the addon treasury.
     function addonTreasury() external view returns (address);
 
     /// @dev Gets the borrowable and addons balances of the liquidity pool.
     ///
-    /// The addons part of the balance is changes only if the addon amount of loans is retained on the pool contract.
-    /// If the addon amount of loans transfers to an external addon treasury that part is kept unchanged.
-    /// See the {addonTreasury} function comments for more details.
+    /// The addons part of the balance has been deprecated since version 1.9.0 and now it always equals zero.
     ///
     /// @return The borrowable and addons balances.
     function getBalances() external view returns (uint256, uint256);
@@ -125,16 +116,16 @@ interface ILiquidityPoolConfiguration {
 interface ILiquidityPoolHooks {
     /// @dev A hook that is triggered by the associated market before a loan is taken.
     /// @param loanId The unique identifier of the loan being taken.
-    function onBeforeLoanTaken(uint256 loanId) external returns (bool);
+    function onBeforeLoanTaken(uint256 loanId) external;
 
     /// @dev A hook that is triggered by the associated market after the loan payment.
     /// @param loanId The unique identifier of the loan being paid.
-    /// @param repayAmount The amount of tokens that was repaid.
-    function onAfterLoanPayment(uint256 loanId, uint256 repayAmount) external returns (bool);
+    /// @param repaymentAmount The amount of tokens that was repaid.
+    function onAfterLoanPayment(uint256 loanId, uint256 repaymentAmount) external;
 
     /// @dev A hook that is triggered by the associated market after the loan revocation.
     /// @param loanId The unique identifier of the loan being revoked.
-    function onAfterLoanRevocation(uint256 loanId) external returns (bool);
+    function onAfterLoanRevocation(uint256 loanId) external;
 }
 
 /// @title ILiquidityPoolErrors interface

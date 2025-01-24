@@ -2,19 +2,12 @@
 
 pragma solidity 0.8.24;
 
-import { CreditLine } from "../CreditLine.sol";
+import { LiquidityPool } from "../LiquidityPool.sol";
 
-/// @title CreditLineTestable contract
+/// @title LiquidityPoolTestable contract
 /// @author CloudWalk Inc. (See https://cloudwalk.io)
-/// @dev Version of the credit line contract with additions required for testing.
-contract CreditLineTestable is CreditLine {
-    /// @dev Sets the borrower state for testing purposes.
-    /// @param borrower The address of the borrower.
-    /// @param newState The new borrower state.
-    function setBorrowerState(address borrower, BorrowerState calldata newState) external {
-        _borrowerStates[borrower] = newState;
-    }
-
+/// @dev Version of the liquidity pool contract with additions required for testing.
+contract LiquidityPoolTestable is LiquidityPool {
     /// @dev Calls the internal initialize function of the parent contract to check
     /// that the 'onlyInitializing' modifier is present.
     /// @param lender_ The address of the lender.
@@ -25,7 +18,7 @@ contract CreditLineTestable is CreditLine {
         address market_,
         address token_
     ) public {
-        __CreditLineConfigurable_init(lender_, market_, token_);
+        __LiquidityPool_init(lender_, market_, token_);
     }
 
     /// @dev Calls the internal initialize_unchained function of the parent contract
@@ -38,6 +31,6 @@ contract CreditLineTestable is CreditLine {
         address market_,
         address token_
     ) public {
-        __CreditLineConfigurable_init_unchained(lender_, market_, token_);
+        __LiquidityPool_init_unchained(lender_, market_, token_);
     }
 }

@@ -15,9 +15,6 @@ contract LiquidityPoolMock {
     //  Storage variables                           //
     // -------------------------------------------- //
 
-    bool private _onBeforeLoanTakenResult;
-    bool private _onAfterLoanPaymentResult;
-    bool private _onAfterLoanRevocationResult;
     address private _addonTreasury;
 
     // -------------------------------------------- //
@@ -25,34 +22,23 @@ contract LiquidityPoolMock {
     // -------------------------------------------- //
 
     event OnBeforeLoanTakenCalled(uint256 indexed loanId);
-    event OnAfterLoanPaymentCalled(uint256 indexed loanId, uint256 indexed repayAmount);
+    event OnAfterLoanPaymentCalled(uint256 indexed loanId, uint256 indexed repaymentAmount);
     event OnAfterLoanRevocationCalled(uint256 indexed loanId);
-
-    // -------------------------------------------- //
-    //  Primary transactional functions             //
-    // -------------------------------------------- //
-
-    function repayLoan(address _market, uint256 loanId, uint256 amount) external {
-        ILendingMarket(_market).repayLoan(loanId, amount);
-    }
 
     // -------------------------------------------- //
     //  Hook transactional functions                //
     // -------------------------------------------- //
 
-    function onBeforeLoanTaken(uint256 loanId) external returns (bool) {
+    function onBeforeLoanTaken(uint256 loanId) external {
         emit OnBeforeLoanTakenCalled(loanId);
-        return _onBeforeLoanTakenResult;
     }
 
-    function onAfterLoanPayment(uint256 loanId, uint256 repayAmount) external returns (bool) {
-        emit OnAfterLoanPaymentCalled(loanId, repayAmount);
-        return _onAfterLoanPaymentResult;
+    function onAfterLoanPayment(uint256 loanId, uint256 repaymentAmount) external {
+        emit OnAfterLoanPaymentCalled(loanId, repaymentAmount);
     }
 
-    function onAfterLoanRevocation(uint256 loanId) external returns (bool) {
+    function onAfterLoanRevocation(uint256 loanId) external {
         emit OnAfterLoanRevocationCalled(loanId);
-        return _onAfterLoanRevocationResult;
     }
 
     // -------------------------------------------- //

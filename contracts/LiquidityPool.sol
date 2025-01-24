@@ -41,7 +41,7 @@ contract LiquidityPool is
     /// @dev The role of this contract owner.
     bytes32 public constant OWNER_ROLE = keccak256("OWNER_ROLE");
 
-    /// @dev The role of this contract admin.
+    /// @dev The role of this contract admin. Currently not in use. Reserved for possible future changes.
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
 
     /// @dev The role of this contract pauser.
@@ -62,15 +62,16 @@ contract LiquidityPool is
 
     /// @dev The addons balance of the liquidity pool.
     ///
-    /// It is used only if the addon amount of loans is retained on the pool contract.
-    /// If the addon amount of loans transfers to an external addon treasury this variable is kept unchanged.
+    /// IMPORTANT! Deprecated since version 1.9.0. Now this variable is always zero.
+    ///
     /// See the comments of the {_addonTreasury} storage variable for more details.
     uint64 internal _addonsBalance;
 
     /// @dev The address of the addon treasury.
     ///
-    /// If the address is zero the addon amount of a loan is retained in the pool.
-    /// Otherwise the addon amount transfers to that treasury when a loan is taken and back when a loan is revoked.
+    /// Previously, this address affected the pool logic.
+    /// But since version 1.9.0, the ability to save the addon amount in the pool has become deprecated.
+    /// Now the addon amount must always be output to an external wallet. The addon balance of the pool is always zero.
     address internal _addonTreasury;
 
     /// @dev This empty reserved space is put in place to allow future versions
@@ -113,7 +114,7 @@ contract LiquidityPool is
         address market_,
         address token_
     ) external initializer {
-        __LiquidityPoolAccountable_init(lender_, market_, token_);
+        __LiquidityPool_init(lender_, market_, token_);
     }
 
     /// @dev Internal initializer of the upgradable contract.
@@ -121,8 +122,8 @@ contract LiquidityPool is
     /// @param market_ The address of the lending market.
     /// @param token_ The address of the token.
     /// See details https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable.
-    function __LiquidityPoolAccountable_init(
-        address lender_,
+    function __LiquidityPool_init(
+        address lender_, // Tools: this comment prevents Prettier from formatting into a single line.
         address market_,
         address token_
     ) internal onlyInitializing {
@@ -131,7 +132,7 @@ contract LiquidityPool is
         __AccessControl_init_unchained();
         __AccessControlExt_init_unchained();
         __Pausable_init_unchained();
-        __LiquidityPoolAccountable_init_unchained(lender_, market_, token_);
+        __LiquidityPool_init_unchained(lender_, market_, token_);
     }
 
     /// @dev Unchained internal initializer of the upgradable contract.
@@ -139,7 +140,7 @@ contract LiquidityPool is
     /// @param market_ The address of the lending market.
     /// @param token_ The address of the token.
     /// See details https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable.
-    function __LiquidityPoolAccountable_init_unchained(
+    function __LiquidityPool_init_unchained(
         address lender_,
         address market_,
         address token_
@@ -209,19 +210,18 @@ contract LiquidityPool is
 
     /// @inheritdoc ILiquidityPoolPrimary
     function withdraw(uint256 borrowableAmount, uint256 addonAmount) external onlyRole(OWNER_ROLE) {
-        if (borrowableAmount == 0 && addonAmount == 0) {
+        if (borrowableAmount == 0) {
+            revert Error.InvalidAmount();
+        }
+        if (addonAmount != 0) {
             revert Error.InvalidAmount();
         }
 
         if (_borrowableBalance < borrowableAmount) {
             revert InsufficientBalance();
         }
-        if (_addonsBalance < addonAmount) {
-            revert InsufficientBalance();
-        }
 
         _borrowableBalance -= borrowableAmount.toUint64();
-        _addonsBalance -= addonAmount.toUint64();
 
         IERC20(_token).safeTransfer(msg.sender, borrowableAmount + addonAmount);
 
@@ -242,49 +242,36 @@ contract LiquidityPool is
         emit Rescue(token_, amount);
     }
 
-    /// @inheritdoc ILiquidityPoolPrimary
-    function autoRepay(uint256[] memory loanIds, uint256[] memory amounts) external whenNotPaused onlyRole(ADMIN_ROLE) {
-        if (loanIds.length != amounts.length) {
-            revert Error.ArrayLengthMismatch();
-        }
-
-        emit AutoRepayment(loanIds.length);
-
-        ILendingMarket lendingMarket = ILendingMarket(_market);
-        for (uint256 i = 0; i < loanIds.length; i++) {
-            lendingMarket.repayLoan(loanIds[i], amounts[i]);
-        }
-    }
-
     // -------------------------------------------- //
     //  Hook transactional functions                //
     // -------------------------------------------- //
 
     /// @inheritdoc ILiquidityPoolHooks
-    function onBeforeLoanTaken(uint256 loanId) external whenNotPaused onlyMarket returns (bool) {
+    function onBeforeLoanTaken(uint256 loanId) external whenNotPaused onlyMarket {
         Loan.State memory loan = ILendingMarket(_market).getLoanState(loanId);
-        _borrowableBalance -= loan.borrowAmount + loan.addonAmount;
-        _collectLoanAddon(loan.addonAmount);
-        return true;
+        uint64 principalAmount = loan.borrowedAmount + loan.addonAmount;
+        if (principalAmount > _borrowableBalance) {
+            revert InsufficientBalance();
+        }
+        unchecked {
+            _borrowableBalance -= principalAmount;
+        }
     }
 
     /// @inheritdoc ILiquidityPoolHooks
-    function onAfterLoanPayment(uint256 loanId, uint256 amount) external whenNotPaused onlyMarket returns (bool) {
+    function onAfterLoanPayment(uint256 loanId, uint256 amount) external whenNotPaused onlyMarket {
         loanId; // To prevent compiler warning about unused variable
         _borrowableBalance += amount.toUint64();
-        return true;
     }
 
     /// @inheritdoc ILiquidityPoolHooks
-    function onAfterLoanRevocation(uint256 loanId) external whenNotPaused onlyMarket returns (bool) {
+    function onAfterLoanRevocation(uint256 loanId) external whenNotPaused onlyMarket {
         Loan.State memory loan = ILendingMarket(_market).getLoanState(loanId);
-        if (loan.borrowAmount > loan.repaidAmount) {
-            _borrowableBalance = _borrowableBalance + (loan.borrowAmount - loan.repaidAmount) + loan.addonAmount;
+        if (loan.borrowedAmount > loan.repaidAmount) {
+            _borrowableBalance = _borrowableBalance + (loan.borrowedAmount - loan.repaidAmount) + loan.addonAmount;
         } else {
-            _borrowableBalance = _borrowableBalance - (loan.repaidAmount - loan.borrowAmount) + loan.addonAmount;
+            _borrowableBalance = _borrowableBalance - (loan.repaidAmount - loan.borrowedAmount) + loan.addonAmount;
         }
-        _revokeLoanAddon(loan.addonAmount);
-        return true;
     }
 
     // -------------------------------------------- //
@@ -341,24 +328,6 @@ contract LiquidityPool is
         }
         emit AddonTreasuryChanged(newTreasury, oldTreasury);
         _addonTreasury = newTreasury;
-    }
-
-    /// @dev Collects the addon amount depending on the addon treasury address.
-    ///
-    /// See the comments of the {_addonTreasury} storage variable for more details.
-    function _collectLoanAddon(uint64 addonAmount) internal {
-        if (_addonTreasury == address(0)) {
-            _addonsBalance += addonAmount;
-        }
-    }
-
-    /// @dev Revokes the addon amount depending on the addon treasury address.
-    ///
-    /// See the comments of the {_addonTreasury} storage variable for more details.
-    function _revokeLoanAddon(uint64 addonAmount) internal {
-        if (_addonTreasury == address(0)) {
-            _addonsBalance -= addonAmount;
-        }
     }
 
     /// @dev The upgrade validation function for the UUPSExtUpgradeable contract.

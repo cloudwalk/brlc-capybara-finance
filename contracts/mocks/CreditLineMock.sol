@@ -15,42 +15,30 @@ contract CreditLineMock {
     // -------------------------------------------- //
 
     mapping(address => Loan.Terms) private _loanTerms;
-
-    bool private _onBeforeLoanTakenResult;
-
-    bool private _onAfterLoanPaymentResult;
-
-    bool private _onAfterLoanRevocationResult;
-
-    uint256 private _lateFeeRate;
+    uint256 private _lateFeeAmount;
 
     // -------------------------------------------- //
     //  Events                                      //
     // -------------------------------------------- //
 
     event OnBeforeLoanTakenCalled(uint256 indexed loanId);
-
-    event OnAfterLoanPaymentCalled(uint256 indexed loanId, uint256 indexed repayAmount);
-
+    event OnAfterLoanPaymentCalled(uint256 indexed loanId, uint256 indexed repaymentAmount);
     event OnAfterLoanRevocationCalled(uint256 indexed loanId);
 
     // -------------------------------------------- //
     //  Hook transactional functions                //
     // -------------------------------------------- //
 
-    function onBeforeLoanTaken(uint256 loanId) external returns (bool) {
+    function onBeforeLoanTaken(uint256 loanId) external {
         emit OnBeforeLoanTakenCalled(loanId);
-        return _onBeforeLoanTakenResult;
     }
 
-    function onAfterLoanPayment(uint256 loanId, uint256 repayAmount) external returns (bool) {
-        emit OnAfterLoanPaymentCalled(loanId, repayAmount);
-        return _onAfterLoanPaymentResult;
+    function onAfterLoanPayment(uint256 loanId, uint256 repaymentAmount) external {
+        emit OnAfterLoanPaymentCalled(loanId, repaymentAmount);
     }
 
-    function onAfterLoanRevocation(uint256 loanId) external returns (bool) {
+    function onAfterLoanRevocation(uint256 loanId) external {
         emit OnAfterLoanRevocationCalled(loanId);
-        return _onAfterLoanRevocationResult;
     }
 
     // -------------------------------------------- //
@@ -62,8 +50,8 @@ contract CreditLineMock {
         _loanTerms[borrower] = terms;
     }
 
-    function mockLateFeeRate(uint256 newRate) external {
-        _lateFeeRate = newRate;
+    function mockLateFeeAmount(uint256 newAmount) external {
+        _lateFeeAmount = newAmount;
     }
 
     // -------------------------------------------- //
@@ -72,16 +60,17 @@ contract CreditLineMock {
 
     function determineLoanTerms(
         address borrower,
-        uint256 borrowAmount,
+        uint256 borrowedAmount,
         uint256 durationInPeriods
     ) external view returns (Loan.Terms memory terms) {
-        borrowAmount; // To prevent compiler warning about unused variable
+        borrowedAmount; // To prevent compiler warning about unused variable
         terms = _loanTerms[borrower];
         terms.durationInPeriods = uint32(durationInPeriods);
     }
 
-    function lateFeeRate() external view returns (uint256) {
-        return _lateFeeRate;
+    function determineLateFeeAmount(uint256 loanTrackedBalance) external view returns (uint256) {
+        loanTrackedBalance; // To prevent compiler warning about unused variable
+        return _lateFeeAmount;
     }
 
     function proveCreditLine() external pure {}

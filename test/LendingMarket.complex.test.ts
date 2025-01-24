@@ -20,7 +20,7 @@ const PERIOD_IN_SECONDS = 86400;
 const PROGRAM_ID = 1;
 const NEGATIVE_TIME_OFFSET = 3 * 60 * 60; // 3 hours
 
-enum BorrowPolicy {
+enum BorrowingPolicy {
   // SingleActiveLoan = 0,
   // MultipleActiveLoans = 1
   TotalActiveAmountLimit = 2
@@ -51,7 +51,7 @@ interface Fixture {
 }
 
 interface TestScenario {
-  borrowAmount: number;
+  borrowedAmount: number;
   addonAmount: number;
   durationInPeriods: number;
   interestRatePrimary: number;
@@ -79,8 +79,8 @@ interface TestScenarioContext {
 }
 
 interface CreditLineConfig {
-  minBorrowAmount: number;
-  maxBorrowAmount: number;
+  minBorrowedAmount: number;
+  maxBorrowedAmount: number;
   minInterestRatePrimary: number;
   maxInterestRatePrimary: number;
   minInterestRateSecondary: number;
@@ -100,19 +100,19 @@ interface BorrowerConfig {
   expiration: number;
   minDurationInPeriods: number;
   maxDurationInPeriods: number;
-  minBorrowAmount: number;
-  maxBorrowAmount: number;
-  borrowPolicy: BorrowPolicy;
+  minBorrowedAmount: number;
+  maxBorrowedAmount: number;
+  borrowingPolicy: BorrowingPolicy;
   interestRatePrimary: number;
   interestRateSecondary: number;
   addonFixedRate: number;
   addonPeriodRate: number;
 
-  [key: string]: number | BorrowPolicy; // Index signature
+  [key: string]: number | BorrowingPolicy; // Index signature
 }
 
 const testScenarioDefault: TestScenario = {
-  borrowAmount: 0,
+  borrowedAmount: 0,
   addonAmount: 0,
   durationInPeriods: 180,
   interestRatePrimary: 0,
@@ -294,8 +294,8 @@ describe("Contract 'LendingMarket': complex tests", async () => {
     return {
       minDurationInPeriods: scenario.durationInPeriods,
       maxDurationInPeriods: scenario.durationInPeriods,
-      minBorrowAmount: scenario.borrowAmount,
-      maxBorrowAmount: scenario.borrowAmount,
+      minBorrowedAmount: scenario.borrowedAmount,
+      maxBorrowedAmount: scenario.borrowedAmount,
       minInterestRatePrimary: scenario.interestRatePrimary,
       maxInterestRatePrimary: scenario.interestRatePrimary,
       minInterestRateSecondary: scenario.interestRateSecondary,
@@ -310,15 +310,15 @@ describe("Contract 'LendingMarket': complex tests", async () => {
 
   function createBorrowerConfig(scenario: TestScenario): BorrowerConfig {
     return {
-      minBorrowAmount: scenario.borrowAmount,
-      maxBorrowAmount: scenario.borrowAmount,
+      minBorrowedAmount: scenario.borrowedAmount,
+      maxBorrowedAmount: scenario.borrowedAmount,
       minDurationInPeriods: scenario.durationInPeriods,
       maxDurationInPeriods: scenario.durationInPeriods,
       interestRatePrimary: scenario.interestRatePrimary,
       interestRateSecondary: scenario.interestRateSecondary,
       addonFixedRate: 0,
       addonPeriodRate: 0,
-      borrowPolicy: BorrowPolicy.TotalActiveAmountLimit,
+      borrowingPolicy: BorrowingPolicy.TotalActiveAmountLimit,
       expiration: 2 ** 32 - 1
     };
   }
@@ -355,7 +355,7 @@ describe("Contract 'LendingMarket': complex tests", async () => {
     const tx: Promise<TransactionResponse> = lendingMarket.takeLoanFor(
       borrower.address,
       PROGRAM_ID,
-      scenario.borrowAmount,
+      scenario.borrowedAmount,
       scenario.addonAmount,
       scenario.durationInPeriods
     );
@@ -363,12 +363,12 @@ describe("Contract 'LendingMarket': complex tests", async () => {
     await expect(tx).to.changeTokenBalances(
       token,
       [lendingMarket, liquidityPool, borrower, addonTreasury, lender],
-      [0, -(scenario.borrowAmount + scenario.addonAmount), scenario.borrowAmount, scenario.addonAmount, 0]
+      [0, -(scenario.borrowedAmount + scenario.addonAmount), scenario.borrowedAmount, scenario.addonAmount, 0]
     );
 
     const liquidityPoolBalancesAfter = await liquidityPool.getBalances();
     expect(liquidityPoolBalancesAfter[0])
-      .to.eq(Number(liquidityPoolBalancesBefore[0]) - scenario.borrowAmount - scenario.addonAmount);
+      .to.eq(Number(liquidityPoolBalancesBefore[0]) - scenario.borrowedAmount - scenario.addonAmount);
     expect(liquidityPoolBalancesAfter[1]).to.eq(0); // The addonsBalance must be zero because addonTreasury != 0
 
     const txReceipt = await proveTx(tx);
@@ -489,7 +489,7 @@ describe("Contract 'LendingMarket': complex tests", async () => {
     const { token, lendingMarket, liquidityPool } = context.fixture as Fixture;
     const scenario = context.scenario;
     const loanState = await lendingMarket.getLoanState(context.loanId);
-    const refundAmount = Number(loanState.repaidAmount) - scenario.borrowAmount;
+    const refundAmount = Number(loanState.repaidAmount) - scenario.borrowedAmount;
 
     const liquidityPoolBalancesBefore = await liquidityPool.getBalances();
     expect(liquidityPoolBalancesBefore[1]).to.eq(0); // The addonsBalance must be zero because addonTreasury != 0
@@ -523,7 +523,7 @@ describe("Contract 'LendingMarket': complex tests", async () => {
     it("Scenario 1: a typical loan with short freezing after defaulting and full repayment at the end", async () => {
       const principalAmount = 1e9; // 1000 BRLC
       const addonAmount = Math.floor(principalAmount * 0.2);
-      const borrowAmount = principalAmount - addonAmount;
+      const borrowedAmount = principalAmount - addonAmount;
       const interestRatePrimary = 2_724_943; // 170 % annual
       const interestRateSecondary = 4_067440; // 340 % annual
 
@@ -544,7 +544,7 @@ describe("Contract 'LendingMarket': complex tests", async () => {
 
       const scenario: TestScenario = {
         ...testScenarioDefault,
-        borrowAmount,
+        borrowedAmount,
         addonAmount,
         interestRatePrimary,
         interestRateSecondary,
@@ -559,7 +559,7 @@ describe("Contract 'LendingMarket': complex tests", async () => {
     it("Scenario 2: a typical loan with short freezing and repayments only after defaulting", async () => {
       const principalAmount = 1e9; // 1000 BRLC, no addon amount
       const addonAmount = 0;
-      const borrowAmount = principalAmount - addonAmount;
+      const borrowedAmount = principalAmount - addonAmount;
       const interestRatePrimary = 2_724_943; // 170 % annual
       const interestRateSecondary = 4_067440; // 340 % annual
 
@@ -580,7 +580,7 @@ describe("Contract 'LendingMarket': complex tests", async () => {
 
       const scenario: TestScenario = {
         ...testScenarioDefault,
-        borrowAmount,
+        borrowedAmount,
         interestRatePrimary,
         interestRateSecondary,
         repaymentAmounts,
@@ -594,7 +594,7 @@ describe("Contract 'LendingMarket': complex tests", async () => {
     it("Scenario 3: a big loan with big rates, lots of small repayments and revocation at the end", async () => {
       const principalAmount = 1e12; // 1000_000 BRLC
       const addonAmount = Math.floor(principalAmount * 0.1);
-      const borrowAmount = principalAmount - addonAmount;
+      const borrowedAmount = principalAmount - addonAmount;
       const interestRatePrimary = 4_219_472; // 365 % annual
       const interestRateSecondary = 5_814_801; // 730 % annual
 
@@ -615,7 +615,7 @@ describe("Contract 'LendingMarket': complex tests", async () => {
 
       const scenario: TestScenario = {
         ...testScenarioDefault,
-        borrowAmount,
+        borrowedAmount,
         addonAmount,
         interestRatePrimary,
         interestRateSecondary,
@@ -630,7 +630,7 @@ describe("Contract 'LendingMarket': complex tests", async () => {
     it("Scenario 4: a small loan with low rates, lots of repayments leading to the full repayment", async () => {
       const principalAmount = 1e6; // 1 BRLC
       const addonAmount = 1e4;
-      const borrowAmount = principalAmount - addonAmount;
+      const borrowedAmount = principalAmount - addonAmount;
       const interestRatePrimary = 261_157; // 10 % annual
       const interestRateSecondary = 499_635; // 20 % annual
 
@@ -650,7 +650,7 @@ describe("Contract 'LendingMarket': complex tests", async () => {
 
       const scenario: TestScenario = {
         ...testScenarioDefault,
-        borrowAmount,
+        borrowedAmount,
         addonAmount,
         interestRatePrimary,
         interestRateSecondary,
