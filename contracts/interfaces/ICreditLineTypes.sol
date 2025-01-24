@@ -42,7 +42,7 @@ interface ICreditLineTypes {
     ///
     /// Note:
     /// Fields `minAddonFixedRate`, `maxAddonFixedRate`, `minAddonPeriodRate`, `maxAddonPeriodRate` have been
-    /// deprecated since version 1.9.0 and must be set to zero.
+    /// deprecated since version 1.8.0 and must be set to zero.
     struct CreditLineConfig {
         // Slot 1
         uint64 minBorrowedAmount;
@@ -77,7 +77,7 @@ interface ICreditLineTypes {
     /// - addonPeriodRate -------- The period rate for the loan addon calculation (extra charges or fees).
     ///
     /// Note:
-    /// Fields `addonFixedRate`, `addonPeriodRate` have been deprecated since version 1.9.0 and must be set to zero.
+    /// Fields `addonFixedRate`, `addonPeriodRate` have been deprecated since version 1.8.0 and must be set to zero.
     struct BorrowerConfig {
         // Slot 1
         uint32 expiration;

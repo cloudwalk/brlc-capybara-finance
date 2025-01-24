@@ -62,7 +62,7 @@ contract LiquidityPool is
 
     /// @dev The addons balance of the liquidity pool.
     ///
-    /// IMPORTANT! Deprecated since version 1.9.0. Now this variable is always zero.
+    /// IMPORTANT! Deprecated since version 1.8.0. Now this variable is always zero.
     ///
     /// See the comments of the {_addonTreasury} storage variable for more details.
     uint64 internal _addonsBalance;
@@ -70,7 +70,7 @@ contract LiquidityPool is
     /// @dev The address of the addon treasury.
     ///
     /// Previously, this address affected the pool logic.
-    /// But since version 1.9.0, the ability to save the addon amount in the pool has become deprecated.
+    /// But since version 1.8.0, the ability to save the addon amount in the pool has become deprecated.
     /// Now the addon amount must always be output to an external wallet. The addon balance of the pool is always zero.
     address internal _addonTreasury;
 
