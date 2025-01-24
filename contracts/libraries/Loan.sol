@@ -75,7 +75,7 @@ library Loan {
     /// - interestRateSecondary -- The secondary interest rate to be applied to the loan.
     ///
     /// Note:
-    /// The `addonAmount` field has been deprecated since version 1.8.0 and is always zero.
+    /// The `addonAmount` field has been deprecated since version 1.9.0 and is always zero.
     /// The addon amount of a loan is no longer calculated in the contract.
     /// It is passed as a parameter of a borrowing function instead.
     struct Terms {
