@@ -36,7 +36,7 @@ contract LiquidityPoolTestable is LiquidityPool {
 
     /// @dev Sets the admin role for a given role for testing purposes.
     /// @param role The role to set the admin for.
-    /// @param adminRole The admin role to set.  
+    /// @param adminRole The admin role to set.
     function setRoleAdmin(bytes32 role, bytes32 adminRole) external {
         _setRoleAdmin(role, adminRole);
     }

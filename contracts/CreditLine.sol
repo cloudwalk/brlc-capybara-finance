@@ -2,9 +2,8 @@
 
 pragma solidity 0.8.24;
 
-import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
-
 import { AccessControlExtUpgradeable } from "./base/AccessControlExtUpgradeable.sol";
+import { PausableExtUpgradeable } from "./base/PausableExtUpgradeable.sol";
 import { UUPSExtUpgradeable } from "./base/UUPSExtUpgradeable.sol";
 import { Versionable } from "./base/Versionable.sol";
 
@@ -23,7 +22,13 @@ import { ILendingMarket } from "./interfaces/ILendingMarket.sol";
 /// @title CreditLine contract
 /// @author CloudWalk Inc. (See https://cloudwalk.io)
 /// @dev The upgradable credit line contract.
-contract CreditLine is AccessControlExtUpgradeable, PausableUpgradeable, ICreditLine, Versionable, UUPSExtUpgradeable {
+contract CreditLine is
+    AccessControlExtUpgradeable,
+    PausableExtUpgradeable,
+    ICreditLine,
+    Versionable,
+    UUPSExtUpgradeable
+{
     using SafeCast for uint256;
 
     // -------------------------------------------- //
@@ -35,9 +40,6 @@ contract CreditLine is AccessControlExtUpgradeable, PausableUpgradeable, ICredit
 
     /// @dev The role of this contract admin.
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
-
-    /// @dev The role of this contract pauser.
-    bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
 
     // -------------------------------------------- //
     //  Storage variables                           //
@@ -116,6 +118,7 @@ contract CreditLine is AccessControlExtUpgradeable, PausableUpgradeable, ICredit
         __AccessControl_init_unchained();
         __AccessControlExt_init_unchained();
         __Pausable_init_unchained();
+        __PausableExt_init_unchained(OWNER_ROLE);
         __CreditLineConfigurable_init_unchained(owner_, market_, token_);
     }
 
@@ -141,25 +144,10 @@ contract CreditLine is AccessControlExtUpgradeable, PausableUpgradeable, ICredit
 
         _setRoleAdmin(OWNER_ROLE, OWNER_ROLE);
         _setRoleAdmin(ADMIN_ROLE, OWNER_ROLE);
-        _setRoleAdmin(PAUSER_ROLE, OWNER_ROLE);
         _grantRole(OWNER_ROLE, owner_);
 
         _market = market_;
         _token = token_;
-    }
-
-    // -------------------------------------------- //
-    //  Pauser transactional functions              //
-    // -------------------------------------------- //
-
-    /// @dev Pauses the contract.
-    function pause() external onlyRole(PAUSER_ROLE) {
-        _pause();
-    }
-
-    /// @dev Unpauses the contract.
-    function unpause() external onlyRole(PAUSER_ROLE) {
-        _unpause();
     }
 
     // -------------------------------------------- //

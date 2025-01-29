@@ -70,7 +70,7 @@ contract LendingMarketTestable is LendingMarket {
 
     /// @dev Sets the admin role for a given role for testing purposes.
     /// @param role The role to set the admin for.
-    /// @param adminRole The admin role to set. 
+    /// @param adminRole The admin role to set.
     function setRoleAdmin(bytes32 role, bytes32 adminRole) external {
         _setRoleAdmin(role, adminRole);
     }
@@ -105,7 +105,7 @@ contract LendingMarketTestable is LendingMarket {
     /// @dev Sets the alias for a given lender and account for testing purposes.
     /// @param lender The address of the lender.
     /// @param account The address of the account.
-    /// @param hasAlias The boolean value to set.   
+    /// @param hasAlias The boolean value to set.
     function setAlias(address lender, address account, bool hasAlias) external {
         _hasAlias[lender][account] = hasAlias;
     }
@@ -139,7 +139,7 @@ contract LendingMarketTestable is LendingMarket {
         return _hasAlias[lender][account];
     }
 
-// -------------------------------------------- //
+    // -------------------------------------------- //
     //  Internal functions                          //
     // -------------------------------------------- //
 

@@ -4,9 +4,9 @@ pragma solidity 0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 
 import { AccessControlExtUpgradeable } from "./base/AccessControlExtUpgradeable.sol";
+import { PausableExtUpgradeable } from "./base/PausableExtUpgradeable.sol";
 import { UUPSExtUpgradeable } from "./base/UUPSExtUpgradeable.sol";
 import { Versionable } from "./base/Versionable.sol";
 
@@ -26,7 +26,7 @@ import { ILiquidityPoolPrimary } from "./interfaces/ILiquidityPool.sol";
 /// @dev The upgradable liquidity pool contract.
 contract LiquidityPool is
     AccessControlExtUpgradeable,
-    PausableUpgradeable,
+    PausableExtUpgradeable,
     ILiquidityPool,
     Versionable,
     UUPSExtUpgradeable
@@ -40,9 +40,6 @@ contract LiquidityPool is
 
     /// @dev The role of this contract owner.
     bytes32 public constant OWNER_ROLE = keccak256("OWNER_ROLE");
-
-    /// @dev The role of this contract pauser.
-    bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
 
     // -------------------------------------------- //
     //  Storage variables                           //
@@ -129,6 +126,7 @@ contract LiquidityPool is
         __AccessControl_init_unchained();
         __AccessControlExt_init_unchained();
         __Pausable_init_unchained();
+        __PausableExt_init_unchained(OWNER_ROLE);
         __LiquidityPool_init_unchained(owner_, market_, token_);
     }
 
@@ -138,7 +136,7 @@ contract LiquidityPool is
     /// @param token_ The address of the token.
     /// See details https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable.
     function __LiquidityPool_init_unchained(
-        address owner_,
+        address owner_, // Tools: this comment prevents Prettier from formatting into a single line.
         address market_,
         address token_
     ) internal onlyInitializing {
@@ -153,25 +151,10 @@ contract LiquidityPool is
         }
 
         _setRoleAdmin(OWNER_ROLE, OWNER_ROLE);
-        _setRoleAdmin(PAUSER_ROLE, OWNER_ROLE);
         _grantRole(OWNER_ROLE, owner_);
 
         _market = market_;
         _token = token_;
-    }
-
-    // -------------------------------------------- //
-    //  Pauser transactional functions              //
-    // -------------------------------------------- //
-
-    /// @dev Pauses the contract.
-    function pause() external onlyRole(PAUSER_ROLE) {
-        _pause();
-    }
-
-    /// @dev Unpauses the contract.
-    function unpause() external onlyRole(PAUSER_ROLE) {
-        _unpause();
     }
 
     // -------------------------------------------- //

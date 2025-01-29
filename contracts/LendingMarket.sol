@@ -6,8 +6,8 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 
+import { PausableExtUpgradeable } from "./base/PausableExtUpgradeable.sol";
 import { UUPSExtUpgradeable } from "./base/UUPSExtUpgradeable.sol";
 import { Versionable } from "./base/Versionable.sol";
 
@@ -35,7 +35,7 @@ contract LendingMarket is
     LendingMarketStorage,
     Initializable,
     AccessControlUpgradeable,
-    PausableUpgradeable,
+    PausableExtUpgradeable,
     ILendingMarket,
     Versionable,
     UUPSExtUpgradeable
@@ -52,9 +52,6 @@ contract LendingMarket is
 
     /// @dev The role of this contract admin.
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
-
-    /// @dev The role of this contract pauser.
-    bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
 
     // -------------------------------------------- //
     //  Modifiers                                   //
@@ -102,6 +99,7 @@ contract LendingMarket is
         __ERC165_init_unchained();
         __AccessControl_init_unchained();
         __Pausable_init_unchained();
+        __PausableExt_init_unchained(OWNER_ROLE);
         __LendingMarket_init_unchained(owner_);
     }
 
@@ -111,22 +109,7 @@ contract LendingMarket is
     function __LendingMarket_init_unchained(address owner_) internal onlyInitializing {
         _setRoleAdmin(OWNER_ROLE, OWNER_ROLE);
         _setRoleAdmin(ADMIN_ROLE, OWNER_ROLE);
-        _setRoleAdmin(PAUSER_ROLE, OWNER_ROLE);
         _grantRole(OWNER_ROLE, owner_);
-    }
-
-    // -------------------------------------------- //
-    //  Pauser transactional functions              //
-    // -------------------------------------------- //
-
-    /// @dev Pauses the contract.
-    function pause() external onlyRole(PAUSER_ROLE) {
-        _pause();
-    }
-
-    /// @dev Unpauses the contract.
-    function unpause() external onlyRole(PAUSER_ROLE) {
-        _unpause();
     }
 
     // -------------------------------------------- //
@@ -446,7 +429,7 @@ contract LendingMarket is
         }
 
         if (_programLenders[uint32(programCount + 1)] != address(0)) {
-            revert ("Access Control Migration: program count is too small");
+            revert("Access Control Migration: program count is too small");
         }
 
         // Set the admin role for other roles
@@ -461,7 +444,7 @@ contract LendingMarket is
         // Clear lenders and unregister credit lines and liquidity pools
         for (uint256 programId = programCount; programId > 0; --programId) {
             if (_programLenders[uint32(programId)] != owner) {
-                revert ("Access Control Migration: one of program lenders mismatches");
+                revert("Access Control Migration: one of program lenders mismatches");
             }
             address creditLine = _programCreditLines[uint32(programId)];
             address liquidityPool = _programLiquidityPools[uint32(programId)];
@@ -470,7 +453,6 @@ contract LendingMarket is
             _programLenders[uint32(programId)] = address(0);
         }
     }
-
 
     // -------------------------------------------- //
     //  View functions                              //
@@ -590,9 +572,10 @@ contract LendingMarket is
     // -------------------------------------------- //
 
     /// @dev Checks if the account is an admin.
-    /// @param account The address of the account to check. 
+    /// @param account The address of the account to check.
     function _checkIfAdmin(address account) internal view {
-        if (_hasAlias[_programLenders[1]][account]) { // This line can be removed after the access control migration
+        if (_hasAlias[_programLenders[1]][account]) {
+            // This line can be removed after the access control migration
             return;
         }
         _checkRole(ADMIN_ROLE, account);

@@ -358,63 +358,6 @@ describe("Contract 'LiquidityPool'", async () => {
     });
   });
 
-  describe("Function 'pause()'", async () => {
-    it("Executes as expected and emits the correct event", async () => {
-      const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
-
-      await expect(liquidityPool.pause())
-        .to.emit(liquidityPool, EVENT_NAME_PAUSED)
-        .withArgs(owner.address);
-      expect(await liquidityPool.paused()).to.eq(true);
-    });
-
-    it("Is reverted if the caller does not have the pauser role", async () => {
-      const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
-
-      await expect(connect(liquidityPool, attacker).pause())
-        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
-        .withArgs(attacker.address, PAUSER_ROLE);
-    });
-
-    it("Is reverted if the contract is already paused", async () => {
-      const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
-
-      await proveTx(liquidityPool.pause());
-      await expect(liquidityPool.pause())
-        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_ENFORCED_PAUSED);
-    });
-  });
-
-  describe("Function 'unpause()'", async () => {
-    it("Executes as expected and emits the correct event", async () => {
-      const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
-
-      await proveTx(liquidityPool.pause());
-      expect(await liquidityPool.paused()).to.eq(true);
-
-      await expect(liquidityPool.unpause())
-        .to.emit(liquidityPool, EVENT_NAME_UNPAUSED)
-        .withArgs(owner.address);
-
-      expect(await liquidityPool.paused()).to.eq(false);
-    });
-
-    it("Is reverted if the caller does not have the pauser role", async () => {
-      const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
-
-      await expect(connect(liquidityPool, attacker).unpause())
-        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
-        .withArgs(attacker.address, PAUSER_ROLE);
-    });
-
-    it("Is reverted if the contract is not paused yet", async () => {
-      const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
-
-      await expect(liquidityPool.unpause())
-        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_NOT_PAUSED);
-    });
-  });
-
   describe("Function 'deposit()'", async () => {
     async function depositAndCheck(
       liquidityPool: Contract,

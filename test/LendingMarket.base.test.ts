@@ -790,66 +790,6 @@ describe("Contract 'LendingMarket': base tests", async () => {
     });
   });
 
-  describe("Function 'pause()'", async () => {
-    it("Executes as expected and emits the correct event", async () => {
-      const { market } = await setUpFixture(deployLendingMarket);
-      await proveTx(market.grantRole(PAUSER_ROLE, owner.address));
-
-      await expect(market.pause()).to.emit(market, EVENT_NAME_PAUSED).withArgs(owner.address);
-      expect(await market.paused()).to.eq(true);
-    });
-
-    it("Is reverted if the caller does not have the pauser role", async () => {
-      const { market } = await setUpFixture(deployLendingMarket);
-
-      await expect(connect(market, owner).pause())
-        .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
-        .withArgs(owner.address, PAUSER_ROLE);
-      await expect(connect(market, stranger).pause())
-        .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
-        .withArgs(stranger.address, PAUSER_ROLE);
-    });
-
-    it("Is reverted if the contract is already paused", async () => {
-      const { market } = await setUpFixture(deployLendingMarket);
-      await proveTx(market.grantRole(PAUSER_ROLE, owner.address));
-
-      await proveTx(market.pause());
-      await expect(market.pause()).to.be.revertedWithCustomError(market, ERROR_NAME_ENFORCED_PAUSED);
-    });
-  });
-
-  describe("Function 'unpause()'", async () => {
-    it("Executes as expected and emits the correct event", async () => {
-      const { market } = await setUpFixture(deployLendingMarket);
-      await proveTx(market.grantRole(PAUSER_ROLE, owner.address));
-      await proveTx(market.pause());
-      expect(await market.paused()).to.eq(true);
-
-      await expect(market.unpause()).to.emit(market, EVENT_NAME_UNPAUSED).withArgs(owner.address);
-
-      expect(await market.paused()).to.eq(false);
-    });
-
-    it("Is reverted if the caller does not have the pauser role", async () => {
-      const { market } = await setUpFixture(deployLendingMarket);
-
-      await expect(connect(market, owner).unpause())
-        .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
-        .withArgs(owner.address, PAUSER_ROLE);
-      await expect(connect(market, stranger).unpause())
-        .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
-        .withArgs(stranger.address, PAUSER_ROLE);
-    });
-
-    it("Is reverted if the contract is not paused yet", async () => {
-      const { market } = await setUpFixture(deployLendingMarket);
-      await proveTx(market.grantRole(PAUSER_ROLE, owner.address));
-
-      await expect(market.unpause()).to.be.revertedWithCustomError(market, ERROR_NAME_NOT_PAUSED);
-    });
-  });
-
   describe("Function 'createProgram()'", async () => {
     it("Executes as expected and emits the correct events", async () => {
       const { market } = await setUpFixture(deployLendingMarket);
