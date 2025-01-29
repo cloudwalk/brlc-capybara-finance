@@ -5,8 +5,8 @@ pragma solidity 0.8.24;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
+import { AccessControlExtUpgradeable } from "./base/AccessControlExtUpgradeable.sol";
 import { PausableExtUpgradeable } from "./base/PausableExtUpgradeable.sol";
 import { UUPSExtUpgradeable } from "./base/UUPSExtUpgradeable.sol";
 import { Versionable } from "./base/Versionable.sol";
@@ -34,7 +34,7 @@ import { LendingMarketStorage } from "./LendingMarketStorage.sol";
 contract LendingMarket is
     LendingMarketStorage,
     Initializable,
-    AccessControlUpgradeable,
+    AccessControlExtUpgradeable,
     PausableExtUpgradeable,
     ILendingMarket,
     Versionable,
@@ -98,6 +98,7 @@ contract LendingMarket is
         __Context_init_unchained();
         __ERC165_init_unchained();
         __AccessControl_init_unchained();
+        __AccessControlExt_init_unchained();
         __Pausable_init_unchained();
         __PausableExt_init_unchained(OWNER_ROLE);
         __LendingMarket_init_unchained(owner_);
