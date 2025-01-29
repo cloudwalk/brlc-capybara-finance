@@ -10,7 +10,6 @@ import { Versionable } from "./base/Versionable.sol";
 import { Constants } from "./libraries/Constants.sol";
 import { Error } from "./libraries/Error.sol";
 import { Loan } from "./libraries/Loan.sol";
-import { Rounding } from "./libraries/Rounding.sol";
 import { SafeCast } from "./libraries/SafeCast.sol";
 
 import { ICreditLine } from "./interfaces/ICreditLine.sol";
