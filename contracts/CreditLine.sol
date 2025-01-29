@@ -19,10 +19,13 @@ import { ICreditLineHooks } from "./interfaces/ICreditLine.sol";
 import { ICreditLinePrimary } from "./interfaces/ICreditLine.sol";
 import { ILendingMarket } from "./interfaces/ILendingMarket.sol";
 
+import { CreditLineStorage } from "./CreditLineStorage.sol";
+
 /// @title CreditLine contract
 /// @author CloudWalk Inc. (See https://cloudwalk.io)
 /// @dev The upgradable credit line contract.
 contract CreditLine is
+    CreditLineStorage,
     AccessControlExtUpgradeable,
     PausableExtUpgradeable,
     ICreditLine,
@@ -40,29 +43,6 @@ contract CreditLine is
 
     /// @dev The role of this contract admin.
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
-
-    // -------------------------------------------- //
-    //  Storage variables                           //
-    // -------------------------------------------- //
-
-    /// @dev The address of the underlying token.
-    address internal _token;
-
-    /// @dev The address of the associated market.
-    address internal _market;
-
-    /// @dev The structure of the credit line configuration.
-    CreditLineConfig internal _config; // 2 slots
-
-    /// @dev The mapping of borrower to borrower configuration.
-    mapping(address => BorrowerConfig) internal _borrowerConfigs;
-
-    /// @dev The mapping of a borrower to the borrower state.
-    mapping(address => BorrowerState) internal _borrowerStates;
-
-    /// @dev This empty reserved space is put in place to allow future versions
-    /// to add new variables without shifting down storage in the inheritance chain.
-    uint256[45] private __gap;
 
     // -------------------------------------------- //
     //  Modifiers                                   //
