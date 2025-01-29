@@ -99,15 +99,6 @@ interface ILiquidityPoolConfiguration {
     ///
     /// @param newTreasury The new address of the addon treasury to set.
     function setAddonTreasury(address newTreasury) external;
-
-    // -------------------------------------------- //
-    //  View functions                              //
-    // -------------------------------------------- //
-
-    /// @dev Checks whether an account is an admin.
-    /// @param account The address of the account to check.
-    /// @return True if the account is configured as an admin.
-    function isAdmin(address account) external view returns (bool);
 }
 
 /// @title ILiquidityPoolHooks interface

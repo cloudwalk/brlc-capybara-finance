@@ -150,13 +150,11 @@ describe("Contract 'LendingMarket': complex tests", async () => {
   let fixture: Fixture;
 
   let owner: HardhatEthersSigner;
-  let lender: HardhatEthersSigner;
-  let admin: HardhatEthersSigner;
   let borrower: HardhatEthersSigner;
   let addonTreasury: HardhatEthersSigner;
 
   before(async () => {
-    [owner, lender, admin, borrower, addonTreasury] = await ethers.getSigners();
+    [, owner, borrower, addonTreasury] = await ethers.getSigners();
 
     fixture = await deployContracts();
     await configureContracts(fixture);
@@ -185,28 +183,28 @@ describe("Contract 'LendingMarket': complex tests", async () => {
     const tokenAddress = getAddress(token);
 
     // Deploy the lending market contract
-    let lendingMarket: Contract = await upgrades.deployProxy(lendingMarketFactory, [lender.address]);
+    let lendingMarket: Contract = await upgrades.deployProxy(lendingMarketFactory, [owner.address]);
     await lendingMarket.waitForDeployment();
-    lendingMarket = connect(lendingMarket, lender); // Explicitly specifying the initial account
+    lendingMarket = connect(lendingMarket, owner); // Explicitly specifying the initial account
     const lendingMarketAddress = getAddress(lendingMarket);
 
     // Deploy the credit line contract
     let creditLine: Contract = await upgrades.deployProxy(
       creditLineFactory,
-      [lender.address, lendingMarketAddress, tokenAddress]
+      [owner.address, lendingMarketAddress, tokenAddress]
     );
     await creditLine.waitForDeployment();
-    creditLine = connect(creditLine, lender); // Explicitly specifying the initial account
+    creditLine = connect(creditLine, owner); // Explicitly specifying the initial account
     const creditLineAddress = getAddress(creditLine);
 
     // Deploy the liquidity pool contract
     let liquidityPool: Contract = await upgrades.deployProxy(liquidityPoolFactory, [
-      lender.address,
+      owner.address,
       lendingMarketAddress,
       tokenAddress
     ]);
     await liquidityPool.waitForDeployment();
-    liquidityPool = connect(liquidityPool, lender); // Explicitly specifying the initial account
+    liquidityPool = connect(liquidityPool, owner); // Explicitly specifying the initial account
     const liquidityPoolAddress = getAddress(liquidityPool);
 
     return {
@@ -231,13 +229,12 @@ describe("Contract 'LendingMarket': complex tests", async () => {
     const { token, lendingMarket, lendingMarketAddress, creditLine, creditLineAddress } = fixture;
     const { liquidityPool, liquidityPoolAddress } = fixture;
     // Allowance
-    await proveTx(connect(token, lender).approve(liquidityPoolAddress, ethers.MaxUint256));
+    await proveTx(connect(token, owner).approve(liquidityPoolAddress, ethers.MaxUint256));
     await proveTx(connect(token, borrower).approve(lendingMarketAddress, ethers.MaxUint256));
 
     // Configure contracts and create a lending program
-    await proveTx(creditLine.grantRole(ADMIN_ROLE, admin.address));
-    await proveTx(lendingMarket.registerCreditLine(creditLineAddress));
-    await proveTx(lendingMarket.registerLiquidityPool(liquidityPoolAddress));
+    await proveTx(creditLine.grantRole(ADMIN_ROLE, owner.address));
+    await proveTx(lendingMarket.grantRole(ADMIN_ROLE, owner.address));
     await proveTx(lendingMarket.createProgram(creditLineAddress, liquidityPoolAddress));
 
     // Configure addon treasure
@@ -245,7 +242,7 @@ describe("Contract 'LendingMarket': complex tests", async () => {
     await proveTx(liquidityPool.setAddonTreasury(addonTreasury.address));
 
     // Mint token
-    await proveTx(token.mint(lender.address, INITIAL_BALANCE));
+    await proveTx(token.mint(owner.address, INITIAL_BALANCE));
     await proveTx(token.mint(borrower.address, INITIAL_BALANCE));
     await proveTx(token.mint(addonTreasury.address, INITIAL_BALANCE));
 
@@ -287,7 +284,7 @@ describe("Contract 'LendingMarket': complex tests", async () => {
 
     // Configure borrower
     const borrowerConfig: BorrowerConfig = createBorrowerConfig(scenario);
-    await proveTx(connect(creditLine, admin).configureBorrower(borrower.address, borrowerConfig));
+    await proveTx(creditLine.configureBorrower(borrower.address, borrowerConfig));
   }
 
   function createCreditLineConfig(scenario: TestScenario): CreditLineConfig {
@@ -362,7 +359,7 @@ describe("Contract 'LendingMarket': complex tests", async () => {
 
     await expect(tx).to.changeTokenBalances(
       token,
-      [lendingMarket, liquidityPool, borrower, addonTreasury, lender],
+      [lendingMarket, liquidityPool, borrower, addonTreasury, owner],
       [0, -(scenario.borrowedAmount + scenario.addonAmount), scenario.borrowedAmount, scenario.addonAmount, 0]
     );
 

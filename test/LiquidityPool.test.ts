@@ -105,7 +105,7 @@ describe("Contract 'LiquidityPool'", async () => {
   let token: Contract;
 
   let deployer: HardhatEthersSigner;
-  let lender: HardhatEthersSigner;
+  let owner: HardhatEthersSigner;
   let attacker: HardhatEthersSigner;
   let addonTreasury: HardhatEthersSigner;
 
@@ -113,7 +113,7 @@ describe("Contract 'LiquidityPool'", async () => {
   let marketAddress: string;
 
   before(async () => {
-    [deployer, lender, attacker, addonTreasury] = await ethers.getSigners();
+    [deployer, owner, attacker, addonTreasury] = await ethers.getSigners();
 
     // Factories with an explicitly specified deployer account
     liquidityPoolFactory = await ethers.getContractFactory("LiquidityPoolTestable");
@@ -132,7 +132,7 @@ describe("Contract 'LiquidityPool'", async () => {
     await token.waitForDeployment();
     token = connect(token, deployer); // Explicitly specifying the initial account
     tokenAddress = getAddress(token);
-    await token.mint(lender.address, MINT_AMOUNT);
+    await token.mint(owner.address, MINT_AMOUNT);
     await token.mint(addonTreasury.address, MINT_AMOUNT);
   });
 
@@ -140,7 +140,7 @@ describe("Contract 'LiquidityPool'", async () => {
     let liquidityPool = await upgrades.deployProxy(
       liquidityPoolFactory,
       [
-        lender.address,
+        owner.address,
         marketAddress,
         tokenAddress
       ],
@@ -148,16 +148,16 @@ describe("Contract 'LiquidityPool'", async () => {
     );
 
     await liquidityPool.waitForDeployment();
-    liquidityPool = connect(liquidityPool, lender); // Explicitly specifying the initial account
+    liquidityPool = connect(liquidityPool, owner); // Explicitly specifying the initial account
 
-    await proveTx(connect(token, lender).approve(getAddress(liquidityPool), MAX_ALLOWANCE));
+    await proveTx(connect(token, owner).approve(getAddress(liquidityPool), MAX_ALLOWANCE));
     await proveTx(connect(token, addonTreasury).approve(getAddress(market), MAX_ALLOWANCE));
     return { liquidityPool };
   }
 
   async function deployAndConfigureLiquidityPool(): Promise<{ liquidityPool: Contract }> {
     const { liquidityPool } = await deployLiquidityPool();
-    await proveTx(liquidityPool.grantRole(PAUSER_ROLE, lender.address));
+    await proveTx(liquidityPool.grantRole(PAUSER_ROLE, owner.address));
     return { liquidityPool };
   }
 
@@ -194,25 +194,26 @@ describe("Contract 'LiquidityPool'", async () => {
       const { liquidityPool } = await setUpFixture(deployLiquidityPool);
       // Role hashes
       expect(await liquidityPool.OWNER_ROLE()).to.equal(OWNER_ROLE);
-      expect(await liquidityPool.ADMIN_ROLE()).to.equal(ADMIN_ROLE);
       expect(await liquidityPool.PAUSER_ROLE()).to.equal(PAUSER_ROLE);
 
       // The role admins
-      expect(await liquidityPool.getRoleAdmin(OWNER_ROLE)).to.equal(DEFAULT_ADMIN_ROLE);
-      expect(await liquidityPool.getRoleAdmin(ADMIN_ROLE)).to.equal(OWNER_ROLE);
+      expect(await liquidityPool.getRoleAdmin(OWNER_ROLE)).to.equal(OWNER_ROLE);
+      expect(await liquidityPool.getRoleAdmin(ADMIN_ROLE)).to.equal(DEFAULT_ADMIN_ROLE);
       expect(await liquidityPool.getRoleAdmin(PAUSER_ROLE)).to.equal(OWNER_ROLE);
 
-      // The lender should have the owner role, but not the other roles
-      expect(await liquidityPool.hasRole(OWNER_ROLE, lender.address)).to.equal(true);
-      expect(await liquidityPool.hasRole(ADMIN_ROLE, lender.address)).to.equal(false);
-      expect(await liquidityPool.hasRole(PAUSER_ROLE, lender.address)).to.equal(false);
+      // Roles
+      expect(await liquidityPool.hasRole(OWNER_ROLE, deployer.address)).to.equal(false);
+      expect(await liquidityPool.hasRole(ADMIN_ROLE, deployer.address)).to.equal(false);
+      expect(await liquidityPool.hasRole(PAUSER_ROLE, deployer.address)).to.equal(false);
+      expect(await liquidityPool.hasRole(OWNER_ROLE, owner.address)).to.equal(true); // !!!
+      expect(await liquidityPool.hasRole(ADMIN_ROLE, owner.address)).to.equal(false);
+      expect(await liquidityPool.hasRole(PAUSER_ROLE, owner.address)).to.equal(false);
 
       // The initial contract state is unpaused
       expect(await liquidityPool.paused()).to.equal(false);
 
       // Other important parameters and storage variables
       expect(await liquidityPool.getBalances()).to.deep.eq([0n, 0n]);
-      expect(await liquidityPool.isAdmin(lender.address)).to.eq(false);
       expect(await liquidityPool.market()).to.eq(marketAddress);
       expect(await liquidityPool.token()).to.eq(tokenAddress);
       expect(await liquidityPool.addonTreasury()).to.eq(ZERO_ADDRESS);
@@ -221,15 +222,15 @@ describe("Contract 'LiquidityPool'", async () => {
     it("Is reverted if the market address is zero", async () => {
       await expect(upgrades.deployProxy(liquidityPoolFactory, [
         ZERO_ADDRESS, // market
-        lender.address,
+        owner.address,
         tokenAddress
       ])).to.be.revertedWithCustomError(liquidityPoolFactory, ERROR_NAME_ZERO_ADDRESS);
     });
 
-    it("Is reverted if the lender address is zero", async () => {
+    it("Is reverted if the owner address is zero", async () => {
       await expect(upgrades.deployProxy(liquidityPoolFactory, [
         marketAddress,
-        ZERO_ADDRESS, // lender
+        ZERO_ADDRESS, // owner
         tokenAddress
       ])).to.be.revertedWithCustomError(liquidityPoolFactory, ERROR_NAME_ZERO_ADDRESS);
     });
@@ -237,7 +238,7 @@ describe("Contract 'LiquidityPool'", async () => {
     it("Is reverted if the token address is zero", async () => {
       await expect(upgrades.deployProxy(liquidityPoolFactory, [
         marketAddress,
-        lender.address,
+        owner.address,
         ZERO_ADDRESS // token
       ])).to.be.revertedWithCustomError(liquidityPoolFactory, ERROR_NAME_ZERO_ADDRESS);
     });
@@ -245,7 +246,7 @@ describe("Contract 'LiquidityPool'", async () => {
     it("Is reverted if called a second time", async () => {
       const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
 
-      await expect(liquidityPool.initialize(marketAddress, lender.address, tokenAddress))
+      await expect(liquidityPool.initialize(marketAddress, owner.address, tokenAddress))
         .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_ALREADY_INITIALIZED);
     });
 
@@ -253,7 +254,7 @@ describe("Contract 'LiquidityPool'", async () => {
       const { liquidityPool } = await setUpFixture(deployLiquidityPool);
       await expect(
         // Call via the testable version
-        liquidityPool.call_parent_initialize(marketAddress, lender.address, tokenAddress)
+        liquidityPool.call_parent_initialize(marketAddress, owner.address, tokenAddress)
       ).to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_CONTRACT_IS_NOT_INITIALIZING);
     });
 
@@ -261,7 +262,7 @@ describe("Contract 'LiquidityPool'", async () => {
       const { liquidityPool } = await setUpFixture(deployLiquidityPool);
       await expect(
         // Call via the testable version
-        liquidityPool.call_parent_initialize_unchained(marketAddress, lender.address, tokenAddress)
+        liquidityPool.call_parent_initialize_unchained(marketAddress, owner.address, tokenAddress)
       ).to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_CONTRACT_IS_NOT_INITIALIZING);
     });
   });
@@ -280,7 +281,7 @@ describe("Contract 'LiquidityPool'", async () => {
       await checkContractUupsUpgrading(liquidityPool, liquidityPoolFactory);
     });
 
-    it("Is reverted if the caller is not the owner", async () => {
+    it("Is reverted if the caller does not have the owner role", async () => {
       const { liquidityPool } = await setUpFixture(deployLiquidityPool);
 
       await expect(connect(liquidityPool, attacker).upgradeToAndCall(liquidityPool, "0x"))
@@ -363,7 +364,7 @@ describe("Contract 'LiquidityPool'", async () => {
 
       await expect(liquidityPool.pause())
         .to.emit(liquidityPool, EVENT_NAME_PAUSED)
-        .withArgs(lender.address);
+        .withArgs(owner.address);
       expect(await liquidityPool.paused()).to.eq(true);
     });
 
@@ -393,7 +394,7 @@ describe("Contract 'LiquidityPool'", async () => {
 
       await expect(liquidityPool.unpause())
         .to.emit(liquidityPool, EVENT_NAME_UNPAUSED)
-        .withArgs(lender.address);
+        .withArgs(owner.address);
 
       expect(await liquidityPool.paused()).to.eq(false);
     });
@@ -425,7 +426,7 @@ describe("Contract 'LiquidityPool'", async () => {
 
       await expect(tx).to.changeTokenBalances(
         token,
-        [lender.address, getAddress(liquidityPool)],
+        [owner.address, getAddress(liquidityPool)],
         [-depositAmount, depositAmount]
       );
 
@@ -498,7 +499,7 @@ describe("Contract 'LiquidityPool'", async () => {
 
       await expect(tx).to.changeTokenBalances(
         token,
-        [lender.address, getAddress(liquidityPool)],
+        [owner.address, getAddress(liquidityPool)],
         [borrowableAmount, -borrowableAmount]
       );
       await expect(tx)
@@ -568,7 +569,7 @@ describe("Contract 'LiquidityPool'", async () => {
 
       await expect(tx).to.changeTokenBalances(
         token,
-        [lender.address, getAddress(liquidityPool)],
+        [owner.address, getAddress(liquidityPool)],
         [(rescuedAmount), -(rescuedAmount)]
       );
 
@@ -685,7 +686,7 @@ describe("Contract 'LiquidityPool'", async () => {
       const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
       const depositAmount = maxUintForBits(64);
       const repaymentAmount = 1n;
-      await proveTx(token.mint(lender.address, depositAmount));
+      await proveTx(token.mint(owner.address, depositAmount));
       await proveTx(liquidityPool.deposit(depositAmount));
 
       await expect(market.callOnAfterLoanPaymentLiquidityPool(
@@ -788,6 +789,30 @@ describe("Contract 'LiquidityPool'", async () => {
         await expect(liquidityPool.onAfterLoanRevocation(LOAN_ID))
           .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_UNAUTHORIZED);
       });
+    });
+  });
+
+  describe("Function 'migrateAccessControl()'", async () => {
+    it("Executes as expected", async () => {
+      const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
+      await proveTx(liquidityPool.setRoleAdmin(ADMIN_ROLE, OWNER_ROLE));
+      await proveTx(liquidityPool.setRoleAdmin(OWNER_ROLE, DEFAULT_ADMIN_ROLE));
+
+      expect(await liquidityPool.getRoleAdmin(ADMIN_ROLE)).to.equal(OWNER_ROLE);
+      expect(await liquidityPool.getRoleAdmin(OWNER_ROLE)).to.equal(DEFAULT_ADMIN_ROLE);
+
+      await proveTx(liquidityPool.migrateAccessControl());
+
+      expect(await liquidityPool.getRoleAdmin(ADMIN_ROLE)).to.equal(DEFAULT_ADMIN_ROLE);
+      expect(await liquidityPool.getRoleAdmin(OWNER_ROLE)).to.equal(OWNER_ROLE);
+    });
+
+    it("Is reverted if the caller does not have the owner role", async () => {
+      const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
+
+      await expect(connect(liquidityPool, attacker).migrateAccessControl())
+        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
+        .withArgs(attacker.address, OWNER_ROLE);
     });
   });
 });

@@ -41,9 +41,6 @@ contract LiquidityPool is
     /// @dev The role of this contract owner.
     bytes32 public constant OWNER_ROLE = keccak256("OWNER_ROLE");
 
-    /// @dev The role of this contract admin. Currently not in use. Reserved for possible future changes.
-    bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
-
     /// @dev The role of this contract pauser.
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
 
@@ -105,25 +102,25 @@ contract LiquidityPool is
     // -------------------------------------------- //
 
     /// @dev Initializer of the upgradable contract.
-    /// @param lender_ The address of the liquidity pool lender.
+    /// @param owner_ The address of the liquidity pool owner.
     /// @param market_ The address of the lending market.
     /// @param token_ The address of the token.
     /// See details https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable.
     function initialize(
-        address lender_, // Tools: this comment prevents Prettier from formatting into a single line.
+        address owner_, // Tools: this comment prevents Prettier from formatting into a single line.
         address market_,
         address token_
     ) external initializer {
-        __LiquidityPool_init(lender_, market_, token_);
+        __LiquidityPool_init(owner_, market_, token_);
     }
 
     /// @dev Internal initializer of the upgradable contract.
-    /// @param lender_ The address of the liquidity pool lender.
+    /// @param owner_ The address of the liquidity pool owner.
     /// @param market_ The address of the lending market.
     /// @param token_ The address of the token.
     /// See details https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable.
     function __LiquidityPool_init(
-        address lender_, // Tools: this comment prevents Prettier from formatting into a single line.
+        address owner_, // Tools: this comment prevents Prettier from formatting into a single line.
         address market_,
         address token_
     ) internal onlyInitializing {
@@ -132,20 +129,20 @@ contract LiquidityPool is
         __AccessControl_init_unchained();
         __AccessControlExt_init_unchained();
         __Pausable_init_unchained();
-        __LiquidityPool_init_unchained(lender_, market_, token_);
+        __LiquidityPool_init_unchained(owner_, market_, token_);
     }
 
     /// @dev Unchained internal initializer of the upgradable contract.
-    /// @param lender_ The address of the liquidity pool lender.
+    /// @param owner_ The address of the liquidity pool owner.
     /// @param market_ The address of the lending market.
     /// @param token_ The address of the token.
     /// See details https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable.
     function __LiquidityPool_init_unchained(
-        address lender_,
+        address owner_,
         address market_,
         address token_
     ) internal onlyInitializing {
-        if (lender_ == address(0)) {
+        if (owner_ == address(0)) {
             revert Error.ZeroAddress();
         }
         if (market_ == address(0)) {
@@ -155,9 +152,9 @@ contract LiquidityPool is
             revert Error.ZeroAddress();
         }
 
-        _grantRole(OWNER_ROLE, lender_);
-        _setRoleAdmin(ADMIN_ROLE, OWNER_ROLE);
+        _setRoleAdmin(OWNER_ROLE, OWNER_ROLE);
         _setRoleAdmin(PAUSER_ROLE, OWNER_ROLE);
+        _grantRole(OWNER_ROLE, owner_);
 
         _market = market_;
         _token = token_;
@@ -275,13 +272,23 @@ contract LiquidityPool is
     }
 
     // -------------------------------------------- //
-    //  View functions                              //
+    //  Service functions                           //
     // -------------------------------------------- //
 
-    /// @inheritdoc ILiquidityPoolConfiguration
-    function isAdmin(address account) external view returns (bool) {
-        return hasRole(ADMIN_ROLE, account);
+    function migrateAccessControl() external onlyRole(OWNER_ROLE) {
+        // The role of this contract admin that was deprecated.
+        bytes32 ADMIN_ROLE = keccak256("ADMIN_ROLE");
+
+        // Renounce the admin role for the 'ADMIN_ROLE' role.
+        _setRoleAdmin(ADMIN_ROLE, DEFAULT_ADMIN_ROLE);
+
+        // Set the admin role for the 'OWNER_ROLE' role.
+        _setRoleAdmin(OWNER_ROLE, OWNER_ROLE);
     }
+
+    // -------------------------------------------- //
+    //  View functions                              //
+    // -------------------------------------------- //
 
     /// @inheritdoc ILiquidityPoolPrimary
     function addonTreasury() external view returns (address) {
