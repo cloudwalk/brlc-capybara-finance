@@ -155,6 +155,7 @@ const ERROR_NAME_INSTALLMENT_COUNT_EXCESS = "InstallmentCountExcess";
 const ERROR_NAME_ARRAY_LENGTH_MISMATCH = "ArrayLengthMismatch";
 const ERROR_NAME_LOAN_TYPE_UNEXPECTED = "LoanTypeUnexpected";
 const ERROR_NAME_LOAN_ID_EXCESS = "LoanIdExcess";
+const ERROR_NAME_PROGRAM_ID_EXCESS = "ProgramIdExcess";
 
 const EVENT_NAME_LENDER_ALIAS_CONFIGURED = "LenderAliasConfigured";
 const EVENT_NAME_PROGRAM_CREATED = "ProgramCreated";
@@ -858,6 +859,15 @@ describe("Contract 'LendingMarket': base tests", async () => {
 
       await expect(market.createProgram(creditLineAddress, wrongLiquidityPoolAddress))
         .to.be.revertedWithCustomError(market, ERROR_NAME_CONTRACT_ADDRESS_INVALID);
+    });
+
+    it("Is reverted if the lending program ID counter already equals the max value", async () => {
+      const { market } = await setUpFixture(deployLendingMarket);
+
+      await proveTx(market.setProgramIdCounter(maxUintForBits(32))); // Call via the testable version
+
+      await expect(market.createProgram(creditLineAddress, liquidityPoolAddress))
+        .to.be.revertedWithCustomError(market, ERROR_NAME_PROGRAM_ID_EXCESS);
     });
   });
 

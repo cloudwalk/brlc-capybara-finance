@@ -124,8 +124,13 @@ contract LendingMarket is
     ) external whenNotPaused onlyRole(OWNER_ROLE) {
         _checkCreditLineAndLiquidityPool(creditLine, liquidityPool);
 
-        _programIdCounter++;
-        uint32 programId = _programIdCounter;
+        if (_programIdCounter >= type(uint32).max) {
+            revert ProgramIdExcess();
+        }
+        uint32 programId;
+        unchecked {
+            programId = ++_programIdCounter;
+        }
 
         emit ProgramCreated(msg.sender, programId);
         emit ProgramUpdated(programId, creditLine, liquidityPool);

@@ -39,6 +39,12 @@ contract LendingMarketTestable is LendingMarket {
         _loanIdCounter = newValue;
     }
 
+    /// @dev Sets a new lending program ID counter for testing.
+    /// @param newValue The new lending program ID counter value.
+    function setProgramIdCounter(uint32 newValue) external {
+        _programIdCounter = newValue;
+    }
+
     /// @dev Sets a new credit line address for a lending program.
     /// @param programId The ID of the lending program.
     /// @param newCreditLine The new address of the credit line to set.

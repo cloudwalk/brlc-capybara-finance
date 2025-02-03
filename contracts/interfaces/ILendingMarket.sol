@@ -431,6 +431,9 @@ interface ILendingMarketErrors {
     /// @dev Thrown when the program does not exist.
     error ProgramNotExist();
 
+    /// @dev Thrown when the lending program ID exceeds the maximum allowed value.
+    error ProgramIdExcess();
+
     /// @dev Thrown when the provided duration array is invalid.
     error DurationArrayInvalid();
 
