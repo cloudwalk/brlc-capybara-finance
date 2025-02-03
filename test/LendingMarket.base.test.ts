@@ -3206,6 +3206,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       // Check all settings at the end
       for (const alias of aliases) {
         expect(await market.isAlias(alias.address, owner.address)).to.be.true;
+        expect(await market.hasRole(ADMIN_ROLE, alias.address)).to.be.false;
       }
 
       expect(await market.getRoleAdmin(OWNER_ROLE)).to.eq(DEFAULT_ADMIN_ROLE);
@@ -3241,7 +3242,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       const aliasAddresses = aliases.map(alias => alias.address);
       const { market } = fixture;
       const { programCount, creditLineAddresses, liquidityPoolAddresses } = await prepareMigration(fixture, aliases);
-      aliasAddresses.push(admin.address); // One more account that is not an alias;
+      aliasAddresses.push(addonTreasury.address); // One more account that is not an alias;
 
       // The first call with not all aliases
 
@@ -3257,9 +3258,12 @@ describe("Contract 'LendingMarket': base tests", async () => {
 
       for (let i = 0; i < 3; ++i) {
         expect(await market.isAlias(aliasAddresses[i], owner.address)).to.be.false;
+        expect(await market.hasRole(ADMIN_ROLE, aliasAddresses[i])).to.be.true;
       }
       expect(await market.isAlias(aliasAddresses[3], owner.address)).to.be.true; // !!!
+      expect(await market.hasRole(ADMIN_ROLE, aliasAddresses[3])).to.be.false;
       expect(await market.isAlias(aliasAddresses[4], owner.address)).to.be.false;
+      expect(await market.hasRole(ADMIN_ROLE, aliasAddresses[4])).to.be.false;
 
       expect(await market.getRoleAdmin(OWNER_ROLE)).to.eq(OWNER_ROLE);
       expect(await market.getRoleAdmin(ADMIN_ROLE)).to.eq(OWNER_ROLE);
@@ -3291,6 +3295,12 @@ describe("Contract 'LendingMarket': base tests", async () => {
       for (const aliasAddress of aliasAddresses) {
         expect(await market.isAlias(aliasAddress, owner.address)).to.be.false;
       }
+
+      for (let i = 0; i < aliasAddresses.length - 1; ++i) {
+        expect(await market.hasRole(ADMIN_ROLE, aliasAddresses[i])).to.be.true;
+      }
+      // Check that the admin role is not granted for an account that has not been an alias before the migration
+      expect(await market.hasRole(ADMIN_ROLE, aliasAddresses[aliasAddresses.length - 1])).to.be.false;
 
       await expect(tx2).not.to.emit(market, "RoleAdminChanged"); // To be sure only aliases have been revoked
 
