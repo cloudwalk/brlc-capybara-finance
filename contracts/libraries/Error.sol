@@ -23,4 +23,7 @@ library Error {
 
     /// @dev Thrown if the provided new implementation address is not of a contract.
     error ImplementationAddressInvalid();
+
+    /// @dev Thrown when the provided address does not belong to a contract of expected type or a contract at all.
+    error ContractAddressInvalid();
 }

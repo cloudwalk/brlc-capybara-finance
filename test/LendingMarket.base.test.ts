@@ -5,6 +5,7 @@ import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import {
   checkContractUupsUpgrading,
   connect,
+  deployAndConnectContract,
   getAddress,
   getLatestBlockTimestamp,
   getNumberOfEvents,
@@ -245,16 +246,6 @@ function clone(originLoan: Loan): Loan {
     state: { ...originLoan.state },
     config: { ...originLoan.config }
   };
-}
-
-async function deployAndConnectContract(
-  contractFactory: ContractFactory,
-  account: HardhatEthersSigner
-): Promise<Contract> {
-  let contract = (await contractFactory.deploy()) as Contract;
-  await contract.waitForDeployment();
-  contract = connect(contract, account); // Explicitly specifying the initial account
-  return contract;
 }
 
 async function getLoanStates(contract: Contract, lonaIds: number[]): Promise<LoanState[]> {

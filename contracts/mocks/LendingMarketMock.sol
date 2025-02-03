@@ -56,4 +56,10 @@ contract LendingMarketMock {
     function getLoanState(uint256 loanId) external view returns (Loan.State memory) {
         return _loanStates[loanId];
     }
+
+    // -------------------------------------------- //
+    //  Pure functions                              //
+    // -------------------------------------------- //
+
+    function proveLendingMarket() external pure {}
 }

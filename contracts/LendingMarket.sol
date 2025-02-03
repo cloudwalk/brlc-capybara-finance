@@ -1070,20 +1070,20 @@ contract LendingMarket is
             revert Error.ZeroAddress();
         }
         if (creditLine.code.length == 0) {
-            revert ContractAddressInvalid();
+            revert Error.ContractAddressInvalid();
         }
         try ICreditLine(creditLine).proveCreditLine() {} catch {
-            revert ContractAddressInvalid();
+            revert Error.ContractAddressInvalid();
         }
 
         if (liquidityPool == address(0)) {
             revert Error.ZeroAddress();
         }
         if (liquidityPool.code.length == 0) {
-            revert ContractAddressInvalid();
+            revert Error.ContractAddressInvalid();
         }
         try ILiquidityPool(liquidityPool).proveLiquidityPool() {} catch {
-            revert ContractAddressInvalid();
+            revert Error.ContractAddressInvalid();
         }
     }
 

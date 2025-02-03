@@ -115,11 +115,25 @@ contract LiquidityPool is
         if (owner_ == address(0)) {
             revert Error.ZeroAddress();
         }
+
         if (market_ == address(0)) {
             revert Error.ZeroAddress();
         }
+        if (market_.code.length == 0) {
+            revert Error.ContractAddressInvalid();
+        }
+        try ILendingMarket(market_).proveLendingMarket() {} catch {
+            revert Error.ContractAddressInvalid();
+        }
+
         if (token_ == address(0)) {
             revert Error.ZeroAddress();
+        }
+        if (token_.code.length == 0) {
+            revert Error.ContractAddressInvalid();
+        }
+        try IERC20(token_).balanceOf(address(0)) {} catch {
+            revert Error.ContractAddressInvalid();
         }
 
         _setRoleAdmin(OWNER_ROLE, OWNER_ROLE);

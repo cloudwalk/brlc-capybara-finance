@@ -2,7 +2,14 @@ import { ethers, upgrades } from "hardhat";
 import { expect } from "chai";
 import { Contract, ContractFactory } from "ethers";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
-import { checkContractUupsUpgrading, connect, getAddress, getLatestBlockTimestamp, proveTx } from "../test-utils/eth";
+import {
+  checkContractUupsUpgrading,
+  connect,
+  deployAndConnectContract,
+  getAddress,
+  getLatestBlockTimestamp,
+  proveTx
+} from "../test-utils/eth";
 import { checkEquality, maxUintForBits, setUpFixture } from "../test-utils/common";
 
 enum BorrowingPolicy {
@@ -95,8 +102,6 @@ interface Fixture {
   creditLine: Contract;
   creditLineUnderAdmin: Contract;
   creditLineAddress: string;
-  market: Contract;
-  marketAddress: string;
   creditLineConfig: CreditLineConfig;
   borrowerConfig: BorrowerConfig;
 }
@@ -164,6 +169,7 @@ const ERROR_NAME_ALREADY_INITIALIZED = "InvalidInitialization";
 const ERROR_NAME_ARRAYS_LENGTH_MISMATCH = "ArrayLengthMismatch";
 const ERROR_NAME_BORROWER_CONFIGURATION_EXPIRED = "BorrowerConfigurationExpired";
 const ERROR_NAME_BORROWER_STATE_OVERFLOW = "BorrowerStateOverflow";
+const ERROR_NAME_CONTRACT_ADDRESS_INVALID = "ContractAddressInvalid";
 const ERROR_NAME_CONTRACT_IS_NOT_INITIALIZING = "NotInitializing";
 const ERROR_NAME_ENFORCED_PAUSED = "EnforcedPause";
 const ERROR_NAME_INVALID_AMOUNT = "InvalidAmount";
@@ -217,41 +223,47 @@ function processLoanClosing(borrowerState: BorrowerState, borrowedAmount: bigint
 describe("Contract 'CreditLine'", async () => {
   let creditLineFactory: ContractFactory;
   let marketFactory: ContractFactory;
+  let tokenFactory: ContractFactory;
+
+  let market: Contract;
+  let token: Contract;
+
+  let marketAddress: string;
+  let tokenAddress: string;
 
   let deployer: HardhatEthersSigner;
   let owner: HardhatEthersSigner;
   let admin: HardhatEthersSigner;
-  let token: HardhatEthersSigner;
   let attacker: HardhatEthersSigner;
   let borrower: HardhatEthersSigner;
   let users: HardhatEthersSigner[];
 
   before(async () => {
-    [deployer, owner, admin, token, attacker, borrower, ...users] = await ethers.getSigners();
+    [deployer, owner, admin, attacker, borrower, ...users] = await ethers.getSigners();
 
     creditLineFactory = await ethers.getContractFactory("CreditLineTestable");
     creditLineFactory.connect(deployer); // Explicitly specifying the deployer account
 
     marketFactory = await ethers.getContractFactory("LendingMarketMock");
     marketFactory = marketFactory.connect(deployer); // Explicitly specifying the deployer account
+
+    tokenFactory = await ethers.getContractFactory("ERC20Mock");
+    tokenFactory = tokenFactory.connect(deployer); // Explicitly specifying the deployer account
+
+    market = await deployAndConnectContract(marketFactory, deployer);
+    marketAddress = getAddress(market);
+
+    token = await deployAndConnectContract(tokenFactory, deployer);
+    tokenAddress = getAddress(token);
   });
 
-  async function deployMarketMock(): Promise<{ market: Contract }> {
-    let market = await marketFactory.deploy() as Contract;
-    await market.waitForDeployment();
-    market = connect(market, deployer); // Explicitly specifying the initial account
-    return { market };
-  }
-
   async function deployContracts(): Promise<Fixture> {
-    const { market } = await deployMarketMock();
-    const marketAddress = getAddress(market);
     let creditLine = await upgrades.deployProxy(
       creditLineFactory,
       [
         owner.address,
         marketAddress,
-        token.address
+        tokenAddress
       ],
       { kind: "uups" }
     );
@@ -264,8 +276,6 @@ describe("Contract 'CreditLine'", async () => {
       creditLine,
       creditLineUnderAdmin,
       creditLineAddress,
-      market,
-      marketAddress,
       creditLineConfig: defaultCreditLineConfig,
       borrowerConfig: defaultBorrowerConfig
     };
@@ -330,11 +340,12 @@ describe("Contract 'CreditLine'", async () => {
   }
 
   function createLoanTerms(
+    tokenAddress: string,
     durationInPeriods: bigint,
     borrowerConfig: BorrowerConfig
   ): LoanTerms {
     return {
-      token: token.address,
+      token: tokenAddress,
       interestRatePrimary: borrowerConfig.interestRatePrimary,
       interestRateSecondary: borrowerConfig.interestRateSecondary,
       durationInPeriods,
@@ -382,7 +393,7 @@ describe("Contract 'CreditLine'", async () => {
 
   describe("Function 'initialize()'", async () => {
     it("Configures the contract as expected", async () => {
-      const { creditLine, marketAddress } = await setUpFixture(deployContracts);
+      const { creditLine } = await setUpFixture(deployContracts);
       // Role hashes
       expect(await creditLine.OWNER_ROLE()).to.equal(OWNER_ROLE);
       expect(await creditLine.ADMIN_ROLE()).to.equal(ADMIN_ROLE);
@@ -405,7 +416,7 @@ describe("Contract 'CreditLine'", async () => {
       expect(await creditLine.paused()).to.equal(false);
 
       // Other important parameters
-      expect(await creditLine.token()).to.eq(token.address);
+      expect(await creditLine.token()).to.eq(tokenAddress);
       expect(await creditLine.market()).to.eq(marketAddress);
 
       // Default values of the internal structures. Also checks the set of fields
@@ -415,51 +426,88 @@ describe("Contract 'CreditLine'", async () => {
     });
 
     it("Is reverted if the owner address is zero", async () => {
-      const marketAddress = "0x0000000000000000000000000000000000000001";
+      const wrongOwnerAddress = (ZERO_ADDRESS);
       await expect(upgrades.deployProxy(creditLineFactory, [
-        ZERO_ADDRESS, // owner
+        wrongOwnerAddress,
         marketAddress,
-        token.address
+        tokenAddress
       ])).to.be.revertedWithCustomError(creditLineFactory, ERROR_NAME_ZERO_ADDRESS);
     });
 
     it("Is reverted if the market address is zero", async () => {
+      const wrongMarketAddress = (ZERO_ADDRESS);
       await expect(upgrades.deployProxy(creditLineFactory, [
         owner.address,
-        ZERO_ADDRESS, // market
-        token.address
+        wrongMarketAddress,
+        tokenAddress
       ])).to.be.revertedWithCustomError(creditLineFactory, ERROR_NAME_ZERO_ADDRESS);
+    });
+
+    it("Is reverted if the market address does not belong to a contract", async () => {
+      const wrongMarketAddress = deployer.address;
+      await expect(upgrades.deployProxy(creditLineFactory, [
+        owner.address,
+        wrongMarketAddress,
+        tokenAddress
+      ])).to.be.revertedWithCustomError(creditLineFactory, ERROR_NAME_CONTRACT_ADDRESS_INVALID);
+    });
+
+    it("Is reverted if the market address does not belong to a lending market contract", async () => {
+      const wrongMarketAddress = (tokenAddress);
+      await expect(upgrades.deployProxy(creditLineFactory, [
+        owner.address,
+        wrongMarketAddress,
+        tokenAddress
+      ])).to.be.revertedWithCustomError(creditLineFactory, ERROR_NAME_CONTRACT_ADDRESS_INVALID);
     });
 
     it("Is reverted if the token address is zero", async () => {
-      const marketAddress = "0x0000000000000000000000000000000000000001";
+      const wrongTokenAddress = (ZERO_ADDRESS);
       await expect(upgrades.deployProxy(creditLineFactory, [
         owner.address,
         marketAddress,
-        ZERO_ADDRESS // token
+        wrongTokenAddress
       ])).to.be.revertedWithCustomError(creditLineFactory, ERROR_NAME_ZERO_ADDRESS);
     });
 
-    it("Is reverted if called a second time", async () => {
-      const { creditLine, marketAddress } = await setUpFixture(deployContracts);
+    it("Is reverted if the token address does not belong to a contract", async () => {
+      const wrongTokenAddress = deployer.address;
+      await expect(upgrades.deployProxy(creditLineFactory, [
+        owner.address,
+        marketAddress,
+        wrongTokenAddress
+      ])).to.be.revertedWithCustomError(creditLineFactory, ERROR_NAME_CONTRACT_ADDRESS_INVALID);
+    });
 
-      await expect(creditLine.initialize(owner.address, marketAddress, token.address))
+    it("Is reverted if the token address does not belong to a token contract", async () => {
+      const wrongTokenAddress = (marketAddress);
+      await expect(upgrades.deployProxy(creditLineFactory, [
+        owner.address,
+        marketAddress,
+        wrongTokenAddress
+      ])).to.be.revertedWithCustomError(creditLineFactory, ERROR_NAME_CONTRACT_ADDRESS_INVALID);
+    });
+
+    it("Is reverted if called a second time", async () => {
+      const { creditLine } = await setUpFixture(deployContracts);
+
+      await expect(creditLine.initialize(owner.address, marketAddress, tokenAddress))
         .to.be.revertedWithCustomError(creditLine, ERROR_NAME_ALREADY_INITIALIZED);
     });
 
     it("Is reverted if the internal initializer is called outside the init process", async () => {
-      const { creditLine, marketAddress } = await setUpFixture(deployContracts);
+      const { creditLine } = await setUpFixture(deployContracts);
       await expect(
         // Call via the testable version
-        creditLine.call_parent_initialize(owner.address, marketAddress, token.address)
+        creditLine.call_parent_initialize(owner.address, marketAddress, tokenAddress)
       ).to.be.revertedWithCustomError(creditLine, ERROR_NAME_CONTRACT_IS_NOT_INITIALIZING);
     });
 
     it("Is reverted if the unchained internal initializer is called outside the init process", async () => {
-      const { creditLine, marketAddress } = await setUpFixture(deployContracts);
+      const { creditLine } = await setUpFixture(deployContracts);
       await expect(
         // Call via the testable version
-        creditLine.call_parent_initialize_unchained(owner.address, marketAddress, token.address)
+        creditLine.call_parent_initialize_unchained(owner.address, marketAddress, tokenAddress)
       ).to.be.revertedWithCustomError(creditLine, ERROR_NAME_CONTRACT_IS_NOT_INITIALIZING);
     });
   });
@@ -803,7 +851,7 @@ describe("Contract 'CreditLine'", async () => {
   describe("Function 'onBeforeLoanTaken()'", async () => {
     it("Executes as expected", async () => {
       const fixture = await setUpFixture(deployAndConfigureContractsWithBorrower);
-      const { creditLine, creditLineUnderAdmin, market, borrowerConfig: expectedBorrowerConfig } = fixture;
+      const { creditLine, creditLineUnderAdmin, borrowerConfig: expectedBorrowerConfig } = fixture;
       const expectedBorrowerState: BorrowerState = {
         ...defaultBorrowerState,
         activeLoanCount: maxUintForBits(16) - 2n,
@@ -834,7 +882,7 @@ describe("Contract 'CreditLine'", async () => {
     });
 
     it("Is reverted if the contract is paused", async () => {
-      const { creditLine, market } = await setUpFixture(deployAndConfigureContractsWithBorrower);
+      const { creditLine } = await setUpFixture(deployAndConfigureContractsWithBorrower);
       await proveTx(creditLine.pause());
 
       await expect(market.callOnBeforeLoanTakenCreditLine(getAddress(creditLine), LOAN_ID))
@@ -842,7 +890,7 @@ describe("Contract 'CreditLine'", async () => {
     });
 
     it("Is reverted if the result total number of loans is greater than 16-bit unsigned integer", async () => {
-      const { creditLine, creditLineUnderAdmin, market } = await setUpFixture(deployAndConfigureContractsWithBorrower);
+      const { creditLine, creditLineUnderAdmin } = await setUpFixture(deployAndConfigureContractsWithBorrower);
       const borrowerState: BorrowerState = {
         ...defaultBorrowerState,
         activeLoanCount: 0n,
@@ -856,7 +904,7 @@ describe("Contract 'CreditLine'", async () => {
     });
 
     it("Is reverted if the result total amount of loans is greater than 64-bit unsigned integer", async () => {
-      const { creditLine, creditLineUnderAdmin, market } = await setUpFixture(deployAndConfigureContractsWithBorrower);
+      const { creditLine, creditLineUnderAdmin } = await setUpFixture(deployAndConfigureContractsWithBorrower);
       const borrowerState: BorrowerState = {
         ...defaultBorrowerState,
         totalActiveLoanAmount: 0n,
@@ -872,7 +920,7 @@ describe("Contract 'CreditLine'", async () => {
 
   describe("Function onAfterLoanPayment()", async () => {
     it("Executes as expected if the loan tracked balance is not zero", async () => {
-      const { creditLine, market } = await setUpFixture(deployAndConfigureContractsWithBorrower);
+      const { creditLine } = await setUpFixture(deployAndConfigureContractsWithBorrower);
       await prepareLoan(market, { trackedBalance: 123n });
       const expectedBorrowerState: BorrowerState = { ...defaultBorrowerState };
 
@@ -883,7 +931,7 @@ describe("Contract 'CreditLine'", async () => {
     });
 
     it("Executes as expected if the loan tracked balance is zero", async () => {
-      const { creditLine, market } = await setUpFixture(deployAndConfigureContractsWithBorrower);
+      const { creditLine } = await setUpFixture(deployAndConfigureContractsWithBorrower);
       const loanState: LoanState = await prepareLoan(market, { trackedBalance: 0n });
       const expectedBorrowerState: BorrowerState = {
         ...defaultBorrowerState,
@@ -909,7 +957,7 @@ describe("Contract 'CreditLine'", async () => {
     });
 
     it("Is reverted if contract is paused", async () => {
-      const { creditLine, market } = await setUpFixture(deployAndConfigureContractsWithBorrower);
+      const { creditLine } = await setUpFixture(deployAndConfigureContractsWithBorrower);
       await proveTx(creditLine.pause());
 
       await expect(market.callOnAfterLoanPaymentCreditLine(
@@ -922,7 +970,7 @@ describe("Contract 'CreditLine'", async () => {
 
   describe("Function 'onAfterLoanRevocation()'", async () => {
     it("Executes as expected", async () => {
-      const { creditLine, market } = await setUpFixture(deployAndConfigureContractsWithBorrower);
+      const { creditLine } = await setUpFixture(deployAndConfigureContractsWithBorrower);
       const loanState: LoanState = await prepareLoan(market);
       const expectedBorrowerState: BorrowerState = {
         ...defaultBorrowerState,
@@ -949,7 +997,7 @@ describe("Contract 'CreditLine'", async () => {
     });
 
     it("Is reverted if contract is paused", async () => {
-      const { creditLine, market } = await setUpFixture(deployAndConfigureContractsWithBorrower);
+      const { creditLine } = await setUpFixture(deployAndConfigureContractsWithBorrower);
       await proveTx(creditLine.pause());
 
       await expect(market.callOnAfterLoanRevocationCreditLine(getAddress(creditLine), LOAN_ID))
@@ -977,7 +1025,7 @@ describe("Contract 'CreditLine'", async () => {
       await proveTx(creditLineUnderAdmin.configureBorrower(borrower.address, borrowerConfig));
       await proveTx(creditLineUnderAdmin.setBorrowerState(borrower.address, borrowerState));
 
-      const expectedTerms: LoanTerms = createLoanTerms(durationInPeriods, borrowerConfig);
+      const expectedTerms: LoanTerms = createLoanTerms(tokenAddress, durationInPeriods, borrowerConfig);
       const actualTerms: LoanTerms = await creditLine.determineLoanTerms(
         borrower.address,
         borrowedAmount,

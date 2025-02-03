@@ -76,3 +76,13 @@ export async function getNumberOfEvents(
   const topic = contract.filters[eventName].fragment.topicHash;
   return (await proveTx(tx)).logs.filter(log => log.topics[0] == topic).length;
 }
+
+export async function deployAndConnectContract(
+  contractFactory: ContractFactory,
+  account: HardhatEthersSigner
+): Promise<Contract> {
+  let contract = (await contractFactory.deploy()) as Contract;
+  await contract.waitForDeployment();
+  contract = connect(contract, account); // Explicitly specifying the initial account
+  return contract;
+}

@@ -431,9 +431,6 @@ interface ILendingMarketErrors {
     /// @dev Thrown when the program does not exist.
     error ProgramNotExist();
 
-    /// @dev Thrown when the provided address does not belong to a contract of expected type or a contract at all.
-    error ContractAddressInvalid();
-
     /// @dev Thrown when the provided duration array is invalid.
     error DurationArrayInvalid();
 

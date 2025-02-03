@@ -2,7 +2,7 @@ import { ethers, upgrades } from "hardhat";
 import { expect } from "chai";
 import { Contract, ContractFactory, TransactionResponse } from "ethers";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
-import { checkContractUupsUpgrading, connect, getAddress, proveTx } from "../test-utils/eth";
+import { checkContractUupsUpgrading, connect, deployAndConnectContract, getAddress, proveTx } from "../test-utils/eth";
 import { checkEquality, maxUintForBits, setUpFixture } from "../test-utils/common";
 
 interface LoanState {
@@ -38,6 +38,7 @@ const ERROR_NAME_ADDON_TREASURY_ADDRESS_ZEROING_PROHIBITED = "AddonTreasuryAddre
 const ERROR_NAME_ADDON_TREASURY_ZERO_ALLOWANCE_FOR_MARKET = "AddonTreasuryZeroAllowanceForMarket";
 const ERROR_NAME_ALREADY_CONFIGURED = "AlreadyConfigured";
 const ERROR_NAME_ALREADY_INITIALIZED = "InvalidInitialization";
+const ERROR_NAME_CONTRACT_ADDRESS_INVALID = "ContractAddressInvalid";
 const ERROR_NAME_CONTRACT_IS_NOT_INITIALIZING = "NotInitializing";
 const ERROR_NAME_ENFORCED_PAUSED = "EnforcedPause";
 const ERROR_NAME_INSUFFICIENT_BALANCE = "InsufficientBalance";
@@ -120,15 +121,12 @@ describe("Contract 'LiquidityPool'", async () => {
     marketFactory = await ethers.getContractFactory("LendingMarketMock");
     marketFactory = marketFactory.connect(deployer);
 
-    market = await marketFactory.deploy() as Contract;
-    await market.waitForDeployment();
-    market = connect(market, deployer); // Explicitly specifying the initial account
+    market = await deployAndConnectContract(marketFactory, deployer);
     marketAddress = getAddress(market);
 
-    token = await tokenFactory.deploy() as Contract;
-    await token.waitForDeployment();
-    token = connect(token, deployer); // Explicitly specifying the initial account
+    token = await deployAndConnectContract(tokenFactory, deployer);
     tokenAddress = getAddress(token);
+
     await token.mint(owner.address, MINT_AMOUNT);
     await token.mint(addonTreasury.address, MINT_AMOUNT);
   });
@@ -216,28 +214,67 @@ describe("Contract 'LiquidityPool'", async () => {
       expect(await liquidityPool.addonTreasury()).to.eq(ZERO_ADDRESS);
     });
 
-    it("Is reverted if the market address is zero", async () => {
+    it("Is reverted if the owner address is zero", async () => {
+      const wrongOwnerAddress = (ZERO_ADDRESS);
       await expect(upgrades.deployProxy(liquidityPoolFactory, [
-        ZERO_ADDRESS, // market
-        owner.address,
+        wrongOwnerAddress,
+        marketAddress,
         tokenAddress
       ])).to.be.revertedWithCustomError(liquidityPoolFactory, ERROR_NAME_ZERO_ADDRESS);
     });
 
-    it("Is reverted if the owner address is zero", async () => {
+    it("Is reverted if the market address is zero", async () => {
+      const wrongMarketAddress = (ZERO_ADDRESS);
       await expect(upgrades.deployProxy(liquidityPoolFactory, [
-        marketAddress,
-        ZERO_ADDRESS, // owner
+        owner.address,
+        wrongMarketAddress,
         tokenAddress
       ])).to.be.revertedWithCustomError(liquidityPoolFactory, ERROR_NAME_ZERO_ADDRESS);
+    });
+
+    it("Is reverted if the market address does not belong to a contract", async () => {
+      const wrongMarketAddress = deployer.address;
+      await expect(upgrades.deployProxy(liquidityPoolFactory, [
+        owner.address,
+        wrongMarketAddress,
+        tokenAddress
+      ])).to.be.revertedWithCustomError(liquidityPoolFactory, ERROR_NAME_CONTRACT_ADDRESS_INVALID);
+    });
+
+    it("Is reverted if the market address does not belong to a lending market contract", async () => {
+      const wrongMarketAddress = (tokenAddress);
+      await expect(upgrades.deployProxy(liquidityPoolFactory, [
+        owner.address,
+        wrongMarketAddress,
+        tokenAddress
+      ])).to.be.revertedWithCustomError(liquidityPoolFactory, ERROR_NAME_CONTRACT_ADDRESS_INVALID);
     });
 
     it("Is reverted if the token address is zero", async () => {
+      const wrongTokenAddress = (ZERO_ADDRESS);
       await expect(upgrades.deployProxy(liquidityPoolFactory, [
-        marketAddress,
         owner.address,
-        ZERO_ADDRESS // token
+        marketAddress,
+        wrongTokenAddress
       ])).to.be.revertedWithCustomError(liquidityPoolFactory, ERROR_NAME_ZERO_ADDRESS);
+    });
+
+    it("Is reverted if the token address does not belong to a contract", async () => {
+      const wrongTokenAddress = deployer.address;
+      await expect(upgrades.deployProxy(liquidityPoolFactory, [
+        owner.address,
+        marketAddress,
+        wrongTokenAddress
+      ])).to.be.revertedWithCustomError(liquidityPoolFactory, ERROR_NAME_CONTRACT_ADDRESS_INVALID);
+    });
+
+    it("Is reverted if the token address does not belong to a token contract", async () => {
+      const wrongTokenAddress = (marketAddress);
+      await expect(upgrades.deployProxy(liquidityPoolFactory, [
+        owner.address,
+        marketAddress,
+        wrongTokenAddress
+      ])).to.be.revertedWithCustomError(liquidityPoolFactory, ERROR_NAME_CONTRACT_ADDRESS_INVALID);
     });
 
     it("Is reverted if called a second time", async () => {
