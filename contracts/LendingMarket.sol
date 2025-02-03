@@ -305,9 +305,8 @@ contract LendingMarket is
         }
         for (uint256 i = 0; i < len; ++i) {
             uint256 loanId = loanIds[i];
-            Loan.State storage loan = _loans[loanId];
             _checkIfLoanOngoing(loanId);
-            _discountLoan(loanId, loan, discountAmounts[i]);
+            _discountLoan(loanId, discountAmounts[i]);
         }
     }
 
@@ -683,14 +682,13 @@ contract LendingMarket is
 
     /// @dev Discounts a loan.
     /// @param loanId The unique identifier of the loan to discount.
-    /// @param loan The storage state of the loan.
     /// @param discountAmount The amount of the discount.
     function _discountLoan(
         uint256 loanId, // Tools: this comment prevents Prettier from formatting into a single line.
-        Loan.State storage loan,
         uint256 discountAmount
     ) internal {
         uint256 newTrackedBalance;
+        Loan.State storage loan = _loans[loanId];
         (newTrackedBalance, discountAmount) = _processTrackedBalanceChange(loan, discountAmount);
         loan.discountAmount += discountAmount.toUint64();
         emit LoanDiscounted(loanId, discountAmount, newTrackedBalance);
