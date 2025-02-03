@@ -171,7 +171,6 @@ const ERROR_NAME_INVALID_BORROWER_CONFIGURATION = "InvalidBorrowerConfiguration"
 const ERROR_NAME_INVALID_CREDIT_LINE_CONFIGURATION = "InvalidCreditLineConfiguration";
 const ERROR_NAME_IMPLEMENTATION_ADDRESS_INVALID = "ImplementationAddressInvalid";
 const ERROR_NAME_LOAN_DURATION_OUT_OF_RANGE = "LoanDurationOutOfRange";
-const ERROR_NAME_NOT_PAUSED = "ExpectedPause";
 const ERROR_NAME_LIMIT_VIOLATION_ON_SINGLE_ACTIVE_LOAN = "LimitViolationOnSingleActiveLoan";
 const ERROR_NAME_LIMIT_VIOLATION_ON_TOTAL_ACTIVE_LOAN_AMOUNT = "LimitViolationOnTotalActiveLoanAmount";
 const ERROR_NAME_UNAUTHORIZED = "Unauthorized";
@@ -179,8 +178,6 @@ const ERROR_NAME_ZERO_ADDRESS = "ZeroAddress";
 
 const EVENT_NAME_BORROWER_CONFIGURED = "BorrowerConfigured";
 const EVENT_NAME_CREDIT_LINE_CONFIGURED = "CreditLineConfigured";
-const EVENT_NAME_PAUSED = "Paused";
-const EVENT_NAME_UNPAUSED = "Unpaused";
 
 const DEFAULT_ADMIN_ROLE = ethers.ZeroHash;
 const OWNER_ROLE = ethers.id("OWNER_ROLE");

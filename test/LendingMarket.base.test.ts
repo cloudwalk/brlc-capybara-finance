@@ -143,13 +143,11 @@ const ERROR_NAME_INAPPROPRIATE_DURATION_IN_PERIODS = "InappropriateLoanDuration"
 const ERROR_NAME_INAPPROPRIATE_INTEREST_RATE = "InappropriateInterestRate";
 const ERROR_NAME_INVALID_AMOUNT = "InvalidAmount";
 const ERROR_NAME_IMPLEMENTATION_ADDRESS_INVALID = "ImplementationAddressInvalid";
-const ERROR_NAME_NOT_PAUSED = "ExpectedPause";
 const ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED = "AccessControlUnauthorizedAccount";
 const ERROR_NAME_ZERO_ADDRESS = "ZeroAddress";
 const ERROR_NAME_PROGRAM_CREDIT_LINE_NOT_CONFIGURED = "ProgramCreditLineNotConfigured";
 const ERROR_NAME_PROGRAM_LIQUIDITY_POOL_NOT_CONFIGURED = "ProgramLiquidityPoolNotConfigured";
 const ERROR_NAME_PROGRAM_NOT_EXIST = "ProgramNotExist";
-const ERROR_NAME_COOLDOWN_PERIOD_PASSED = "CooldownPeriodHasPassed";
 const ERROR_NAME_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST = "SafeCastOverflowedUintDowncast";
 const ERROR_NAME_DURATION_ARRAY_INVALID = "DurationArrayInvalid";
 const ERROR_NAME_INSTALLMENT_COUNT_EXCESS = "InstallmentCountExcess";
@@ -171,8 +169,6 @@ const EVENT_NAME_INSTALLMENT_LOAN_TAKEN = "InstallmentLoanTaken";
 const EVENT_NAME_LOAN_UNFROZEN = "LoanUnfrozen";
 const EVENT_NAME_ON_BEFORE_LOAN_TAKEN = "OnBeforeLoanTakenCalled";
 const EVENT_NAME_ON_AFTER_LOAN_PAYMENT = "OnAfterLoanPaymentCalled";
-const EVENT_NAME_PAUSED = "Paused";
-const EVENT_NAME_UNPAUSED = "Unpaused";
 const EVENT_NAME_LOAN_REVOKED = "LoanRevoked";
 const EVENT_NAME_INSTALLMENT_LOAN_REVOKED = "InstallmentLoanRevoked";
 const EVENT_NAME_ON_AFTER_LOAN_REVOCATION = "OnAfterLoanRevocationCalled";
@@ -199,7 +195,6 @@ const PERIOD_IN_SECONDS = 86400;
 const DURATION_IN_PERIODS = 10;
 const PROGRAM_ID = 1;
 const NEGATIVE_TIME_OFFSET = 3 * 60 * 60; // 3 hours
-const COOLDOWN_IN_PERIODS = 3;
 
 const INSTALLMENT_COUNT = 3;
 const BORROWED_AMOUNTS: number[] = [BORROWED_AMOUNT * 3 - 2, BORROWED_AMOUNT * 2 + 1, BORROWED_AMOUNT + 1];
@@ -2726,7 +2721,6 @@ describe("Contract 'LendingMarket': base tests", async () => {
     async function revokeAndCheck(fixture: Fixture, props: {
       isAddonAmountZero: boolean;
       loan: Loan;
-      revoker: HardhatEthersSigner;
     }) {
       const { market } = fixture;
       const expectedLoan = clone(props.loan);
@@ -2737,7 +2731,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
         await proveTx(fixture.market.zeroAddonAmountBatch([expectedLoan.id]));
       }
 
-      const tx: Promise<TransactionResponse> = connect(market, props.revoker).revokeLoan(expectedLoan.id);
+      const tx: Promise<TransactionResponse> = connect(market, admin).revokeLoan(expectedLoan.id);
 
       expectedLoan.state.trackedBalance = 0;
       expectedLoan.state.trackedTimestamp = calculateTimestampWithOffset(await getTxTimestamp(tx));
@@ -2766,13 +2760,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
 
     describe("Executes as expected and emits correct event if", async () => {
       describe("The addon amount is NOT zero and", async () => {
-        it("Is called by the borrower before the cooldown expiration and with no repayments", async () => {
-          const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
-          await increaseBlockTimestampToPeriodIndex(fixture.ordinaryLoan.startPeriod + COOLDOWN_IN_PERIODS - 1);
-          await revokeAndCheck(fixture, { isAddonAmountZero: false, loan: fixture.ordinaryLoan, revoker: borrower });
-        });
-
-        it("Is called by an admin after a repayment that is less than the borrowed amount", async () => {
+        it("Is called after a repayment that is less than the borrowed amount", async () => {
           const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
 
           const loan = clone(fixture.ordinaryLoan);
@@ -2780,12 +2768,12 @@ describe("Contract 'LendingMarket': base tests", async () => {
           expect(repaymentAmount).lessThan(loan.state.borrowedAmount);
           const tx = connect(fixture.market, borrower).repayLoan(loan.id, repaymentAmount);
           processRepayment(loan, { repaymentAmount, repaymentTimestamp: await getTxTimestamp(tx) });
-          await increaseBlockTimestampToPeriodIndex(loan.startPeriod + COOLDOWN_IN_PERIODS + 1);
+          await increaseBlockTimestampToPeriodIndex(loan.startPeriod + 1);
 
-          await revokeAndCheck(fixture, { isAddonAmountZero: false, loan, revoker: admin });
+          await revokeAndCheck(fixture, { isAddonAmountZero: false, loan });
         });
 
-        it("Is called by an admin after a repayment that equals the borrowed amount", async () => {
+        it("Is called after a repayment that equals the borrowed amount", async () => {
           const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
 
           const loan = clone(fixture.ordinaryLoan);
@@ -2793,12 +2781,12 @@ describe("Contract 'LendingMarket': base tests", async () => {
           expect(repaymentAmount).lessThan(loan.state.borrowedAmount + loan.state.addonAmount);
           const tx = connect(fixture.market, borrower).repayLoan(loan.id, repaymentAmount);
           processRepayment(loan, { repaymentAmount, repaymentTimestamp: await getTxTimestamp(tx) });
-          await increaseBlockTimestampToPeriodIndex(loan.startPeriod + 1);
+          await increaseBlockTimestampToPeriodIndex(loan.startPeriod + 2);
 
-          await revokeAndCheck(fixture, { isAddonAmountZero: false, loan, revoker: admin });
+          await revokeAndCheck(fixture, { isAddonAmountZero: false, loan });
         });
 
-        it("Is called by an admin after a repayment that is greater than the borrowed amount", async () => {
+        it("Is called after a repayment that is greater than the borrowed amount", async () => {
           const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
 
           const loan = clone(fixture.ordinaryLoan);
@@ -2806,12 +2794,12 @@ describe("Contract 'LendingMarket': base tests", async () => {
           expect(repaymentAmount).lessThan(loan.state.borrowedAmount + loan.state.addonAmount);
           const tx = connect(fixture.market, borrower).repayLoan(loan.id, repaymentAmount);
           processRepayment(loan, { repaymentAmount, repaymentTimestamp: await getTxTimestamp(tx) });
-          await increaseBlockTimestampToPeriodIndex(loan.startPeriod + COOLDOWN_IN_PERIODS);
+          await increaseBlockTimestampToPeriodIndex(loan.startPeriod + loan.state.durationInPeriods + 1);
 
-          await revokeAndCheck(fixture, { isAddonAmountZero: false, loan, revoker: admin });
+          await revokeAndCheck(fixture, { isAddonAmountZero: false, loan });
         });
 
-        it("Is called by an admin for a partially repaid loan after freezing", async () => {
+        it("Is called for a partially repaid loan after freezing", async () => {
           const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
 
           const loan = clone(fixture.ordinaryLoan);
@@ -2826,28 +2814,21 @@ describe("Contract 'LendingMarket': base tests", async () => {
           periodIndex += loan.state.durationInPeriods;
           await increaseBlockTimestampToPeriodIndex(periodIndex);
 
-          await revokeAndCheck(fixture, { isAddonAmountZero: false, loan, revoker: admin });
+          await revokeAndCheck(fixture, { isAddonAmountZero: false, loan });
         });
       });
 
       describe("The addon amount is zero and", async () => {
-        it("Is called by an admin before the cooldown expiration and with no repayments", async () => {
-          const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
-          const loan = fixture.ordinaryLoan;
-          await increaseBlockTimestampToPeriodIndex(loan.startPeriod + (COOLDOWN_IN_PERIODS - 1));
-          await revokeAndCheck(fixture, { isAddonAmountZero: true, loan: loan, revoker: admin });
-        });
-
-        it("Is called by the borrower with a repayment that equals the borrowed amount", async () => {
+        it("Is called after a repayment that equals the borrowed amount", async () => {
           const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
 
           const loan = clone(fixture.ordinaryLoan);
           const repaymentAmount = loan.state.borrowedAmount;
           const tx = connect(fixture.market, borrower).repayLoan(loan.id, repaymentAmount);
           processRepayment(loan, { repaymentAmount, repaymentTimestamp: await getTxTimestamp(tx) });
-          await increaseBlockTimestampToPeriodIndex(loan.startPeriod + COOLDOWN_IN_PERIODS - 1);
+          await increaseBlockTimestampToPeriodIndex(loan.startPeriod + loan.state.durationInPeriods / 2);
 
-          await revokeAndCheck(fixture, { isAddonAmountZero: true, loan: loan, revoker: borrower });
+          await revokeAndCheck(fixture, { isAddonAmountZero: true, loan: loan });
         });
       });
     });
@@ -2878,6 +2859,20 @@ describe("Contract 'LendingMarket': base tests", async () => {
           .to.be.revertedWithCustomError(marketUnderAdmin, ERROR_NAME_LOAN_ALREADY_REPAID);
       });
 
+      it("The caller is not an admin", async () => {
+        const { market, ordinaryLoan: loan } = await setUpFixture(deployLendingMarketAndTakeLoans);
+
+        await expect(connect(market, owner).revokeLoan(loan.id))
+          .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
+          .withArgs(owner.address, ADMIN_ROLE);
+        await expect(connect(market, borrower).revokeLoan(loan.id))
+          .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
+          .withArgs(borrower.address, ADMIN_ROLE);
+        await expect(connect(market, stranger).revokeLoan(loan.id))
+          .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
+          .withArgs(stranger.address, ADMIN_ROLE);
+      });
+
       it("The loan is a sub-loan of an installment loan", async () => {
         const { marketUnderAdmin, installmentLoanParts: [loan] } = await setUpFixture(deployLendingMarketAndTakeLoans);
 
@@ -2887,26 +2882,6 @@ describe("Contract 'LendingMarket': base tests", async () => {
             LoanType.Installment, // actual
             LoanType.Ordinary // expected
           );
-      });
-
-      it("The cooldown period has passed when it is called by the borrower", async () => {
-        const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
-        const { market, ordinaryLoan: loan } = fixture;
-        await increaseBlockTimestampToPeriodIndex(loan.startPeriod + COOLDOWN_IN_PERIODS);
-
-        await expect(connect(market, borrower).revokeLoan(loan.id))
-          .to.be.revertedWithCustomError(market, ERROR_NAME_COOLDOWN_PERIOD_PASSED);
-      });
-
-      it("The caller is not an admin or the borrower", async () => {
-        const { market, ordinaryLoan: loan } = await setUpFixture(deployLendingMarketAndTakeLoans);
-
-        await expect(connect(market, owner).revokeLoan(loan.id))
-          .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
-          .withArgs(owner.address, ADMIN_ROLE);
-        await expect(connect(market, stranger).revokeLoan(loan.id))
-          .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
-          .withArgs(stranger.address, ADMIN_ROLE);
       });
 
       it("The addon treasury is NOT configured on the liquidity pool", async () => {
@@ -2923,7 +2898,6 @@ describe("Contract 'LendingMarket': base tests", async () => {
     async function revokeAndCheck(fixture: Fixture, props: {
       areAddonAmountsZero: boolean;
       loans: Loan[];
-      revoker: HardhatEthersSigner;
     }) {
       const { market, installmentLoanParts: loans } = fixture;
       const loanIds = loans.map(loan => loan.id);
@@ -2939,7 +2913,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
 
       const middleLoanId = loanIds.length > 1 ? 1 : 0;
 
-      const tx: Promise<TransactionResponse> = connect(market, props.revoker).revokeInstallmentLoan(middleLoanId);
+      const tx: Promise<TransactionResponse> = connect(market, admin).revokeInstallmentLoan(middleLoanId);
 
       const revocationTimestamp = calculateTimestampWithOffset(await getTxTimestamp(tx));
       const actualLoanStates = await getLoanStates(market, loanIds);
@@ -2978,15 +2952,15 @@ describe("Contract 'LendingMarket': base tests", async () => {
     describe("Executes as expected and emits correct event if", async () => {
       describe("NOT all addon amounts are zero and", async () => {
         describe("All installments are ongoing and", async () => {
-          it("Is called by the borrower before the cooldown expiration", async () => {
+          it("Is called the next day after the loan started and without repayments", async () => {
             const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
             const loans = fixture.installmentLoanParts;
-            const periodIndex = loans[0].startPeriod + COOLDOWN_IN_PERIODS - 1;
+            const periodIndex = loans[0].startPeriod + 1;
             await increaseBlockTimestampToPeriodIndex(periodIndex);
-            await revokeAndCheck(fixture, { areAddonAmountsZero: false, loans, revoker: borrower });
+            await revokeAndCheck(fixture, { areAddonAmountsZero: false, loans });
           });
 
-          it("Is called by an admin for partially repaid installments and after one of them is frozen", async () => {
+          it("Is called for partially repaid installments and after one of them is frozen", async () => {
             const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
             const loans = fixture.installmentLoanParts.map(loan => clone(loan));
             for (const loan of loans) {
@@ -3003,7 +2977,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
             periodIndex += loans[1].state.durationInPeriods;
             await increaseBlockTimestampToPeriodIndex(periodIndex);
 
-            await revokeAndCheck(fixture, { areAddonAmountsZero: false, loans, revoker: admin });
+            await revokeAndCheck(fixture, { areAddonAmountsZero: false, loans });
           });
         });
 
@@ -3030,7 +3004,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
             };
           }
 
-          it("Is called by an admin and the total repayment is less than the total borrowed amount", async () => {
+          it("Is called after the total repayment is less than the total borrowed amount", async () => {
             const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
 
             const loans = fixture.installmentLoanParts.map(loan => clone(loan));
@@ -3043,13 +3017,13 @@ describe("Contract 'LendingMarket': base tests", async () => {
             expect(repaymentAmount + totalRepaymentAmount).lessThan(totalBorrowedAmount);
             const tx = connect(fixture.market, borrower).repayLoan(lastLoan.id, repaymentAmount);
             processRepayment(lastLoan, { repaymentAmount, repaymentTimestamp: await getTxTimestamp(tx) });
-            const periodIndex = loans[0].startPeriod + COOLDOWN_IN_PERIODS + 1;
+            const periodIndex = loans[0].startPeriod + loans[loans.length - 1].state.durationInPeriods / 2;
             await increaseBlockTimestampToPeriodIndex(periodIndex);
 
-            await revokeAndCheck(fixture, { areAddonAmountsZero: false, loans, revoker: admin });
+            await revokeAndCheck(fixture, { areAddonAmountsZero: false, loans });
           });
 
-          it("Is called by an admin after a repayment that equals the borrowed amount", async () => {
+          it("Is called after the total repayment equals the total borrowed amount", async () => {
             const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
 
             const loans = fixture.installmentLoanParts.map(loan => clone(loan));
@@ -3063,12 +3037,14 @@ describe("Contract 'LendingMarket': base tests", async () => {
             const tx = connect(fixture.market, borrower).repayLoan(lastLoan.id, repaymentAmount);
             processRepayment(lastLoan, { repaymentAmount, repaymentTimestamp: await getTxTimestamp(tx) });
 
-            await increaseBlockTimestampToPeriodIndex(loans[0].startPeriod + COOLDOWN_IN_PERIODS);
+            await increaseBlockTimestampToPeriodIndex(
+              loans[0].startPeriod + loans[loans.length - 1].state.durationInPeriods + 1
+            );
 
-            await revokeAndCheck(fixture, { areAddonAmountsZero: false, loans, revoker: admin });
+            await revokeAndCheck(fixture, { areAddonAmountsZero: false, loans });
           });
 
-          it("Is called by an admin after a repayment that is greater than the borrowed amount", async () => {
+          it("Is called after the total repayment is greater than the total borrowed amount", async () => {
             const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
 
             const loans = fixture.installmentLoanParts.map(loan => clone(loan));
@@ -3082,23 +3058,25 @@ describe("Contract 'LendingMarket': base tests", async () => {
             const tx = connect(fixture.market, borrower).repayLoan(lastLoan.id, repaymentAmount);
             processRepayment(lastLoan, { repaymentAmount, repaymentTimestamp: await getTxTimestamp(tx) });
 
-            await increaseBlockTimestampToPeriodIndex(loans[0].startPeriod + COOLDOWN_IN_PERIODS - 1);
+            await increaseBlockTimestampToPeriodIndex(loans[0].startPeriod + 1);
 
-            await revokeAndCheck(fixture, { areAddonAmountsZero: false, loans, revoker: admin });
+            await revokeAndCheck(fixture, { areAddonAmountsZero: false, loans });
           });
         });
       });
 
       describe("All addon amounts are zero and", async () => {
         describe("All installments are ongoing and", async () => {
-          it("Is called by an admin before the cooldown expiration", async () => {
+          it("Is called after the due date", async () => {
             const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
             const loans = fixture.installmentLoanParts;
-            await increaseBlockTimestampToPeriodIndex(loans[0].startPeriod + COOLDOWN_IN_PERIODS - 1);
-            await revokeAndCheck(fixture, { areAddonAmountsZero: true, loans, revoker: admin });
+            await increaseBlockTimestampToPeriodIndex(
+              loans[0].startPeriod + loans[loans.length - 1].state.durationInPeriods + 1
+            );
+            await revokeAndCheck(fixture, { areAddonAmountsZero: true, loans });
           });
 
-          it("Is called by the borrower and for all loans the repaid amount is close to the borrowed one", async () => {
+          it("Is called after the total repaid amount is close to the total borrowed one", async () => {
             const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
             const loans = fixture.installmentLoanParts.map(loan => clone(loan));
             for (const loan of loans) {
@@ -3106,9 +3084,9 @@ describe("Contract 'LendingMarket': base tests", async () => {
               const tx = connect(fixture.market, borrower).repayLoan(loan.id, repaymentAmount);
               processRepayment(loan, { repaymentAmount, repaymentTimestamp: await getTxTimestamp(tx) });
             }
-            await increaseBlockTimestampToPeriodIndex(loans[0].startPeriod + COOLDOWN_IN_PERIODS - 1);
+            await increaseBlockTimestampToPeriodIndex(loans[0].startPeriod + 1);
 
-            await revokeAndCheck(fixture, { areAddonAmountsZero: true, loans, revoker: borrower });
+            await revokeAndCheck(fixture, { areAddonAmountsZero: true, loans });
           });
         });
       });
@@ -3142,6 +3120,20 @@ describe("Contract 'LendingMarket': base tests", async () => {
           .to.be.revertedWithCustomError(marketUnderAdmin, ERROR_NAME_LOAN_ALREADY_REPAID);
       });
 
+      it("The caller is not an admin", async () => {
+        const { market, installmentLoanParts: [loan] } = await setUpFixture(deployLendingMarketAndTakeLoans);
+
+        await expect(connect(market, owner).revokeInstallmentLoan(loan.id))
+          .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
+          .withArgs(owner.address, ADMIN_ROLE);
+        await expect(connect(market, borrower).revokeInstallmentLoan(loan.id))
+          .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
+          .withArgs(borrower.address, ADMIN_ROLE);
+        await expect(connect(market, stranger).revokeInstallmentLoan(loan.id))
+          .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
+          .withArgs(stranger.address, ADMIN_ROLE);
+      });
+
       it("The loan is an ordinary loan", async () => {
         const { marketUnderAdmin, ordinaryLoan: loan } = await setUpFixture(deployLendingMarketAndTakeLoans);
 
@@ -3151,27 +3143,6 @@ describe("Contract 'LendingMarket': base tests", async () => {
             LoanType.Ordinary, // actual
             LoanType.Installment // expected
           );
-      });
-
-      it("The cooldown period has passed when it is called by the borrower", async () => {
-        const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
-        const { market, installmentLoanParts: loans } = fixture;
-        const lastLoanId = loans[loans.length - 1].id;
-        await increaseBlockTimestampToPeriodIndex(loans[0].startPeriod + COOLDOWN_IN_PERIODS);
-
-        await expect(connect(market, borrower).revokeInstallmentLoan(lastLoanId))
-          .to.be.revertedWithCustomError(market, ERROR_NAME_COOLDOWN_PERIOD_PASSED);
-      });
-
-      it("The caller is not an admin or the borrower", async () => {
-        const { market, installmentLoanParts: [loan] } = await setUpFixture(deployLendingMarketAndTakeLoans);
-
-        await expect(connect(market, owner).revokeInstallmentLoan(loan.id))
-          .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
-          .withArgs(owner.address, ADMIN_ROLE);
-        await expect(connect(market, stranger).revokeInstallmentLoan(loan.id))
-          .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
-          .withArgs(stranger.address, ADMIN_ROLE);
       });
 
       it("The addon treasury is NOT configured on the liquidity pool", async () => {

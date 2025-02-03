@@ -43,7 +43,6 @@ const ERROR_NAME_ENFORCED_PAUSED = "EnforcedPause";
 const ERROR_NAME_INSUFFICIENT_BALANCE = "InsufficientBalance";
 const ERROR_NAME_INVALID_AMOUNT = "InvalidAmount";
 const ERROR_NAME_IMPLEMENTATION_ADDRESS_INVALID = "ImplementationAddressInvalid";
-const ERROR_NAME_NOT_PAUSED = "ExpectedPause";
 const ERROR_NAME_UNAUTHORIZED = "Unauthorized";
 const ERROR_NAME_ZERO_ADDRESS = "ZeroAddress";
 const ERROR_NAME_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST = "SafeCastOverflowedUintDowncast";
@@ -51,9 +50,7 @@ const ERROR_NAME_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST = "SafeCastOverflowedUintDow
 const EVENT_NAME_APPROVAL = "Approval";
 const EVENT_NAME_ADDON_TREASURY_CHANGED = "AddonTreasuryChanged";
 const EVENT_NAME_DEPOSIT = "Deposit";
-const EVENT_NAME_PAUSED = "Paused";
 const EVENT_NAME_RESCUE = "Rescue";
-const EVENT_NAME_UNPAUSED = "Unpaused";
 const EVENT_NAME_WITHDRAWAL = "Withdrawal";
 
 const DEFAULT_ADMIN_ROLE = ethers.ZeroHash;

@@ -422,9 +422,6 @@ interface ILendingMarketErrors {
     /// @dev Thrown when provided loan duration is inappropriate.
     error InappropriateLoanDuration();
 
-    /// @dev Thrown when the cooldown period has passed.
-    error CooldownPeriodHasPassed();
-
     /// @dev Thrown when the credit line is not configured for the provided lending program.
     error ProgramCreditLineNotConfigured();
 

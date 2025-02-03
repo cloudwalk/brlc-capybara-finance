@@ -250,7 +250,7 @@ contract LendingMarket is
     }
 
     /// @inheritdoc ILendingMarketPrimary
-    function revokeLoan(uint256 loanId) external whenNotPaused onlyOngoingLoan(loanId) {
+    function revokeLoan(uint256 loanId) external whenNotPaused onlyOngoingLoan(loanId) onlyAdmin {
         Loan.State storage loan = _loans[loanId];
         _checkLoanType(loan, uint256(Loan.Type.Ordinary));
         _revokeLoan(loanId, loan);
@@ -258,7 +258,7 @@ contract LendingMarket is
     }
 
     /// @inheritdoc ILendingMarketPrimary
-    function revokeInstallmentLoan(uint256 loanId) external whenNotPaused {
+    function revokeInstallmentLoan(uint256 loanId) external whenNotPaused onlyAdmin {
         Loan.State storage loan = _loans[loanId];
         _checkLoanExistence(loan);
         _checkLoanType(loan, uint256(Loan.Type.Installment));
@@ -669,8 +669,6 @@ contract LendingMarket is
     /// @param loanId The unique identifier of the loan to revoke.
     /// @param loan The storage state of the loan to update.
     function _revokeLoan(uint256 loanId, Loan.State storage loan) internal {
-        _checkLoanRevocationPossibility(loan);
-
         address creditLine = _programCreditLines[loan.programId];
         address liquidityPool = _programLiquidityPools[loan.programId];
 
@@ -818,21 +816,6 @@ contract LendingMarket is
     function _checkLoanId(uint256 id) internal pure {
         if (id > type(uint40).max) {
             revert LoanIdExcess();
-        }
-    }
-
-    /// @dev Checks if the loan can be revoked.
-    /// @param loan The storage state of the loan.
-    function _checkLoanRevocationPossibility(Loan.State storage loan) internal view {
-        address sender = msg.sender;
-        if (sender == loan.borrower) {
-            uint256 currentPeriodIndex = _periodIndex(_blockTimestamp(), Constants.PERIOD_IN_SECONDS);
-            uint256 startPeriodIndex = _periodIndex(loan.startTimestamp, Constants.PERIOD_IN_SECONDS);
-            if (currentPeriodIndex - startPeriodIndex >= Constants.COOLDOWN_IN_PERIODS) {
-                revert CooldownPeriodHasPassed();
-            }
-        } else {
-            _checkIfAdmin(sender);
         }
     }
 
