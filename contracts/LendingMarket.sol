@@ -337,7 +337,7 @@ contract LendingMarket is
         }
 
         uint256 blockTimestamp = _blockTimestamp();
-        (uint256 trackedBalance, uint256 lateFeeAmount, ) = _calculateTrackedBalance(loan, blockTimestamp);
+        (uint256 trackedBalance, uint256 lateFeeAmount) = _calculateTrackedBalance(loan, blockTimestamp);
         _updateStoredLateFee(lateFeeAmount, loan);
         uint256 currentPeriodIndex = _periodIndex(blockTimestamp, Constants.PERIOD_IN_SECONDS);
         uint256 freezePeriodIndex = _periodIndex(loan.freezeTimestamp, Constants.PERIOD_IN_SECONDS);
@@ -712,7 +712,7 @@ contract LendingMarket is
             revert Error.InvalidAmount();
         }
         uint256 timestamp = _blockTimestamp();
-        (uint256 oldTrackedBalance, uint256 lateFeeAmount, ) = _calculateTrackedBalance(loan, timestamp);
+        (uint256 oldTrackedBalance, uint256 lateFeeAmount) = _calculateTrackedBalance(loan, timestamp);
         uint256 outstandingBalance = Rounding.roundMath(oldTrackedBalance, Constants.ACCURACY_FACTOR);
         newTrackedBalance = 0; // Full repayment or full discount by default
 
@@ -866,18 +866,17 @@ contract LendingMarket is
     /// @param timestamp The timestamp to calculate the tracked balance at.
     /// @return trackedBalance The tracked balance of the loan at the specified timestamp.
     /// @return lateFeeAmount The late fee amount or zero if the loan is not defaulted at the specified timestamp.
-    /// @return periodIndex The period index that corresponds the provided timestamp.
     function _calculateTrackedBalance(
         Loan.State storage loan,
         uint256 timestamp
-    ) internal view returns (uint256 trackedBalance, uint256 lateFeeAmount, uint256 periodIndex) {
+    ) internal view returns (uint256 trackedBalance, uint256 lateFeeAmount) {
         trackedBalance = loan.trackedBalance;
 
         if (loan.freezeTimestamp != 0) {
             timestamp = loan.freezeTimestamp;
         }
 
-        periodIndex = _periodIndex(timestamp, Constants.PERIOD_IN_SECONDS);
+        uint256 periodIndex = _periodIndex(timestamp, Constants.PERIOD_IN_SECONDS);
         uint256 trackedPeriodIndex = _periodIndex(loan.trackedTimestamp, Constants.PERIOD_IN_SECONDS);
 
         if (trackedBalance != 0 && periodIndex > trackedPeriodIndex) {
@@ -925,7 +924,8 @@ contract LendingMarket is
         Loan.Preview memory preview;
         Loan.State storage loan = _loans[loanId];
 
-        (preview.trackedBalance /* skip the late fee */, , preview.periodIndex) = _calculateTrackedBalance(
+        preview.periodIndex = _periodIndex(timestamp, Constants.PERIOD_IN_SECONDS);
+        (preview.trackedBalance, /* skip the late fee */) = _calculateTrackedBalance(
             loan,
             timestamp
         );
@@ -945,7 +945,8 @@ contract LendingMarket is
         Loan.PreviewExtended memory preview;
         Loan.State storage loan = _loans[loanId];
 
-        (preview.trackedBalance, preview.lateFeeAmount, preview.periodIndex) = _calculateTrackedBalance(
+        preview.periodIndex = _periodIndex(timestamp, Constants.PERIOD_IN_SECONDS);
+        (preview.trackedBalance, preview.lateFeeAmount) = _calculateTrackedBalance(
             loan,
             timestamp
         );
