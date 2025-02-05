@@ -57,12 +57,6 @@ contract LendingMarket is
     //  Modifiers                                   //
     // -------------------------------------------- //
 
-    /// @dev Throws if called by any account other than an admin.
-    modifier onlyAdmin() {
-        _checkIfAdmin(msg.sender);
-        _;
-    }
-
     /// @dev Throws if the loan does not exist or has already been repaid.
     /// @param loanId The unique identifier of the loan to check.
     modifier onlyOngoingLoan(uint256 loanId) {
@@ -170,7 +164,7 @@ contract LendingMarket is
         uint256 borrowedAmount,
         uint256 addonAmount,
         uint256 durationInPeriods
-    ) external whenNotPaused onlyAdmin returns (uint256) {
+    ) external whenNotPaused onlyRole(ADMIN_ROLE) returns (uint256) {
         _checkMainLoanParameters(borrower, programId, borrowedAmount, addonAmount);
         uint256 loanId = _takeLoan(
             borrower, // Tools: this comment prevents Prettier from formatting into a single line.
@@ -190,7 +184,7 @@ contract LendingMarket is
         uint256[] calldata borrowedAmounts,
         uint256[] calldata addonAmounts,
         uint256[] calldata durationsInPeriods
-    ) external whenNotPaused onlyAdmin returns (uint256 firstInstallmentId, uint256 installmentCount) {
+    ) external whenNotPaused onlyRole(ADMIN_ROLE) returns (uint256 firstInstallmentId, uint256 installmentCount) {
         uint256 totalBorrowedAmount = _sumArray(borrowedAmounts);
         uint256 totalAddonAmount = _sumArray(addonAmounts);
         installmentCount = borrowedAmounts.length;
@@ -239,7 +233,7 @@ contract LendingMarket is
         uint256[] calldata loanIds,
         uint256[] calldata repaymentAmounts,
         address repayer
-    ) external whenNotPaused onlyAdmin {
+    ) external whenNotPaused onlyRole(ADMIN_ROLE) {
         uint256 len = loanIds.length;
         if (len != repaymentAmounts.length) {
             revert Error.ArrayLengthMismatch();
@@ -255,7 +249,7 @@ contract LendingMarket is
     }
 
     /// @inheritdoc ILendingMarketPrimary
-    function revokeLoan(uint256 loanId) external whenNotPaused onlyOngoingLoan(loanId) onlyAdmin {
+    function revokeLoan(uint256 loanId) external whenNotPaused onlyOngoingLoan(loanId) onlyRole(ADMIN_ROLE) {
         Loan.State storage loan = _loans[loanId];
         _checkLoanType(loan, uint256(Loan.Type.Ordinary));
         _revokeLoan(loanId, loan);
@@ -263,7 +257,7 @@ contract LendingMarket is
     }
 
     /// @inheritdoc ILendingMarketPrimary
-    function revokeInstallmentLoan(uint256 loanId) external whenNotPaused onlyAdmin {
+    function revokeInstallmentLoan(uint256 loanId) external whenNotPaused onlyRole(ADMIN_ROLE) {
         Loan.State storage loan = _loans[loanId];
         _checkLoanExistence(loan);
         _checkLoanType(loan, uint256(Loan.Type.Installment));
@@ -303,7 +297,7 @@ contract LendingMarket is
     function discountLoanForBatch(
         uint256[] calldata loanIds, // Tools: this comment prevents Prettier from formatting into a single line.
         uint256[] calldata discountAmounts
-    ) external whenNotPaused onlyAdmin {
+    ) external whenNotPaused onlyRole(ADMIN_ROLE) {
         uint256 len = loanIds.length;
         if (len != discountAmounts.length) {
             revert Error.ArrayLengthMismatch();
@@ -316,7 +310,7 @@ contract LendingMarket is
     }
 
     /// @inheritdoc ILendingMarketPrimary
-    function freeze(uint256 loanId) external whenNotPaused onlyOngoingLoan(loanId) onlyAdmin {
+    function freeze(uint256 loanId) external whenNotPaused onlyOngoingLoan(loanId) onlyRole(ADMIN_ROLE) {
         Loan.State storage loan = _loans[loanId];
 
         if (loan.freezeTimestamp != 0) {
@@ -329,7 +323,7 @@ contract LendingMarket is
     }
 
     /// @inheritdoc ILendingMarketPrimary
-    function unfreeze(uint256 loanId) external whenNotPaused onlyOngoingLoan(loanId) onlyAdmin {
+    function unfreeze(uint256 loanId) external whenNotPaused onlyOngoingLoan(loanId) onlyRole(ADMIN_ROLE) {
         Loan.State storage loan = _loans[loanId];
 
         if (loan.freezeTimestamp == 0) {
@@ -357,7 +351,7 @@ contract LendingMarket is
     function updateLoanDuration(
         uint256 loanId,
         uint256 newDurationInPeriods
-    ) external whenNotPaused onlyOngoingLoan(loanId) onlyAdmin {
+    ) external whenNotPaused onlyOngoingLoan(loanId) onlyRole(ADMIN_ROLE) {
         Loan.State storage loan = _loans[loanId];
 
         if (newDurationInPeriods <= loan.durationInPeriods) {
@@ -373,7 +367,7 @@ contract LendingMarket is
     function updateLoanInterestRatePrimary(
         uint256 loanId,
         uint256 newInterestRate
-    ) external whenNotPaused onlyOngoingLoan(loanId) onlyAdmin {
+    ) external whenNotPaused onlyOngoingLoan(loanId) onlyRole(ADMIN_ROLE) {
         Loan.State storage loan = _loans[loanId];
 
         if (newInterestRate >= loan.interestRatePrimary) {
@@ -389,7 +383,7 @@ contract LendingMarket is
     function updateLoanInterestRateSecondary(
         uint256 loanId,
         uint256 newInterestRate
-    ) external whenNotPaused onlyOngoingLoan(loanId) onlyAdmin {
+    ) external whenNotPaused onlyOngoingLoan(loanId) onlyRole(ADMIN_ROLE) {
         Loan.State storage loan = _loans[loanId];
 
         if (newInterestRate >= loan.interestRateSecondary) {
@@ -399,64 +393,6 @@ contract LendingMarket is
         emit LoanInterestRateSecondaryUpdated(loanId, newInterestRate, loan.interestRateSecondary);
 
         loan.interestRateSecondary = newInterestRate.toUint32();
-    }
-
-    // -------------------------------------------- //
-    //  Service functions                           //
-    // -------------------------------------------- //
-
-    /// @dev Migrates the access control for the lending market.
-    ///
-    /// Can be called multiple times for different aliases, but configures other storage variables only once.
-    ///
-    /// The provided program count must be equal to the actual number of programs created in the lending market.
-    ///
-    /// @param programCount The number of lending programs.
-    /// @param aliases The alias accounts to migrate.
-    function migrateAccessControl(uint256 programCount, address[] calldata aliases) external onlyRole(OWNER_ROLE) {
-        programCount.toUint32(); // To check the provided value
-
-        address owner = msg.sender;
-
-        // Revoke aliases and grand them the admin role
-        uint256 count = aliases.length;
-        for (uint256 i = 0; i < count; ++i) {
-            address alias_ = aliases[i];
-            if (_hasAlias[owner][alias_]) {
-                _hasAlias[owner][alias_] = false;
-                emit LenderAliasConfigured(owner, alias_, false);
-                _grantRole(ADMIN_ROLE, alias_);
-            }
-        }
-
-        if (_programLenders[1] == address(0)) {
-            return; // Everything except aliases has been already migrated, do not need to execute twice
-        }
-
-        if (_programLenders[uint32(programCount + 1)] != address(0)) {
-            revert("Access Control Migration: program count is too small");
-        }
-
-        // Set the admin role for other roles
-        _setRoleAdmin(OWNER_ROLE, OWNER_ROLE);
-        _setRoleAdmin(ADMIN_ROLE, OWNER_ROLE);
-        _setRoleAdmin(PAUSER_ROLE, OWNER_ROLE);
-
-        // Grant roles for the owner.
-        _grantRole(ADMIN_ROLE, owner);
-        _grantRole(PAUSER_ROLE, owner);
-
-        // Clear lenders and unregister credit lines and liquidity pools
-        for (uint256 programId = programCount; programId > 0; --programId) {
-            if (_programLenders[uint32(programId)] != owner) {
-                revert("Access Control Migration: one of program lenders mismatches");
-            }
-            address creditLine = _programCreditLines[uint32(programId)];
-            address liquidityPool = _programLiquidityPools[uint32(programId)];
-            _creditLineLenders[creditLine] = address(0);
-            _liquidityPoolLenders[liquidityPool] = address(0);
-            _programLenders[uint32(programId)] = address(0);
-        }
     }
 
     // -------------------------------------------- //
@@ -575,16 +511,6 @@ contract LendingMarket is
     // -------------------------------------------- //
     //  Internal functions                          //
     // -------------------------------------------- //
-
-    /// @dev Checks if the account is an admin.
-    /// @param account The address of the account to check.
-    function _checkIfAdmin(address account) internal view {
-        if (_hasAlias[_programLenders[1]][account]) {
-            // This line can be removed after the access control migration
-            return;
-        }
-        _checkRole(ADMIN_ROLE, account);
-    }
 
     /// @dev Takes a loan for a provided account internally.
     /// @param borrower The account for whom the loan is taken.

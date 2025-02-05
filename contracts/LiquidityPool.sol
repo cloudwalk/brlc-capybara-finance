@@ -241,21 +241,6 @@ contract LiquidityPool is
     }
 
     // -------------------------------------------- //
-    //  Service functions                           //
-    // -------------------------------------------- //
-
-    function migrateAccessControl() external onlyRole(OWNER_ROLE) {
-        // The role of this contract admin that was deprecated.
-        bytes32 ADMIN_ROLE = keccak256("ADMIN_ROLE");
-
-        // Renounce the admin role for the 'ADMIN_ROLE' role.
-        _setRoleAdmin(ADMIN_ROLE, DEFAULT_ADMIN_ROLE);
-
-        // Set the admin role for the 'OWNER_ROLE' role.
-        _setRoleAdmin(OWNER_ROLE, OWNER_ROLE);
-    }
-
-    // -------------------------------------------- //
     //  View functions                              //
     // -------------------------------------------- //
 
