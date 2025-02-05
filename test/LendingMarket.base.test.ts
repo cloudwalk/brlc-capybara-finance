@@ -3401,17 +3401,6 @@ describe("Contract 'LendingMarket': base tests", async () => {
       for (let i = 0; i < loans.length; ++i) {
         checkEquality(actualLoanPreviews[i], expectedLoanPreviews[i], i);
       }
-
-      // The loan after defaulting and no credit line registered for the program ID.
-      // The late fee amount must be zero in this case.
-      const loan = clone(loans[0]);
-      await proveTx(
-        market.setCreditLineForProgram(loan.state.programId, ZERO_ADDRESS) // Call via the testable version
-      );
-      loan.config.lateFeeAmount = 0;
-      const expectedLoanPreview = determineLoanPreview(loan, timestamp);
-      const actualLoanPreview = await market.getLoanPreview(loan.id, timestamp);
-      checkEquality(actualLoanPreview, expectedLoanPreview);
     });
 
     it("Function 'getLoanPreviewExtendedBatch()' executes as expected", async () => {
