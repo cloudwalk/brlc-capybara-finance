@@ -95,6 +95,26 @@ interface ILendingMarketPrimary {
         uint256 newTrackedBalance
     );
 
+    /// @dev Emitted when a repayment is undone.
+    /// @param loanId The unique identifier of the loan.
+    /// @param repaymentTimestamp The timestamp of the repayment in the lending market time zone.
+    /// @param newRepaidAmount The new repaid amount of the loan.
+    /// @param oldRepaidAmount The old repaid amount of the loan.
+    /// @param newTrackedBalance The new tracked balance of the loan.
+    /// @param oldTrackedBalance The old tracked balance of the loan.
+    /// @param newLateFeeAmount The new late fee amount of the loan.
+    /// @param oldLateFeeAmount The old late fee amount of the loan.
+    event RepaymentUndone(
+        uint256 indexed loanId,
+        uint256 repaymentTimestamp,
+        uint256 newRepaidAmount,
+        uint256 oldRepaidAmount,
+        uint256 newTrackedBalance,
+        uint256 oldTrackedBalance,
+        uint256 newLateFeeAmount,
+        uint256 oldLateFeeAmount
+    );
+
     /// @dev Emitted when a loan is frozen.
     /// @param loanId The unique identifier of the loan.
     event LoanFrozen(uint256 indexed loanId);
@@ -208,6 +228,16 @@ interface ILendingMarketPrimary {
     function discountLoanForBatch(
         uint256[] calldata loanIds, // Tools: this comment prevents Prettier from formatting into a single line.
         uint256[] calldata discountAmounts
+    ) external;
+
+    /// @dev Undoes a repayment for a loan.
+    /// @param loanId The unique identifier of the loan.
+    /// @param repaymentAmount The amount of the repayment to undo.
+    /// @param repaymentTimestamp The timestamp of the repayment in the lending market time zone.
+    function undoRepaymentFor(
+        uint256 loanId, // Tools: this comment prevents Prettier from formatting into a single line.
+        uint256 repaymentAmount,
+        uint256 repaymentTimestamp
     ) external;
 
     /// @dev Freezes an ordinary loan or a sub-loan.
@@ -439,6 +469,9 @@ interface ILendingMarketErrors {
 
     /// @dev Thrown when the installment count exceeds the maximum allowed value.
     error InstallmentCountExcess();
+
+    /// @dev Thrown when the provided repayment timestamp is invalid.
+    error RepaymentTimestampInvalid();
 }
 
 /// @title ILendingMarket interface

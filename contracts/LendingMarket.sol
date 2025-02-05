@@ -310,6 +310,59 @@ contract LendingMarket is
     }
 
     /// @inheritdoc ILendingMarketPrimary
+    function undoRepaymentFor(
+        uint256 loanId,
+        uint256 repaymentAmount,
+        uint256 repaymentTimestamp
+    ) external whenNotPaused onlyOngoingLoan(loanId) onlyRole(ADMIN_ROLE) {
+        Loan.State storage loan = _loans[loanId];
+        _checkRepaymentAmount(loan, repaymentAmount);
+        _checkRepaymentTimestamp(loan, repaymentTimestamp);
+        uint256 oldTrackedBalance = loan.trackedBalance;
+        (uint256 newTrackedBalance, ) = _calculateCustomTrackedBalance(
+            loan,
+            repaymentAmount,
+            repaymentTimestamp,
+            loan.trackedTimestamp
+        );
+        newTrackedBalance += oldTrackedBalance;
+
+        uint256 oldRepaidAmount = loan.repaidAmount;
+        uint256 newRepaidAmount;
+        unchecked {
+            newRepaidAmount = oldRepaidAmount - repaymentAmount;
+        }
+
+        uint256 oldLateFeeAmount = loan.lateFeeAmount;
+        uint256 newLateFeeAmount = oldLateFeeAmount;
+        uint256 dueTimestamp = _getDueTimestamp(loan);
+        if (repaymentTimestamp <= dueTimestamp && oldLateFeeAmount != 0) {
+            (uint256 additionalLateFeeAmount, ) = _calculateCustomTrackedBalance(
+                loan,
+                repaymentAmount,
+                repaymentTimestamp,
+                dueTimestamp
+            );
+            additionalLateFeeAmount = _calculateLateFee(additionalLateFeeAmount, loan);
+            newLateFeeAmount += additionalLateFeeAmount;
+        }
+
+        emit RepaymentUndone(
+            loanId,
+            repaymentTimestamp,
+            newRepaidAmount,
+            oldRepaidAmount,
+            newTrackedBalance,
+            oldTrackedBalance,
+            newLateFeeAmount,
+            oldLateFeeAmount
+        );
+        loan.repaidAmount = newRepaidAmount.toUint64();
+        loan.trackedBalance = newTrackedBalance.toUint64();
+        loan.lateFeeAmount = newLateFeeAmount.toUint64();
+    }
+
+    /// @inheritdoc ILendingMarketPrimary
     function freeze(uint256 loanId) external whenNotPaused onlyOngoingLoan(loanId) onlyRole(ADMIN_ROLE) {
         Loan.State storage loan = _loans[loanId];
 
@@ -330,10 +383,10 @@ contract LendingMarket is
             revert LoanNotFrozen();
         }
 
-        uint256 blockTimestamp = _blockTimestamp();
-        (uint256 trackedBalance, uint256 lateFeeAmount) = _calculateTrackedBalance(loan, blockTimestamp);
+        uint256 timestamp = _blockTimestamp();
+        (uint256 trackedBalance, uint256 lateFeeAmount) = _calculateTrackedBalance(loan, timestamp);
         _updateStoredLateFee(lateFeeAmount, loan);
-        uint256 currentPeriodIndex = _periodIndex(blockTimestamp, Constants.PERIOD_IN_SECONDS);
+        uint256 currentPeriodIndex = _periodIndex(timestamp, Constants.PERIOD_IN_SECONDS);
         uint256 freezePeriodIndex = _periodIndex(loan.freezeTimestamp, Constants.PERIOD_IN_SECONDS);
         uint256 frozenPeriods = currentPeriodIndex - freezePeriodIndex;
 
@@ -341,7 +394,7 @@ contract LendingMarket is
             loan.durationInPeriods += frozenPeriods.toUint32();
         }
         loan.trackedBalance = trackedBalance.toUint64();
-        loan.trackedTimestamp = blockTimestamp.toUint32();
+        loan.trackedTimestamp = timestamp.toUint32();
         loan.freezeTimestamp = 0;
 
         emit LoanUnfrozen(loanId);
@@ -787,38 +840,76 @@ contract LendingMarket is
         }
     }
 
+    /// @dev Checks if the repayment amount is valid.
+    /// @param loan The storage state of the loan.
+    /// @param repaymentAmount The repayment amount to check.
+    function _checkRepaymentAmount(Loan.State storage loan, uint256 repaymentAmount) internal view {
+        if (
+            repaymentAmount == 0 ||
+            repaymentAmount > loan.repaidAmount ||
+            repaymentAmount != Rounding.roundMath(repaymentAmount, Constants.ACCURACY_FACTOR)
+        ) {
+            revert Error.InvalidAmount();
+        }
+    }
+
+    /// @dev Checks if the repayment timestamp is valid.
+    /// @param loan The storage state of the loan.
+    /// @param repaymentTimestamp The repayment timestamp to check in the lending market time zone.
+    function _checkRepaymentTimestamp(Loan.State storage loan, uint256 repaymentTimestamp) internal view {
+        if (repaymentTimestamp < loan.startTimestamp) {
+            revert RepaymentTimestampInvalid();
+        }
+    }
+
     /// @dev Calculates the tracked balance of a loan.
-    /// @param loan The loan to calculate the tracked balance for.
+    /// @param loan The storage state of the loan to calculate the tracked balance for.
     /// @param timestamp The timestamp to calculate the tracked balance at.
-    /// @return trackedBalance The tracked balance of the loan at the specified timestamp.
+    /// @return trackedBalance The new calculated tracked balance of the loan at the specified timestamp.
     /// @return lateFeeAmount The late fee amount or zero if the loan is not defaulted at the specified timestamp.
     function _calculateTrackedBalance(
         Loan.State storage loan,
         uint256 timestamp
     ) internal view returns (uint256 trackedBalance, uint256 lateFeeAmount) {
-        trackedBalance = loan.trackedBalance;
+        return _calculateCustomTrackedBalance(loan, loan.trackedBalance, loan.trackedTimestamp, timestamp);
+    }
+
+    /// @dev Calculates the tracked balance of a loan with additional parameters.
+    /// @param loan The storage state of the loan to calculate the tracked balance for.
+    /// @param initialBalance The initial balance for the calculation.
+    /// @param startTimestamp The start timestamp for the calculation.
+    /// @param finishTimestamp The finish timestamp for the calculation.
+    /// @return trackedBalance The new calculated tracked balance of the loan at the specified timestamp.
+    /// @return lateFeeAmount The late fee amount or zero if the loan is not defaulted at the specified timestamp.
+    function _calculateCustomTrackedBalance(
+        Loan.State storage loan,
+        uint256 initialBalance,
+        uint256 startTimestamp,
+        uint256 finishTimestamp
+    ) internal view returns (uint256 trackedBalance, uint256 lateFeeAmount) {
+        trackedBalance = initialBalance;
 
         if (loan.freezeTimestamp != 0) {
-            timestamp = loan.freezeTimestamp;
+            finishTimestamp = loan.freezeTimestamp;
         }
 
-        uint256 periodIndex = _periodIndex(timestamp, Constants.PERIOD_IN_SECONDS);
-        uint256 trackedPeriodIndex = _periodIndex(loan.trackedTimestamp, Constants.PERIOD_IN_SECONDS);
+        uint256 finishPeriodIndex = _periodIndex(finishTimestamp, Constants.PERIOD_IN_SECONDS);
+        uint256 startPeriodIndex = _periodIndex(startTimestamp, Constants.PERIOD_IN_SECONDS);
 
-        if (trackedBalance != 0 && periodIndex > trackedPeriodIndex) {
-            uint256 duePeriodIndex = _getDuePeriodIndex(loan.startTimestamp, loan.durationInPeriods);
-            if (trackedPeriodIndex <= duePeriodIndex) {
-                if (periodIndex <= duePeriodIndex) {
+        if (trackedBalance != 0 && finishPeriodIndex > startPeriodIndex) {
+            uint256 duePeriodIndex = _getDuePeriodIndex(loan);
+            if (startPeriodIndex <= duePeriodIndex) {
+                if (finishPeriodIndex <= duePeriodIndex) {
                     trackedBalance = InterestMath.calculateTrackedBalance(
                         trackedBalance,
-                        periodIndex - trackedPeriodIndex,
+                        finishPeriodIndex - startPeriodIndex,
                         loan.interestRatePrimary,
                         Constants.INTEREST_RATE_FACTOR
                     );
                 } else {
                     trackedBalance = InterestMath.calculateTrackedBalance(
                         trackedBalance,
-                        duePeriodIndex - trackedPeriodIndex,
+                        duePeriodIndex - startPeriodIndex,
                         loan.interestRatePrimary,
                         Constants.INTEREST_RATE_FACTOR
                     );
@@ -826,7 +917,7 @@ contract LendingMarket is
                     trackedBalance += lateFeeAmount;
                     trackedBalance = InterestMath.calculateTrackedBalance(
                         trackedBalance,
-                        periodIndex - duePeriodIndex,
+                        finishPeriodIndex - duePeriodIndex,
                         loan.interestRateSecondary,
                         Constants.INTEREST_RATE_FACTOR
                     );
@@ -834,7 +925,7 @@ contract LendingMarket is
             } else {
                 trackedBalance = InterestMath.calculateTrackedBalance(
                     trackedBalance,
-                    periodIndex - trackedPeriodIndex,
+                    finishPeriodIndex - startPeriodIndex,
                     loan.interestRateSecondary,
                     Constants.INTEREST_RATE_FACTOR
                 );
@@ -851,10 +942,7 @@ contract LendingMarket is
         Loan.State storage loan = _loans[loanId];
 
         preview.periodIndex = _periodIndex(timestamp, Constants.PERIOD_IN_SECONDS);
-        (preview.trackedBalance, /* skip the late fee */) = _calculateTrackedBalance(
-            loan,
-            timestamp
-        );
+        (preview.trackedBalance /* skip the late fee */, ) = _calculateTrackedBalance(loan, timestamp);
         preview.outstandingBalance = Rounding.roundMath(preview.trackedBalance, Constants.ACCURACY_FACTOR);
 
         return preview;
@@ -872,10 +960,7 @@ contract LendingMarket is
         Loan.State storage loan = _loans[loanId];
 
         preview.periodIndex = _periodIndex(timestamp, Constants.PERIOD_IN_SECONDS);
-        (preview.trackedBalance, preview.lateFeeAmount) = _calculateTrackedBalance(
-            loan,
-            timestamp
-        );
+        (preview.trackedBalance, preview.lateFeeAmount) = _calculateTrackedBalance(loan, timestamp);
         preview.outstandingBalance = Rounding.roundMath(preview.trackedBalance, Constants.ACCURACY_FACTOR);
         preview.borrowedAmount = loan.borrowedAmount;
         preview.addonAmount = loan.addonAmount;
@@ -940,12 +1025,18 @@ contract LendingMarket is
     }
 
     /// @dev Calculates the due period index for a loan.
-    /// @param startTimestamp The start timestamp of the loan.
-    /// @param durationInPeriods The duration of the loan in periods.
+    /// @param loan The storage state of the loan.
     /// @return The due period index.
-    function _getDuePeriodIndex(uint256 startTimestamp, uint256 durationInPeriods) internal pure returns (uint256) {
-        uint256 startPeriodIndex = _periodIndex(startTimestamp, Constants.PERIOD_IN_SECONDS);
-        return startPeriodIndex + durationInPeriods;
+    function _getDuePeriodIndex(Loan.State storage loan) internal view returns (uint256) {
+        uint256 startPeriodIndex = _periodIndex(loan.startTimestamp, Constants.PERIOD_IN_SECONDS);
+        return startPeriodIndex + loan.durationInPeriods;
+    }
+
+    /// @dev Calculates the due timestamp for a loan.
+    /// @param loan The storage state of the loan.
+    /// @return The due timestamp.
+    function _getDueTimestamp(Loan.State storage loan) internal view returns (uint256) {
+        return _getDuePeriodIndex(loan) * Constants.PERIOD_IN_SECONDS + Constants.PERIOD_IN_SECONDS - 1;
     }
 
     /// @dev Checks if the loan is repaid.
