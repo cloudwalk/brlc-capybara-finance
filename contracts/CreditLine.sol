@@ -259,15 +259,6 @@ contract CreditLine is
     }
 
     // -------------------------------------------- //
-    //  Service functions                           //
-    // -------------------------------------------- //
-
-    function migrateAccessControl() external onlyRole(OWNER_ROLE) {
-        // Set the admin role for the 'OWNER_ROLE' role.
-        _setRoleAdmin(OWNER_ROLE, OWNER_ROLE);
-    }
-
-    // -------------------------------------------- //
     //  View functions                              //
     // -------------------------------------------- //
 

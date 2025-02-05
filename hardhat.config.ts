@@ -21,7 +21,8 @@ const config: HardhatUserConfig = {
     hardhat: {
       accounts: {
         mnemonic: process.env.HARDHAT_MNEMONIC
-      }
+      },
+      allowUnlimitedContractSize: true
     },
     ganache: {
       url: process.env.GANACHE_RPC,

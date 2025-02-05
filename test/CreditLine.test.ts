@@ -222,7 +222,6 @@ const ERROR_NAME_ZERO_ADDRESS = "ZeroAddress";
 const EVENT_NAME_BORROWER_CONFIGURED = "BorrowerConfigured";
 const EVENT_NAME_CREDIT_LINE_CONFIGURED = "CreditLineConfigured";
 
-const DEFAULT_ADMIN_ROLE = ethers.ZeroHash;
 const OWNER_ROLE = ethers.id("OWNER_ROLE");
 const ADMIN_ROLE = ethers.id("ADMIN_ROLE");
 const PAUSER_ROLE = ethers.id("PAUSER_ROLE");
@@ -1521,30 +1520,6 @@ describe("Contract 'CreditLine'", async () => {
       const actualValue = await creditLine[FUNC_DETERMINE_LATE_FEE_AMOUNT_LEGACY](loanTrackedBalance);
       const expectedValue = 2n; // round(loanTrackedBalance * lateFeeRate / INTEREST_RATE_FACTOR)
       expect(actualValue).to.equal(expectedValue);
-    });
-  });
-
-  describe("Function 'migrateAccessControl()'", async () => {
-    it("Executes as expected", async () => {
-      const { creditLine } = await setUpFixture(deployAndConfigureContractsWithBorrower);
-      await proveTx(creditLine.setRoleAdmin(OWNER_ROLE, DEFAULT_ADMIN_ROLE));
-
-      expect(await creditLine.getRoleAdmin(OWNER_ROLE)).to.equal(DEFAULT_ADMIN_ROLE);
-
-      await proveTx(creditLine.migrateAccessControl());
-
-      expect(await creditLine.getRoleAdmin(OWNER_ROLE)).to.equal(OWNER_ROLE);
-    });
-
-    it("Is reverted if the caller does not have the owner role", async () => {
-      const { creditLine } = await setUpFixture(deployAndConfigureContractsWithBorrower);
-
-      await expect(connect(creditLine, admin).migrateAccessControl())
-        .to.be.revertedWithCustomError(creditLine, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
-        .withArgs(admin.address, OWNER_ROLE);
-      await expect(connect(creditLine, attacker).migrateAccessControl())
-        .to.be.revertedWithCustomError(creditLine, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
-        .withArgs(attacker.address, OWNER_ROLE);
     });
   });
 });
