@@ -157,7 +157,6 @@ const ERROR_NAME_LOAN_TYPE_UNEXPECTED = "LoanTypeUnexpected";
 const ERROR_NAME_LOAN_ID_EXCESS = "LoanIdExcess";
 const ERROR_NAME_PROGRAM_ID_EXCESS = "ProgramIdExcess";
 
-const EVENT_NAME_LENDER_ALIAS_CONFIGURED = "LenderAliasConfigured";
 const EVENT_NAME_PROGRAM_CREATED = "ProgramCreated";
 const EVENT_NAME_PROGRAM_UPDATED = "ProgramUpdated";
 const EVENT_NAME_LOAN_INTEREST_RATE_PRIMARY_UPDATED = "LoanInterestRatePrimaryUpdated";
@@ -176,7 +175,6 @@ const EVENT_NAME_INSTALLMENT_LOAN_REVOKED = "InstallmentLoanRevoked";
 const EVENT_NAME_ON_AFTER_LOAN_REVOCATION = "OnAfterLoanRevocationCalled";
 const EVENT_NAME_TRANSFER = "Transfer";
 
-const DEFAULT_ADMIN_ROLE = ethers.ZeroHash;
 const OWNER_ROLE = ethers.id("OWNER_ROLE");
 const ADMIN_ROLE = ethers.id("ADMIN_ROLE");
 const PAUSER_ROLE = ethers.id("PAUSER_ROLE");
@@ -3157,193 +3155,6 @@ describe("Contract 'LendingMarket': base tests", async () => {
     });
   });
 
-  describe("Function 'migrateAccessControl()'", async () => {
-    async function prepareMigration(fixture: Fixture, aliases: HardhatEthersSigner[]): Promise<{
-      programCount: number;
-      creditLineAddresses: string[];
-      liquidityPoolAddresses: string[];
-    }> {
-      const { market } = fixture;
-      const creditLines = [creditLine, anotherCreditLine];
-      const liquidityPools = [liquidityPool, anotherLiquidityPool];
-      const creditLineAddresses = creditLines.map(creditLine => getAddress(creditLine));
-      const liquidityPoolAddresses = liquidityPools.map(liquidityPool => getAddress(liquidityPool));
-
-      for (const alias of aliases) {
-        await proveTx(market.setAlias(owner.address, alias.address, true));
-      }
-
-      if (await market.hasRole(ADMIN_ROLE, owner.address) === true) {
-        await proveTx(market.revokeRole(ADMIN_ROLE, owner.address));
-      }
-      if (await market.hasRole(PAUSER_ROLE, owner.address) === true) {
-        await proveTx(market.revokeRole(PAUSER_ROLE, owner.address));
-      }
-
-      market.setRoleAdmin(OWNER_ROLE, DEFAULT_ADMIN_ROLE);
-      market.setRoleAdmin(ADMIN_ROLE, DEFAULT_ADMIN_ROLE);
-      market.setRoleAdmin(PAUSER_ROLE, DEFAULT_ADMIN_ROLE);
-
-      const targetProgramCount = creditLines.length;
-      let currentProgramCount = 0;
-      for (let programId = 1; programId <= targetProgramCount; ++programId) {
-        if (await market.getProgramCreditLine(programId) != ZERO_ADDRESS) {
-          ++currentProgramCount;
-        }
-      }
-
-      expect(creditLines.length).lessThanOrEqual(targetProgramCount);
-      for (let programId = currentProgramCount + 1; programId <= targetProgramCount; ++programId) {
-        await proveTx(market.createProgram(creditLineAddresses[programId - 1], liquidityPoolAddresses[programId - 1]));
-      }
-
-      for (let i = 0; i < targetProgramCount; ++i) {
-        const programId = i + 1;
-        await proveTx(market.setProgramLender(programId, owner.address));
-        await proveTx(market.setCreditLineLender(creditLineAddresses[i], owner.address));
-        await proveTx(market.setLiquidityPoolLender(liquidityPoolAddresses[i], owner.address));
-      }
-
-      // Check all settings at the end
-      for (const alias of aliases) {
-        expect(await market.isAlias(alias.address, owner.address)).to.be.true;
-        expect(await market.hasRole(ADMIN_ROLE, alias.address)).to.be.false;
-      }
-
-      expect(await market.getRoleAdmin(OWNER_ROLE)).to.eq(DEFAULT_ADMIN_ROLE);
-      expect(await market.getRoleAdmin(ADMIN_ROLE)).to.eq(DEFAULT_ADMIN_ROLE);
-      expect(await market.getRoleAdmin(PAUSER_ROLE)).to.eq(DEFAULT_ADMIN_ROLE);
-
-      expect(await market.hasRole(OWNER_ROLE, owner.address)).to.be.true;
-      expect(await market.hasRole(ADMIN_ROLE, owner.address)).to.be.false;
-      expect(await market.hasRole(PAUSER_ROLE, owner.address)).to.be.false;
-
-      for (let programId = 1; programId <= targetProgramCount; ++programId) {
-        expect(await market.getProgramLender(programId)).to.eq(owner.address);
-      }
-
-      for (const contractAddress of creditLineAddresses) {
-        expect(await market.getCreditLineLender(contractAddress)).to.eq(owner.address);
-      }
-
-      for (const contractAddress of liquidityPoolAddresses) {
-        expect(await market.getLiquidityPoolLender(contractAddress)).to.eq(owner.address);
-      }
-
-      return {
-        programCount: targetProgramCount,
-        creditLineAddresses,
-        liquidityPoolAddresses
-      };
-    }
-
-    it("Executes as expected", async () => {
-      const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
-      const aliases = [deployer, borrower, borrower, stranger]; // Intentional duplication in the array
-      const aliasAddresses = aliases.map(alias => alias.address);
-      const { market } = fixture;
-      const { programCount, creditLineAddresses, liquidityPoolAddresses } = await prepareMigration(fixture, aliases);
-      aliasAddresses.push(addonTreasury.address); // One more account that is not an alias;
-
-      // The first call with not all aliases
-
-      const tx1 = market.migrateAccessControl(programCount, [aliasAddresses[0], aliasAddresses[1], aliasAddresses[2]]);
-
-      expect(await getNumberOfEvents(tx1, market, EVENT_NAME_LENDER_ALIAS_CONFIGURED)).to.eq(2);
-      await expect(tx1)
-        .to.emit(market, EVENT_NAME_LENDER_ALIAS_CONFIGURED)
-        .withArgs(owner.address, aliasAddresses[0], false);
-      await expect(tx1)
-        .to.emit(market, EVENT_NAME_LENDER_ALIAS_CONFIGURED)
-        .withArgs(owner.address, aliasAddresses[1], false);
-
-      for (let i = 0; i < 3; ++i) {
-        expect(await market.isAlias(aliasAddresses[i], owner.address)).to.be.false;
-        expect(await market.hasRole(ADMIN_ROLE, aliasAddresses[i])).to.be.true;
-      }
-      expect(await market.isAlias(aliasAddresses[3], owner.address)).to.be.true; // !!!
-      expect(await market.hasRole(ADMIN_ROLE, aliasAddresses[3])).to.be.false;
-      expect(await market.isAlias(aliasAddresses[4], owner.address)).to.be.false;
-      expect(await market.hasRole(ADMIN_ROLE, aliasAddresses[4])).to.be.false;
-
-      expect(await market.getRoleAdmin(OWNER_ROLE)).to.eq(OWNER_ROLE);
-      expect(await market.getRoleAdmin(ADMIN_ROLE)).to.eq(OWNER_ROLE);
-      expect(await market.getRoleAdmin(PAUSER_ROLE)).to.eq(OWNER_ROLE);
-
-      expect(await market.hasRole(OWNER_ROLE, owner.address)).to.be.true;
-      expect(await market.hasRole(ADMIN_ROLE, owner.address)).to.be.true;
-      expect(await market.hasRole(PAUSER_ROLE, owner.address)).to.be.true;
-
-      for (let programId = 1; programId <= programCount; ++programId) {
-        expect(await market.getProgramLender(programId)).to.eq(ZERO_ADDRESS);
-      }
-      for (const contractAddress of creditLineAddresses) {
-        expect(await market.getCreditLineLender(contractAddress)).to.eq(ZERO_ADDRESS);
-      }
-      for (const contractAddress of liquidityPoolAddresses) {
-        expect(await market.getLiquidityPoolLender(contractAddress)).to.eq(ZERO_ADDRESS);
-      }
-
-      // The second call with all aliases
-
-      const tx2 = market.migrateAccessControl(programCount, aliasAddresses);
-
-      expect(await getNumberOfEvents(tx2, market, EVENT_NAME_LENDER_ALIAS_CONFIGURED)).to.eq(1);
-      await expect(tx2)
-        .to.emit(market, EVENT_NAME_LENDER_ALIAS_CONFIGURED)
-        .withArgs(owner.address, aliasAddresses[3], false);
-
-      for (const aliasAddress of aliasAddresses) {
-        expect(await market.isAlias(aliasAddress, owner.address)).to.be.false;
-      }
-
-      for (let i = 0; i < aliasAddresses.length - 1; ++i) {
-        expect(await market.hasRole(ADMIN_ROLE, aliasAddresses[i])).to.be.true;
-      }
-      // Check that the admin role is not granted for an account that has not been an alias before the migration
-      expect(await market.hasRole(ADMIN_ROLE, aliasAddresses[aliasAddresses.length - 1])).to.be.false;
-
-      await expect(tx2).not.to.emit(market, "RoleAdminChanged"); // To be sure only aliases have been revoked
-
-      // The third call with no aliases
-
-      const tx3 = market.migrateAccessControl(programCount, []);
-
-      expect(await getNumberOfEvents(tx3, market, EVENT_NAME_LENDER_ALIAS_CONFIGURED)).to.eq(0);
-      await expect(tx3).not.to.emit(market, "RoleAdminChanged"); // To be sure only aliases have been revoked
-    });
-
-    it("Is reverted if the caller does not have the owner role", async () => {
-      const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
-      const aliasAddresses: string[] = [];
-      const { market } = fixture;
-      const programCount = 1;
-
-      await expect(connect(market, admin).migrateAccessControl(programCount, aliasAddresses))
-        .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
-        .withArgs(admin.address, OWNER_ROLE);
-    });
-
-    it("Is reverted if the provided program count is less then the number of lending programs", async () => {
-      const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
-      const aliasAddresses: string[] = [];
-      const { market } = fixture;
-      const { programCount } = await prepareMigration(fixture, []);
-
-      await expect(market.migrateAccessControl(programCount - 1, aliasAddresses)).to.be.reverted;
-      await expect(market.migrateAccessControl(0, aliasAddresses)).to.be.reverted;
-    });
-
-    it("Is reverted if the provided program count is greater then the number of lending programs", async () => {
-      const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
-      const aliasAddresses: string[] = [];
-      const { market } = fixture;
-      const { programCount } = await prepareMigration(fixture, []);
-
-      await expect(market.migrateAccessControl(programCount + 1, aliasAddresses)).to.be.reverted;
-    });
-  });
-
   describe("View functions", async () => {
     // This section tests only those functions that have not been previously used in other sections.
     it("Function 'getLoanPreview()' executes as expected", async () => {
@@ -3522,19 +3333,6 @@ describe("Contract 'LendingMarket': base tests", async () => {
       expectedLoanPreview = defineInstallmentLoanPreview(loans, timestamp);
       actualLoanPreview = await market.getInstallmentLoanPreview(loan.id, calculateTimestampWithOffset(timestamp));
       checkInstallmentLoanPreviewEquality(actualLoanPreview, expectedLoanPreview);
-    });
-
-    it("Function '_checkIfAdmin()' executes as expected before the access control migration", async () => {
-      const { market } = await setUpFixture(deployLendingMarketAndTakeLoans);
-
-      await expect(market.checkIfAdmin(stranger.address))
-        .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
-        .withArgs(stranger.address, ADMIN_ROLE);
-
-      await proveTx(market.setProgramLender(1, owner.address));
-      await proveTx(market.setAlias(owner.address, stranger.address, true));
-
-      await expect(market.checkIfAdmin(stranger.address)).not.to.be.reverted;
     });
   });
 
