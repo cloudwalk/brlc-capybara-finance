@@ -455,6 +455,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
   function determineLoanPreview(loan: Loan, timestamp: number): LoanPreview {
     let trackedBalance = loan.state.trackedBalance;
     let timestampWithOffset = calculateTimestampWithOffset(timestamp);
+    const initialPeriodIndex = calculatePeriodIndex(timestampWithOffset);
     if (loan.state.freezeTimestamp != 0) {
       timestampWithOffset = loan.state.freezeTimestamp;
     }
@@ -485,7 +486,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       );
     }
     return {
-      periodIndex,
+      periodIndex: initialPeriodIndex,
       trackedBalance,
       outstandingBalance: roundSpecific(trackedBalance)
     };
@@ -3453,6 +3454,18 @@ describe("Contract 'LendingMarket': base tests", async () => {
         processRepayment(loan, { repaymentTimestamp, repaymentAmount: REPAYMENT_AMOUNT });
       }
       timestamp = await getLatestBlockTimestamp() + 2 * PERIOD_IN_SECONDS + 1000;
+      expectedLoanPreviews = loans.map(loan => determineLoanPreviewExtended(loan, timestamp));
+      actualLoanPreviews = await market.getLoanPreviewExtendedBatch(loanIds, calculateTimestampWithOffset(timestamp));
+      expect(actualLoanPreviews.length).to.eq(expectedLoanPreviews.length);
+      for (let i = 0; i < expectedLoanPreviews.length; ++i) {
+        checkEquality(actualLoanPreviews[i], expectedLoanPreviews[i], i);
+      }
+
+      // The second loan is frozen. The function must work properly in this case too
+      {
+        const tx = connect(market, admin).freeze(loans[1].id);
+        loans[1].state.freezeTimestamp = calculateTimestampWithOffset(await getTxTimestamp(tx));
+      }
       expectedLoanPreviews = loans.map(loan => determineLoanPreviewExtended(loan, timestamp));
       actualLoanPreviews = await market.getLoanPreviewExtendedBatch(loanIds, calculateTimestampWithOffset(timestamp));
       expect(actualLoanPreviews.length).to.eq(expectedLoanPreviews.length);
