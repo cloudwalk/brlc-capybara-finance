@@ -198,6 +198,9 @@ contract LendingMarket is
         // Arrays are not checked for emptiness because if the loan amount is zero, the transaction is reverted earlier
 
         for (uint256 i = 0; i < installmentCount; ++i) {
+            if (borrowedAmounts[i] == 0) {
+                revert Error.InvalidAmount();
+            }
             uint256 loanId = _takeLoan(
                 borrower, // Tools: this comment prevents Prettier from formatting into a single line.
                 programId,
