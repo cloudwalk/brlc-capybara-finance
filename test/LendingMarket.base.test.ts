@@ -1481,22 +1481,6 @@ describe("Contract 'LendingMarket': base tests", async () => {
         ).to.be.revertedWithCustomError(marketUnderAdmin, ERROR_NAME_INVALID_AMOUNT);
       });
 
-      it("One of the borrowed amount values is zero", async () => {
-        const { marketUnderAdmin } = await setUpFixture(deployLendingMarketAndConfigureItForLoan);
-        const wrongBorrowedAmounts = [...BORROWED_AMOUNTS];
-        wrongBorrowedAmounts[INSTALLMENT_COUNT - 1] = 0;
-
-        await expect(
-          marketUnderAdmin.takeInstallmentLoanFor(
-            borrower.address,
-            PROGRAM_ID,
-            wrongBorrowedAmounts,
-            ADDON_AMOUNTS,
-            DURATIONS_IN_PERIODS
-          )
-        ).to.be.revertedWithCustomError(marketUnderAdmin, ERROR_NAME_INVALID_AMOUNT);
-      });
-
       it("The total borrowed amount is not rounded according to the accuracy factor", async () => {
         const { marketUnderAdmin } = await setUpFixture(deployLendingMarketAndConfigureItForLoan);
         const wrongBorrowedAmounts = [...BORROWED_AMOUNTS];
@@ -1584,6 +1568,22 @@ describe("Contract 'LendingMarket': base tests", async () => {
             wrongDurations
           )
         ).to.be.revertedWithCustomError(marketUnderAdmin, ERROR_NAME_ARRAY_LENGTH_MISMATCH);
+      });
+
+      it("One of the borrowed amount values is zero", async () => {
+        const { marketUnderAdmin } = await setUpFixture(deployLendingMarketAndConfigureItForLoan);
+        const wrongBorrowedAmounts: number[] = Array.from({ length: INSTALLMENT_COUNT }, () => BORROWED_AMOUNT);
+        wrongBorrowedAmounts[INSTALLMENT_COUNT - 1] = 0;
+
+        await expect(
+          marketUnderAdmin.takeInstallmentLoanFor(
+            borrower.address,
+            PROGRAM_ID,
+            wrongBorrowedAmounts,
+            ADDON_AMOUNTS,
+            DURATIONS_IN_PERIODS
+          )
+        ).to.be.revertedWithCustomError(marketUnderAdmin, ERROR_NAME_INVALID_AMOUNT);
       });
 
       it("The credit line is not configured for a lending program", async () => {
