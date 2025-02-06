@@ -5,9 +5,9 @@ pragma solidity 0.8.24;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 
+import { AccessControlExtUpgradeable } from "./base/AccessControlExtUpgradeable.sol";
+import { PausableExtUpgradeable } from "./base/PausableExtUpgradeable.sol";
 import { UUPSExtUpgradeable } from "./base/UUPSExtUpgradeable.sol";
 import { Versionable } from "./base/Versionable.sol";
 
@@ -34,8 +34,8 @@ import { LendingMarketStorage } from "./LendingMarketStorage.sol";
 contract LendingMarket is
     LendingMarketStorage,
     Initializable,
-    AccessControlUpgradeable,
-    PausableUpgradeable,
+    AccessControlExtUpgradeable,
+    PausableExtUpgradeable,
     ILendingMarket,
     Versionable,
     UUPSExtUpgradeable
@@ -50,16 +50,16 @@ contract LendingMarket is
     /// @dev The role of this contract owner.
     bytes32 public constant OWNER_ROLE = keccak256("OWNER_ROLE");
 
+    /// @dev The role of this contract admin.
+    bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
+
     // -------------------------------------------- //
     //  Modifiers                                   //
     // -------------------------------------------- //
 
-    /// @dev Throws if called by any account other than the lender or its alias.
-    /// @param loanId The unique identifier of the loan to check.
-    modifier onlyLenderOrAlias(uint256 loanId) {
-        if (!isLenderOrAlias(loanId, msg.sender)) {
-            revert Error.Unauthorized();
-        }
+    /// @dev Throws if called by any account other than an admin.
+    modifier onlyAdmin() {
+        _checkIfAdmin(msg.sender);
         _;
     }
 
@@ -98,7 +98,9 @@ contract LendingMarket is
         __Context_init_unchained();
         __ERC165_init_unchained();
         __AccessControl_init_unchained();
+        __AccessControlExt_init_unchained();
         __Pausable_init_unchained();
+        __PausableExt_init_unchained(OWNER_ROLE);
         __LendingMarket_init_unchained(owner_);
     }
 
@@ -107,21 +109,8 @@ contract LendingMarket is
     /// See details https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable.
     function __LendingMarket_init_unchained(address owner_) internal onlyInitializing {
         _setRoleAdmin(OWNER_ROLE, OWNER_ROLE);
+        _setRoleAdmin(ADMIN_ROLE, OWNER_ROLE);
         _grantRole(OWNER_ROLE, owner_);
-    }
-
-    // -------------------------------------------- //
-    //  Owner transactional functions               //
-    // -------------------------------------------- //
-
-    /// @dev Pauses the contract.
-    function pause() external onlyRole(OWNER_ROLE) {
-        _pause();
-    }
-
-    /// @dev Unpauses the contract.
-    function unpause() external onlyRole(OWNER_ROLE) {
-        _unpause();
     }
 
     // -------------------------------------------- //
@@ -129,61 +118,23 @@ contract LendingMarket is
     // -------------------------------------------- //
 
     /// @inheritdoc ILendingMarketConfiguration
-    function registerCreditLine(address creditLine) external whenNotPaused {
-        if (creditLine == address(0)) {
-            revert Error.ZeroAddress();
-        }
-        if (_creditLineLenders[creditLine] != address(0)) {
-            revert Error.AlreadyConfigured();
-        }
-        if (creditLine.code.length == 0) {
-            revert ContractAddressInvalid();
-        }
-        try ICreditLine(creditLine).proveCreditLine() {} catch {
-            revert ContractAddressInvalid();
-        }
-
-        emit CreditLineRegistered(msg.sender, creditLine);
-
-        _creditLineLenders[creditLine] = msg.sender;
-    }
-
-    /// @inheritdoc ILendingMarketConfiguration
-    function registerLiquidityPool(address liquidityPool) external whenNotPaused {
-        if (liquidityPool == address(0)) {
-            revert Error.ZeroAddress();
-        }
-
-        if (_liquidityPoolLenders[liquidityPool] != address(0)) {
-            revert Error.AlreadyConfigured();
-        }
-
-        if (liquidityPool.code.length == 0) {
-            revert ContractAddressInvalid();
-        }
-        try ILiquidityPool(liquidityPool).proveLiquidityPool() {} catch {
-            revert ContractAddressInvalid();
-        }
-
-        emit LiquidityPoolRegistered(msg.sender, liquidityPool);
-
-        _liquidityPoolLenders[liquidityPool] = msg.sender;
-    }
-
-    /// @inheritdoc ILendingMarketConfiguration
     function createProgram(
         address creditLine, // Tools: this comment prevents Prettier from formatting into a single line.
         address liquidityPool
-    ) external whenNotPaused {
+    ) external whenNotPaused onlyRole(OWNER_ROLE) {
         _checkCreditLineAndLiquidityPool(creditLine, liquidityPool);
 
-        _programIdCounter++;
-        uint32 programId = _programIdCounter;
+        if (_programIdCounter >= type(uint32).max) {
+            revert ProgramIdExcess();
+        }
+        uint32 programId;
+        unchecked {
+            programId = ++_programIdCounter;
+        }
 
         emit ProgramCreated(msg.sender, programId);
         emit ProgramUpdated(programId, creditLine, liquidityPool);
 
-        _programLenders[programId] = msg.sender;
         _programCreditLines[programId] = creditLine;
         _programLiquidityPools[programId] = liquidityPool;
     }
@@ -193,33 +144,19 @@ contract LendingMarket is
         uint32 programId, // Tools: this comment prevents Prettier from formatting into a single line.
         address creditLine,
         address liquidityPool
-    ) external whenNotPaused {
+    ) external whenNotPaused onlyRole(OWNER_ROLE) {
         if (programId == 0) {
             revert ProgramNotExist();
         }
-        if (_programLenders[programId] != msg.sender) {
-            revert Error.Unauthorized();
-        }
         _checkCreditLineAndLiquidityPool(creditLine, liquidityPool);
+        if (_programCreditLines[programId] == creditLine && _programLiquidityPools[programId] == liquidityPool) {
+            revert Error.AlreadyConfigured();
+        }
 
         emit ProgramUpdated(programId, creditLine, liquidityPool);
 
         _programCreditLines[programId] = creditLine;
         _programLiquidityPools[programId] = liquidityPool;
-    }
-
-    /// @inheritdoc ILendingMarketConfiguration
-    function configureAlias(address account, bool isAlias) external whenNotPaused {
-        if (account == address(0)) {
-            revert Error.ZeroAddress();
-        }
-        if (_hasAlias[msg.sender][account] == isAlias) {
-            revert Error.AlreadyConfigured();
-        }
-
-        emit LenderAliasConfigured(msg.sender, account, isAlias);
-
-        _hasAlias[msg.sender][account] = isAlias;
     }
 
     // -------------------------------------------- //
@@ -233,9 +170,8 @@ contract LendingMarket is
         uint256 borrowedAmount,
         uint256 addonAmount,
         uint256 durationInPeriods
-    ) external whenNotPaused returns (uint256) {
+    ) external whenNotPaused onlyAdmin returns (uint256) {
         _checkMainLoanParameters(borrower, programId, borrowedAmount, addonAmount);
-        _checkSender(msg.sender, programId);
         uint256 loanId = _takeLoan(
             borrower, // Tools: this comment prevents Prettier from formatting into a single line.
             programId,
@@ -254,13 +190,12 @@ contract LendingMarket is
         uint256[] calldata borrowedAmounts,
         uint256[] calldata addonAmounts,
         uint256[] calldata durationsInPeriods
-    ) external whenNotPaused returns (uint256 firstInstallmentId, uint256 installmentCount) {
+    ) external whenNotPaused onlyAdmin returns (uint256 firstInstallmentId, uint256 installmentCount) {
         uint256 totalBorrowedAmount = _sumArray(borrowedAmounts);
         uint256 totalAddonAmount = _sumArray(addonAmounts);
         installmentCount = borrowedAmounts.length;
 
         _checkMainLoanParameters(borrower, programId, totalBorrowedAmount, totalAddonAmount);
-        _checkSender(msg.sender, programId);
         _checkDurationArray(durationsInPeriods);
         _checkInstallmentCount(installmentCount);
         if (addonAmounts.length != installmentCount || durationsInPeriods.length != installmentCount) {
@@ -304,7 +239,7 @@ contract LendingMarket is
         uint256[] calldata loanIds,
         uint256[] calldata repaymentAmounts,
         address repayer
-    ) external whenNotPaused {
+    ) external whenNotPaused onlyAdmin {
         uint256 len = loanIds.length;
         if (len != repaymentAmounts.length) {
             revert Error.ArrayLengthMismatch();
@@ -315,13 +250,12 @@ contract LendingMarket is
         for (uint256 i = 0; i < len; ++i) {
             uint256 loanId = loanIds[i];
             _checkIfLoanOngoing(loanId);
-            _checkSender(msg.sender, _loans[loanId].programId);
             _repayLoan(loanId, repaymentAmounts[i], repayer);
         }
     }
 
     /// @inheritdoc ILendingMarketPrimary
-    function revokeLoan(uint256 loanId) external whenNotPaused onlyOngoingLoan(loanId) {
+    function revokeLoan(uint256 loanId) external whenNotPaused onlyOngoingLoan(loanId) onlyAdmin {
         Loan.State storage loan = _loans[loanId];
         _checkLoanType(loan, uint256(Loan.Type.Ordinary));
         _revokeLoan(loanId, loan);
@@ -329,7 +263,7 @@ contract LendingMarket is
     }
 
     /// @inheritdoc ILendingMarketPrimary
-    function revokeInstallmentLoan(uint256 loanId) external whenNotPaused {
+    function revokeInstallmentLoan(uint256 loanId) external whenNotPaused onlyAdmin {
         Loan.State storage loan = _loans[loanId];
         _checkLoanExistence(loan);
         _checkLoanType(loan, uint256(Loan.Type.Installment));
@@ -369,22 +303,20 @@ contract LendingMarket is
     function discountLoanForBatch(
         uint256[] calldata loanIds, // Tools: this comment prevents Prettier from formatting into a single line.
         uint256[] calldata discountAmounts
-    ) external whenNotPaused {
+    ) external whenNotPaused onlyAdmin {
         uint256 len = loanIds.length;
         if (len != discountAmounts.length) {
             revert Error.ArrayLengthMismatch();
         }
         for (uint256 i = 0; i < len; ++i) {
             uint256 loanId = loanIds[i];
-            Loan.State storage loan = _loans[loanId];
             _checkIfLoanOngoing(loanId);
-            _checkSender(msg.sender, loan.programId);
-            _discountLoan(loanId, loan, discountAmounts[i]);
+            _discountLoan(loanId, discountAmounts[i]);
         }
     }
 
     /// @inheritdoc ILendingMarketPrimary
-    function freeze(uint256 loanId) external whenNotPaused onlyOngoingLoan(loanId) onlyLenderOrAlias(loanId) {
+    function freeze(uint256 loanId) external whenNotPaused onlyOngoingLoan(loanId) onlyAdmin {
         Loan.State storage loan = _loans[loanId];
 
         if (loan.freezeTimestamp != 0) {
@@ -397,7 +329,7 @@ contract LendingMarket is
     }
 
     /// @inheritdoc ILendingMarketPrimary
-    function unfreeze(uint256 loanId) external whenNotPaused onlyOngoingLoan(loanId) onlyLenderOrAlias(loanId) {
+    function unfreeze(uint256 loanId) external whenNotPaused onlyOngoingLoan(loanId) onlyAdmin {
         Loan.State storage loan = _loans[loanId];
 
         if (loan.freezeTimestamp == 0) {
@@ -425,7 +357,7 @@ contract LendingMarket is
     function updateLoanDuration(
         uint256 loanId,
         uint256 newDurationInPeriods
-    ) external whenNotPaused onlyOngoingLoan(loanId) onlyLenderOrAlias(loanId) {
+    ) external whenNotPaused onlyOngoingLoan(loanId) onlyAdmin {
         Loan.State storage loan = _loans[loanId];
 
         if (newDurationInPeriods <= loan.durationInPeriods) {
@@ -441,7 +373,7 @@ contract LendingMarket is
     function updateLoanInterestRatePrimary(
         uint256 loanId,
         uint256 newInterestRate
-    ) external whenNotPaused onlyOngoingLoan(loanId) onlyLenderOrAlias(loanId) {
+    ) external whenNotPaused onlyOngoingLoan(loanId) onlyAdmin {
         Loan.State storage loan = _loans[loanId];
 
         if (newInterestRate >= loan.interestRatePrimary) {
@@ -457,7 +389,7 @@ contract LendingMarket is
     function updateLoanInterestRateSecondary(
         uint256 loanId,
         uint256 newInterestRate
-    ) external whenNotPaused onlyOngoingLoan(loanId) onlyLenderOrAlias(loanId) {
+    ) external whenNotPaused onlyOngoingLoan(loanId) onlyAdmin {
         Loan.State storage loan = _loans[loanId];
 
         if (newInterestRate >= loan.interestRateSecondary) {
@@ -470,18 +402,66 @@ contract LendingMarket is
     }
 
     // -------------------------------------------- //
-    //  View functions                              //
+    //  Service functions                           //
     // -------------------------------------------- //
 
-    /// @inheritdoc ILendingMarketConfiguration
-    function hasAlias(address lender, address account) external view returns (bool) {
-        return _hasAlias[lender][account];
+    /// @dev Migrates the access control for the lending market.
+    ///
+    /// Can be called multiple times for different aliases, but configures other storage variables only once.
+    ///
+    /// The provided program count must be equal to the actual number of programs created in the lending market.
+    ///
+    /// @param programCount The number of lending programs.
+    /// @param aliases The alias accounts to migrate.
+    function migrateAccessControl(uint256 programCount, address[] calldata aliases) external onlyRole(OWNER_ROLE) {
+        programCount.toUint32(); // To check the provided value
+
+        address owner = msg.sender;
+
+        // Revoke aliases and grand them the admin role
+        uint256 count = aliases.length;
+        for (uint256 i = 0; i < count; ++i) {
+            address alias_ = aliases[i];
+            if (_hasAlias[owner][alias_]) {
+                _hasAlias[owner][alias_] = false;
+                emit LenderAliasConfigured(owner, alias_, false);
+                _grantRole(ADMIN_ROLE, alias_);
+            }
+        }
+
+        if (_programLenders[1] == address(0)) {
+            return; // Everything except aliases has been already migrated, do not need to execute twice
+        }
+
+        if (_programLenders[uint32(programCount + 1)] != address(0)) {
+            revert("Access Control Migration: program count is too small");
+        }
+
+        // Set the admin role for other roles
+        _setRoleAdmin(OWNER_ROLE, OWNER_ROLE);
+        _setRoleAdmin(ADMIN_ROLE, OWNER_ROLE);
+        _setRoleAdmin(PAUSER_ROLE, OWNER_ROLE);
+
+        // Grant roles for the owner.
+        _grantRole(ADMIN_ROLE, owner);
+        _grantRole(PAUSER_ROLE, owner);
+
+        // Clear lenders and unregister credit lines and liquidity pools
+        for (uint256 programId = programCount; programId > 0; --programId) {
+            if (_programLenders[uint32(programId)] != owner) {
+                revert("Access Control Migration: one of program lenders mismatches");
+            }
+            address creditLine = _programCreditLines[uint32(programId)];
+            address liquidityPool = _programLiquidityPools[uint32(programId)];
+            _creditLineLenders[creditLine] = address(0);
+            _liquidityPoolLenders[liquidityPool] = address(0);
+            _programLenders[uint32(programId)] = address(0);
+        }
     }
 
-    /// @inheritdoc ILendingMarketPrimary
-    function getProgramLender(uint32 programId) external view returns (address) {
-        return _programLenders[programId];
-    }
+    // -------------------------------------------- //
+    //  View functions                              //
+    // -------------------------------------------- //
 
     /// @inheritdoc ILendingMarketPrimary
     function getProgramCreditLine(uint32 programId) external view returns (address) {
@@ -491,16 +471,6 @@ contract LendingMarket is
     /// @inheritdoc ILendingMarketPrimary
     function getProgramLiquidityPool(uint32 programId) external view returns (address) {
         return _programLiquidityPools[programId];
-    }
-
-    /// @inheritdoc ILendingMarketPrimary
-    function getCreditLineLender(address creditLine) external view returns (address) {
-        return _creditLineLenders[creditLine];
-    }
-
-    /// @inheritdoc ILendingMarketPrimary
-    function getLiquidityPoolLender(address liquidityPool) external view returns (address) {
-        return _liquidityPoolLenders[liquidityPool];
     }
 
     /// @inheritdoc ILendingMarketPrimary
@@ -541,17 +511,6 @@ contract LendingMarket is
         uint256 timestamp
     ) external view returns (Loan.InstallmentLoanPreview memory) {
         return _getInstallmentLoanPreview(loanId, timestamp);
-    }
-
-    /// @inheritdoc ILendingMarketPrimary
-    function isLenderOrAlias(uint256 loanId, address account) public view returns (bool) {
-        return isProgramLenderOrAlias(_loans[loanId].programId, account);
-    }
-
-    /// @inheritdoc ILendingMarketPrimary
-    function isProgramLenderOrAlias(uint32 programId, address account) public view returns (bool) {
-        address lender = _programLenders[programId];
-        return account == lender || _hasAlias[lender][account];
     }
 
     /// @inheritdoc ILendingMarketPrimary
@@ -617,6 +576,16 @@ contract LendingMarket is
     //  Internal functions                          //
     // -------------------------------------------- //
 
+    /// @dev Checks if the account is an admin.
+    /// @param account The address of the account to check.
+    function _checkIfAdmin(address account) internal view {
+        if (_hasAlias[_programLenders[1]][account]) {
+            // This line can be removed after the access control migration
+            return;
+        }
+        _checkRole(ADMIN_ROLE, account);
+    }
+
     /// @dev Takes a loan for a provided account internally.
     /// @param borrower The account for whom the loan is taken.
     /// @param programId The identifier of the program to take the loan from.
@@ -633,12 +602,12 @@ contract LendingMarket is
     ) internal returns (uint256) {
         address creditLine = _programCreditLines[programId];
         if (creditLine == address(0)) {
-            revert CreditLineLenderNotConfigured();
+            revert ProgramCreditLineNotConfigured();
         }
 
         address liquidityPool = _programLiquidityPools[programId];
         if (liquidityPool == address(0)) {
-            revert LiquidityPoolLenderNotConfigured();
+            revert ProgramLiquidityPoolNotConfigured();
         }
 
         uint256 id = _loanIdCounter++;
@@ -704,8 +673,6 @@ contract LendingMarket is
     /// @param loanId The unique identifier of the loan to revoke.
     /// @param loan The storage state of the loan to update.
     function _revokeLoan(uint256 loanId, Loan.State storage loan) internal {
-        _checkLoanRevocationPossibility(loan);
-
         address creditLine = _programCreditLines[loan.programId];
         address liquidityPool = _programLiquidityPools[loan.programId];
 
@@ -720,14 +687,13 @@ contract LendingMarket is
 
     /// @dev Discounts a loan.
     /// @param loanId The unique identifier of the loan to discount.
-    /// @param loan The storage state of the loan.
     /// @param discountAmount The amount of the discount.
     function _discountLoan(
         uint256 loanId, // Tools: this comment prevents Prettier from formatting into a single line.
-        Loan.State storage loan,
         uint256 discountAmount
     ) internal {
         uint256 newTrackedBalance;
+        Loan.State storage loan = _loans[loanId];
         (newTrackedBalance, discountAmount) = _processTrackedBalanceChange(loan, discountAmount);
         loan.discountAmount += discountAmount.toUint64();
         emit LoanDiscounted(loanId, discountAmount, newTrackedBalance);
@@ -800,15 +766,6 @@ contract LendingMarket is
         }
     }
 
-    /// @dev Checks if the sender is authorized for the given program.
-    /// @param sender The address to check.
-    /// @param programId The ID of the lending program.
-    function _checkSender(address sender, uint32 programId) internal view {
-        if (!isProgramLenderOrAlias(programId, sender)) {
-            revert Error.Unauthorized();
-        }
-    }
-
     /// @dev Calculates the sum of all elements in an calldata array.
     /// @param values Array of amounts to sum.
     /// @return The total sum of all array elements.
@@ -862,21 +819,6 @@ contract LendingMarket is
     function _checkLoanId(uint256 id) internal pure {
         if (id > type(uint40).max) {
             revert LoanIdExcess();
-        }
-    }
-
-    /// @dev Checks if the loan can be revoked.
-    /// @param loan The storage state of the loan.
-    function _checkLoanRevocationPossibility(Loan.State storage loan) internal view {
-        address sender = msg.sender;
-        if (sender == loan.borrower) {
-            uint256 currentPeriodIndex = _periodIndex(_blockTimestamp(), Constants.PERIOD_IN_SECONDS);
-            uint256 startPeriodIndex = _periodIndex(loan.startTimestamp, Constants.PERIOD_IN_SECONDS);
-            if (currentPeriodIndex - startPeriodIndex >= Constants.COOLDOWN_IN_PERIODS) {
-                revert CooldownPeriodHasPassed();
-            }
-        } else if (!isProgramLenderOrAlias(loan.programId, sender)) {
-            revert Error.Unauthorized();
         }
     }
 
@@ -1130,15 +1072,21 @@ contract LendingMarket is
         if (creditLine == address(0)) {
             revert Error.ZeroAddress();
         }
+        if (creditLine.code.length == 0) {
+            revert Error.ContractAddressInvalid();
+        }
+        try ICreditLine(creditLine).proveCreditLine() {} catch {
+            revert Error.ContractAddressInvalid();
+        }
+
         if (liquidityPool == address(0)) {
             revert Error.ZeroAddress();
         }
-
-        if (_creditLineLenders[creditLine] != msg.sender) {
-            revert Error.Unauthorized();
+        if (liquidityPool.code.length == 0) {
+            revert Error.ContractAddressInvalid();
         }
-        if (_liquidityPoolLenders[liquidityPool] != msg.sender) {
-            revert Error.Unauthorized();
+        try ILiquidityPool(liquidityPool).proveLiquidityPool() {} catch {
+            revert Error.ContractAddressInvalid();
         }
     }
 

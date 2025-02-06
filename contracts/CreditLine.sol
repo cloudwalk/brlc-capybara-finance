@@ -2,16 +2,16 @@
 
 pragma solidity 0.8.24;
 
-import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { AccessControlExtUpgradeable } from "./base/AccessControlExtUpgradeable.sol";
+import { PausableExtUpgradeable } from "./base/PausableExtUpgradeable.sol";
 import { UUPSExtUpgradeable } from "./base/UUPSExtUpgradeable.sol";
 import { Versionable } from "./base/Versionable.sol";
 
 import { Constants } from "./libraries/Constants.sol";
 import { Error } from "./libraries/Error.sol";
 import { Loan } from "./libraries/Loan.sol";
-import { Rounding } from "./libraries/Rounding.sol";
 import { SafeCast } from "./libraries/SafeCast.sol";
 
 import { ICreditLine } from "./interfaces/ICreditLine.sol";
@@ -20,10 +20,19 @@ import { ICreditLineHooks } from "./interfaces/ICreditLine.sol";
 import { ICreditLinePrimary } from "./interfaces/ICreditLine.sol";
 import { ILendingMarket } from "./interfaces/ILendingMarket.sol";
 
+import { CreditLineStorage } from "./CreditLineStorage.sol";
+
 /// @title CreditLine contract
 /// @author CloudWalk Inc. (See https://cloudwalk.io)
 /// @dev The upgradable credit line contract.
-contract CreditLine is AccessControlExtUpgradeable, PausableUpgradeable, ICreditLine, Versionable, UUPSExtUpgradeable {
+contract CreditLine is
+    CreditLineStorage,
+    AccessControlExtUpgradeable,
+    PausableExtUpgradeable,
+    ICreditLine,
+    Versionable,
+    UUPSExtUpgradeable
+{
     using SafeCast for uint256;
 
     // -------------------------------------------- //
@@ -35,32 +44,6 @@ contract CreditLine is AccessControlExtUpgradeable, PausableUpgradeable, ICredit
 
     /// @dev The role of this contract admin.
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
-
-    /// @dev The role of this contract pauser.
-    bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
-
-    // -------------------------------------------- //
-    //  Storage variables                           //
-    // -------------------------------------------- //
-
-    /// @dev The address of the underlying token.
-    address internal _token;
-
-    /// @dev The address of the associated market.
-    address internal _market;
-
-    /// @dev The structure of the credit line configuration.
-    CreditLineConfig internal _config; // 2 slots
-
-    /// @dev The mapping of borrower to borrower configuration.
-    mapping(address => BorrowerConfig) internal _borrowerConfigs;
-
-    /// @dev The mapping of a borrower to the borrower state.
-    mapping(address => BorrowerState) internal _borrowerStates;
-
-    /// @dev This empty reserved space is put in place to allow future versions
-    /// to add new variables without shifting down storage in the inheritance chain.
-    uint256[45] private __gap;
 
     // -------------------------------------------- //
     //  Modifiers                                   //
@@ -89,25 +72,25 @@ contract CreditLine is AccessControlExtUpgradeable, PausableUpgradeable, ICredit
     // -------------------------------------------- //
 
     /// @dev Initializer of the upgradable contract.
-    /// @param lender_ The address of the credit line lender.
+    /// @param owner_ The address of the credit line owner.
     /// @param market_ The address of the lending market.
     /// @param token_ The address of the token.
     /// See details https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable.
     function initialize(
-        address lender_, // Tools: this comment prevents Prettier from formatting into a single line.
+        address owner_, // Tools: this comment prevents Prettier from formatting into a single line.
         address market_,
         address token_
     ) external initializer {
-        __CreditLineConfigurable_init(lender_, market_, token_);
+        __CreditLineConfigurable_init(owner_, market_, token_);
     }
 
     /// @dev Internal initializer of the upgradable contract.
-    /// @param lender_ The address of the credit line lender.
+    /// @param owner_ The address of the credit line owner.
     /// @param market_ The address of the lending market.
     /// @param token_ The address of the token.
     /// See details https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable.
     function __CreditLineConfigurable_init(
-        address lender_, // Tools: this comment prevents Prettier from formatting into a single line.
+        address owner_, // Tools: this comment prevents Prettier from formatting into a single line.
         address market_,
         address token_
     ) internal onlyInitializing {
@@ -116,49 +99,50 @@ contract CreditLine is AccessControlExtUpgradeable, PausableUpgradeable, ICredit
         __AccessControl_init_unchained();
         __AccessControlExt_init_unchained();
         __Pausable_init_unchained();
-        __CreditLineConfigurable_init_unchained(lender_, market_, token_);
+        __PausableExt_init_unchained(OWNER_ROLE);
+        __CreditLineConfigurable_init_unchained(owner_, market_, token_);
     }
 
     /// @dev Unchained internal initializer of the upgradable contract.
-    /// @param lender_ The address of the credit line lender.
+    /// @param owner_ The address of the credit line owner.
     /// @param market_ The address of the lending market.
     /// @param token_ The address of the token.
     /// See details https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable.
     function __CreditLineConfigurable_init_unchained(
-        address lender_,
+        address owner_,
         address market_,
         address token_
     ) internal onlyInitializing {
-        if (lender_ == address(0)) {
+        if (owner_ == address(0)) {
             revert Error.ZeroAddress();
         }
+
         if (market_ == address(0)) {
             revert Error.ZeroAddress();
         }
+        if (market_.code.length == 0) {
+            revert Error.ContractAddressInvalid();
+        }
+        try ILendingMarket(market_).proveLendingMarket() {} catch {
+            revert Error.ContractAddressInvalid();
+        }
+
         if (token_ == address(0)) {
             revert Error.ZeroAddress();
         }
+        if (token_.code.length == 0) {
+            revert Error.ContractAddressInvalid();
+        }
+        try IERC20(token_).balanceOf(address(0)) {} catch {
+            revert Error.ContractAddressInvalid();
+        }
 
-        _grantRole(OWNER_ROLE, lender_);
+        _setRoleAdmin(OWNER_ROLE, OWNER_ROLE);
         _setRoleAdmin(ADMIN_ROLE, OWNER_ROLE);
-        _setRoleAdmin(PAUSER_ROLE, OWNER_ROLE);
+        _grantRole(OWNER_ROLE, owner_);
 
         _market = market_;
         _token = token_;
-    }
-
-    // -------------------------------------------- //
-    //  Pauser transactional functions              //
-    // -------------------------------------------- //
-
-    /// @dev Pauses the contract.
-    function pause() external onlyRole(PAUSER_ROLE) {
-        _pause();
-    }
-
-    /// @dev Unpauses the contract.
-    function unpause() external onlyRole(PAUSER_ROLE) {
-        _unpause();
     }
 
     // -------------------------------------------- //
@@ -181,7 +165,7 @@ contract CreditLine is AccessControlExtUpgradeable, PausableUpgradeable, ICredit
         }
 
         // Check that fields `minAddonFixedRate`, `maxAddonFixedRate`, `minAddonPeriodRate`, `maxAddonPeriodRate`
-        // are zero because they have been deprecated since version 1.9.0
+        // are zero because they have been deprecated since version 1.8.0
         if (config.minAddonFixedRate != 0) {
             revert InvalidCreditLineConfiguration();
         }
@@ -253,17 +237,21 @@ contract CreditLine is AccessControlExtUpgradeable, PausableUpgradeable, ICredit
     }
 
     // -------------------------------------------- //
+    //  Service functions                           //
+    // -------------------------------------------- //
+
+    function migrateAccessControl() external onlyRole(OWNER_ROLE) {
+        // Set the admin role for the 'OWNER_ROLE' role.
+        _setRoleAdmin(OWNER_ROLE, OWNER_ROLE);
+    }
+
+    // -------------------------------------------- //
     //  View functions                              //
     // -------------------------------------------- //
 
     /// @inheritdoc ICreditLineConfiguration
     function creditLineConfiguration() external view override returns (CreditLineConfig memory) {
         return _config;
-    }
-
-    /// @inheritdoc ICreditLineConfiguration
-    function isAdmin(address account) external view returns (bool) {
-        return hasRole(ADMIN_ROLE, account);
     }
 
     /// @inheritdoc ICreditLinePrimary
@@ -313,7 +301,7 @@ contract CreditLine is AccessControlExtUpgradeable, PausableUpgradeable, ICredit
         terms.durationInPeriods = durationInPeriods;
         terms.interestRatePrimary = borrowerConfig.interestRatePrimary;
         terms.interestRateSecondary = borrowerConfig.interestRateSecondary;
-        // terms.addonAmount = 0 because the field has been deprecated since version 1.9.0
+        // terms.addonAmount = 0 because the field has been deprecated since version 1.8.0
     }
 
     /// @inheritdoc ICreditLinePrimary

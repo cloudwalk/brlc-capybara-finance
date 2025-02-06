@@ -99,11 +99,6 @@ interface ICreditLineConfiguration is ICreditLineTypes {
     /// @dev Retrieves the credit line configuration.
     /// @return The structure containing the credit line configuration.
     function creditLineConfiguration() external view returns (CreditLineConfig memory);
-
-    /// @dev Checks whether an account is an admin.
-    /// @param account The address of the account to check.
-    /// @return True if the account is configured as an admin.
-    function isAdmin(address account) external view returns (bool);
 }
 
 /// @title ICreditLineHooks interface

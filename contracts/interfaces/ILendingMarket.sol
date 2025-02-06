@@ -237,21 +237,6 @@ interface ILendingMarketPrimary {
     //  View and pure functions                     //
     // -------------------------------------------- //
 
-    /// @dev Gets the lender of a credit line.
-    /// @param creditLine The address of the credit line to check.
-    /// @return The lender address of the credit line.
-    function getCreditLineLender(address creditLine) external view returns (address);
-
-    /// @dev Gets the lender of a liquidity pool.
-    /// @param liquidityPool The address of the liquidity pool to check.
-    /// @return The lender address of the liquidity pool.
-    function getLiquidityPoolLender(address liquidityPool) external view returns (address);
-
-    /// @dev Gets the lender of a program.
-    /// @param programId The unique identifier of the program to check.
-    /// @return The lender address of the program.
-    function getProgramLender(uint32 programId) external view returns (address);
-
     /// @dev Gets the credit line associated with a program.
     /// @param programId The unique identifier of the program to check.
     /// @return The address of the credit line associated with the program.
@@ -295,16 +280,6 @@ interface ILendingMarketPrimary {
         uint256 timestamp
     ) external view returns (Loan.InstallmentLoanPreview memory);
 
-    /// @dev Checks if the provided account is a lender or an alias for a lender of a given ordinary loan or a sub-loan.
-    /// @param loanId The unique identifier of the loan to check.
-    /// @param account The address to check whether it's a lender or an alias.
-    function isLenderOrAlias(uint256 loanId, address account) external view returns (bool);
-
-    /// @dev Checks if the provided account is a lender or an alias for a lender of a given lending program.
-    /// @param programId The identifier of the program to check.
-    /// @param account The address to check whether it's a lender or an alias.
-    function isProgramLenderOrAlias(uint32 programId, address account) external view returns (bool);
-
     /// @dev Returns the rate factor used to for interest rate calculations.
     function interestRateFactor() external view returns (uint256);
 
@@ -334,6 +309,13 @@ interface ILendingMarketConfiguration {
     // -------------------------------------------- //
 
     /// @dev Emitted when a new credit line is registered.
+    ///
+    /// NOTES:
+    ///
+    /// 1. This event is deprecated since version 1.9.0 and in no longer used. Kept for historical reason.
+    /// 2. Registration of credit lines before creating lending programs is no longer required.
+    /// 3. All previously registered credit lines have been unregistered without an event since version 1.9.0.
+    ///
     /// @param lender The address of the lender who registered the credit line.
     /// @param creditLine The address of the credit line registered.
     event CreditLineRegistered(
@@ -344,6 +326,13 @@ interface ILendingMarketConfiguration {
     /// @dev Emitted when a new liquidity pool is registered.
     /// @param lender The address of the lender who registered the liquidity pool.
     /// @param liquidityPool The address of the liquidity pool registered.
+    ///
+    /// NOTES:
+    ///
+    /// 1. This event is deprecated since version 1.9.0 and in no longer used. Kept for historical reason.
+    /// 2. Registration of liquidity pools before creating lending programs is no longer required.
+    /// 3. All previously registered liquidity pools have been unregistered without an event since version 1.9.0.
+    ///
     event LiquidityPoolRegistered(
         address indexed lender, // Tools: this comment prevents Prettier from formatting into a single line.
         address indexed liquidityPool
@@ -368,6 +357,13 @@ interface ILendingMarketConfiguration {
     );
 
     /// @dev Emitted when a lender alias is configured.
+    ///
+    /// NOTES:
+    ///
+    /// 1. This event is deprecated since version 1.9.0 and in no longer used. Kept for historical reason.
+    /// 2. Aliases logic has been replaced with granting of the admin role.
+    /// 3. All previously configured aliases have been revoked with an appropriate event since version 1.9.0.
+    ///
     /// @param lender The address of the lender account.
     /// @param account The address of the alias account.
     /// @param isAlias True if the account is configured as an alias, otherwise false.
@@ -381,14 +377,6 @@ interface ILendingMarketConfiguration {
     //  Transactional functions                     //
     // -------------------------------------------- //
 
-    /// @dev Registers a credit line.
-    /// @param creditLine The address of the credit line to register.
-    function registerCreditLine(address creditLine) external;
-
-    /// @dev Registers a liquidity pool.
-    /// @param liquidityPool The address of the liquidity pool to register.
-    function registerLiquidityPool(address liquidityPool) external;
-
     /// @dev Creates a new program.
     /// @param creditLine The address of the credit line to associate with the program.
     /// @param liquidityPool The address of the liquidity pool to associate with the program.
@@ -399,21 +387,6 @@ interface ILendingMarketConfiguration {
     /// @param creditLine The address of the credit line to associate with the program.
     /// @param liquidityPool The address of the liquidity pool to associate with the program.
     function updateProgram(uint32 programId, address creditLine, address liquidityPool) external;
-
-    /// @dev Configures an alias for a lender.
-    /// @param account The address to configure as an alias.
-    /// @param isAlias True if the account is an alias, otherwise false.
-    function configureAlias(address account, bool isAlias) external;
-
-    // -------------------------------------------- //
-    //  View functions                              //
-    // -------------------------------------------- //
-
-    /// @dev Checks if the provided account is an alias for a lender.
-    /// @param lender The address of the lender to check alias for.
-    /// @param account The address to check whether it's an alias or not.
-    /// @return True if the account is an alias for the lender, otherwise false.
-    function hasAlias(address lender, address account) external view returns (bool);
 }
 
 /// @title ILendingMarketErrors interface
@@ -443,26 +416,23 @@ interface ILendingMarketErrors {
     /// @param expectedType The expected type of the loan.
     error LoanTypeUnexpected(Loan.Type actualType, Loan.Type expectedType);
 
-    /// @dev Thrown when the credit line is not configured.
-    error CreditLineLenderNotConfigured();
-
-    /// @dev Thrown when the liquidity pool is not configured.
-    error LiquidityPoolLenderNotConfigured();
-
     /// @dev Thrown when provided interest rate is inappropriate.
     error InappropriateInterestRate();
 
     /// @dev Thrown when provided loan duration is inappropriate.
     error InappropriateLoanDuration();
 
-    /// @dev Thrown when the cooldown period has passed.
-    error CooldownPeriodHasPassed();
+    /// @dev Thrown when the credit line is not configured for the provided lending program.
+    error ProgramCreditLineNotConfigured();
+
+    /// @dev Thrown when the liquidity pool is not configured for the provided lending program.
+    error ProgramLiquidityPoolNotConfigured();
 
     /// @dev Thrown when the program does not exist.
     error ProgramNotExist();
 
-    /// @dev Thrown when the provided address does not belong to a contract of expected type or a contract at all.
-    error ContractAddressInvalid();
+    /// @dev Thrown when the lending program ID exceeds the maximum allowed value.
+    error ProgramIdExcess();
 
     /// @dev Thrown when the provided duration array is invalid.
     error DurationArrayInvalid();

@@ -16,7 +16,7 @@ interface ILiquidityPoolPrimary {
 
     /// @dev Emitted when tokens are withdrawn from the liquidity pool.
     /// @param borrowableAmount The amount of tokens withdrawn from the borrowable balance.
-    /// @param addonAmount Deprecated since version 1.9.0. This amount is always zero now.
+    /// @param addonAmount Deprecated since version 1.8.0. This amount is always zero now.
     event Withdrawal(uint256 borrowableAmount, uint256 addonAmount);
 
     /// @dev Emitted when tokens are rescued from the liquidity pool.
@@ -34,7 +34,7 @@ interface ILiquidityPoolPrimary {
 
     /// @dev Withdraws tokens from the liquidity pool.
     /// @param borrowableAmount The amount of tokens to withdraw from the borrowable balance.
-    /// @param addonAmount This parameter has been deprecated since version 1.9.0 and must be zero.
+    /// @param addonAmount This parameter has been deprecated since version 1.8.0 and must be zero.
     ///        See the {addonTreasury} function comments for more details.
     function withdraw(uint256 borrowableAmount, uint256 addonAmount) external;
 
@@ -56,7 +56,7 @@ interface ILiquidityPoolPrimary {
     /// @dev Returns the addon treasury address.
     ///
     /// Previously, this address affected the pool logic.
-    /// But since version 1.9.0, the ability to save the addon amount in the pool has become deprecated.
+    /// But since version 1.8.0, the ability to save the addon amount in the pool has become deprecated.
     /// Now the addon amount must always be output to an external wallet. The addon balance of the pool is always zero.
     ///
     /// @return The current address of the addon treasury.
@@ -64,7 +64,7 @@ interface ILiquidityPoolPrimary {
 
     /// @dev Gets the borrowable and addons balances of the liquidity pool.
     ///
-    /// The addons part of the balance has been deprecated since version 1.9.0 and now it always equals zero.
+    /// The addons part of the balance has been deprecated since version 1.8.0 and now it always equals zero.
     ///
     /// @return The borrowable and addons balances.
     function getBalances() external view returns (uint256, uint256);
@@ -99,15 +99,6 @@ interface ILiquidityPoolConfiguration {
     ///
     /// @param newTreasury The new address of the addon treasury to set.
     function setAddonTreasury(address newTreasury) external;
-
-    // -------------------------------------------- //
-    //  View functions                              //
-    // -------------------------------------------- //
-
-    /// @dev Checks whether an account is an admin.
-    /// @param account The address of the account to check.
-    /// @return True if the account is configured as an admin.
-    function isAdmin(address account) external view returns (bool);
 }
 
 /// @title ILiquidityPoolHooks interface
