@@ -5,6 +5,7 @@ pragma solidity 0.8.24;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
+import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 
 import { AccessControlExtUpgradeable } from "./base/AccessControlExtUpgradeable.sol";
 import { UUPSExtUpgradeable } from "./base/UUPSExtUpgradeable.sol";
@@ -27,6 +28,7 @@ import { ILiquidityPoolPrimary } from "./interfaces/ILiquidityPool.sol";
 contract LiquidityPool is
     AccessControlExtUpgradeable,
     PausableUpgradeable,
+    ReentrancyGuardUpgradeable,
     ILiquidityPool,
     Versionable,
     UUPSExtUpgradeable
@@ -132,6 +134,7 @@ contract LiquidityPool is
         __AccessControl_init_unchained();
         __AccessControlExt_init_unchained();
         __Pausable_init_unchained();
+        __ReentrancyGuard_init();
         __LiquidityPool_init_unchained(lender_, market_, token_);
     }
 
@@ -191,7 +194,7 @@ contract LiquidityPool is
     // -------------------------------------------- //
 
     /// @inheritdoc ILiquidityPoolPrimary
-    function deposit(uint256 amount) external onlyRole(OWNER_ROLE) {
+    function deposit(uint256 amount) external nonReentrant onlyRole(OWNER_ROLE) {
         if (amount == 0) {
             revert Error.InvalidAmount();
         }
