@@ -61,11 +61,7 @@ describe("LiquidityPool Security Tests", async () => {
     async function deployLiquidityPool(): Promise<{ liquidityPool: LiquidityPoolTestable }> {
         let liquidityPool = await upgrades.deployProxy(
             liquidityPoolFactory,
-            [
-                lender.address,
-                marketAddress,
-                tokenAddress
-            ],
+            [lender.address, marketAddress, tokenAddress],
             { kind: "uups" }
         );
 
