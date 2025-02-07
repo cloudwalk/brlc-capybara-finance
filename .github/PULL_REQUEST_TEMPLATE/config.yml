@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Default PR Template
+    url: ../pull_request_template.md
+    about: Use this template for general changes
+  - name: Smart Contract PR Template
+    url: smart_contract.md
+    about: Use this template for smart contract changes
