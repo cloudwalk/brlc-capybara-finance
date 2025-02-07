@@ -32,6 +32,16 @@ interface ICreditLinePrimary is ICreditLineTypes {
     /// @param configs The array containing the borrower configurations.
     function configureBorrowers(address[] memory borrowers, BorrowerConfig[] memory configs) external;
 
+    /// @dev Configures a specific borrower.
+    /// @param borrower The address of the borrower to configure.
+    /// @param config The legacy struct containing the borrower configuration.
+    function configureBorrower(address borrower, BorrowerConfigLegacy memory config) external;
+
+    /// @dev Configures multiple borrowers at once.
+    /// @param borrowers The addresses of the borrowers to configure.
+    /// @param configs The array containing the legacy borrower configurations.
+    function configureBorrowers(address[] memory borrowers, BorrowerConfigLegacy[] memory configs) external;    
+
     // -------------------------------------------- //
     //  View and pure functions                     //
     // -------------------------------------------- //
@@ -46,6 +56,11 @@ interface ICreditLinePrimary is ICreditLineTypes {
         uint256 borrowedAmount,
         uint256 durationInPeriods
     ) external view returns (Loan.Terms memory terms);
+
+    /// @dev Returns the late fee amount that might be applied to a loan if it is overdue.
+    /// @param loanTrackedBalance The tracked balance of the loan as the base to calculate the late fee amount.
+    /// @return The amount of the late fee.
+    function determineLateFeeAmount(uint256 loanTrackedBalance) external view returns (uint256);
 
     /// @dev Returns the late fee amount that might be applied to a loan if it is overdue.
     /// @param borrower The address of the borrower.

@@ -210,6 +210,28 @@ contract CreditLine is
         }
     }
 
+    /// @inheritdoc ICreditLinePrimary
+    function configureBorrower(
+        address borrower,
+        BorrowerConfigLegacy memory config
+    ) external whenNotPaused onlyRole(ADMIN_ROLE) {
+        _configureBorrowerLegacy(borrower, config);
+    }
+
+    /// @inheritdoc ICreditLinePrimary
+    function configureBorrowers(
+        address[] memory borrowers,
+        BorrowerConfigLegacy[] memory configs
+    ) external whenNotPaused onlyRole(ADMIN_ROLE) {
+        if (borrowers.length != configs.length) {
+            revert Error.ArrayLengthMismatch();
+        }
+
+        for (uint256 i = 0; i < borrowers.length; i++) {
+            _configureBorrowerLegacy(borrowers[i], configs[i]);
+        }
+    }
+
     // -------------------------------------------- //
     //  Hook transactional functions                //
     // -------------------------------------------- //
@@ -325,6 +347,11 @@ contract CreditLine is
     }
 
     /// @inheritdoc ICreditLinePrimary
+    function determineLateFeeAmount(uint256 loanTrackedBalance) public view returns (uint256) {
+        return _determineLateFeeAmount(loanTrackedBalance, _config.lateFeeRate);
+    }
+
+    /// @inheritdoc ICreditLinePrimary
     function determineLateFeeAmount(address borrower, uint256 loanTrackedBalance) external view returns (uint256) {
         BorrowerConfig storage borrowerConfig = _borrowerConfigs[borrower];
 
@@ -419,6 +446,27 @@ contract CreditLine is
             ++result;
         }
         return result;
+    }
+
+    /// @dev Updates the configuration of a borrower.
+    /// @param borrower The address of the borrower to configure.
+    /// @param config The new borrower configuration to be applied.
+    function _configureBorrowerLegacy(address borrower, BorrowerConfigLegacy memory config) internal {
+        BorrowerConfig memory newConfig = BorrowerConfig({
+            expiration: config.expiration,
+            minDurationInPeriods: config.minDurationInPeriods,
+            maxDurationInPeriods: config.maxDurationInPeriods,
+            minBorrowedAmount: config.minBorrowedAmount,
+            maxBorrowedAmount: config.maxBorrowedAmount,
+            borrowingPolicy: config.borrowingPolicy,
+            interestRatePrimary: config.interestRatePrimary,
+            interestRateSecondary: config.interestRateSecondary,
+            addonFixedRate: 0,
+            addonPeriodRate: 0,
+            lateFeePolicy: LateFeePolicy.Individual,
+            lateFeeRate: 0
+        });
+        _configureBorrower(borrower, newConfig);
     }
 
     /// @dev Returns the current block timestamp with the time offset applied.
