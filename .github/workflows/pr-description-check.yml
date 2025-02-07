@@ -1,0 +1,58 @@
+name: PR Description Check
+on:
+  pull_request:
+    types: [opened, edited, synchronize]
+
+jobs:
+  check-description:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Check PR Description
+        run: |
+          # Get PR description
+          PR_BODY="${{ github.event.pull_request.body }}"
+          
+          # Check if PR modifies smart contract files
+          if git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }} | grep -q "^contracts/"; then
+            # Smart contract PR checks
+            REQUIRED_SECTIONS=("## Main changes" "## Versioning" "## Test Coverage")
+            
+            for section in "${REQUIRED_SECTIONS[@]}"; do
+              if ! echo "$PR_BODY" | grep -q "$section"; then
+                echo "::error::Missing required section: $section"
+                exit 1
+              fi
+            done
+            
+            # Check for code snippets in details tags
+            if ! echo "$PR_BODY" | grep -q "<details>"; then
+              echo "::error::Missing implementation details in <details> tags"
+              exit 1
+            fi
+            
+            # Check for version number
+            if ! echo "$PR_BODY" | grep -q "version.*v[0-9]\+\.[0-9]\+\.[0-9]\+"; then
+              echo "::error::Missing or invalid version number format"
+              exit 1
+            fi
+            
+          else
+            # Regular PR checks
+            REQUIRED_SECTIONS=("## Description" "## Changes")
+            
+            for section in "${REQUIRED_SECTIONS[@]}"; do
+              if ! echo "$PR_BODY" | grep -q "$section"; then
+                echo "::error::Missing required section: $section"
+                exit 1
+              fi
+            done
+          fi
+          
+          # Check PR title format
+          PR_TITLE="${{ github.event.pull_request.title }}"
+          if ! echo "$PR_TITLE" | grep -qE "^(feat|fix|docs|style|refactor|perf|test|chore)\([a-z0-9-]+\): .+$"; then
+            echo "::error::PR title must follow conventional commit format: type(scope): description"
+            exit 1
+          fi
