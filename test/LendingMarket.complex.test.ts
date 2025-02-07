@@ -26,6 +26,11 @@ enum BorrowingPolicy {
   TotalActiveAmountLimit = 2
 }
 
+enum LateFeePolicy {
+  Common = 0,
+  Individual = 1
+}
+
 enum ScenarioFinalAction {
   None = 0,
   FullRepayment = 1,
@@ -107,6 +112,8 @@ interface BorrowerConfig {
   interestRateSecondary: number;
   addonFixedRate: number;
   addonPeriodRate: number;
+  lateFeePolicy: LateFeePolicy;
+  lateFeeRate: number;
 
   [key: string]: number | BorrowingPolicy; // Index signature
 }
@@ -316,9 +323,12 @@ describe("Contract 'LendingMarket': complex tests", async () => {
       addonFixedRate: 0,
       addonPeriodRate: 0,
       borrowingPolicy: BorrowingPolicy.TotalActiveAmountLimit,
-      expiration: 2 ** 32 - 1
+      expiration: 2 ** 32 - 1,
+      lateFeePolicy: LateFeePolicy.Common,
+      lateFeeRate: 0
     };
   }
+
 
   async function isLoanClosed(lendingMarket: Contract, loanId: bigint): Promise<boolean> {
     const trackedBalance = (await lendingMarket.getLoanState(loanId)).trackedBalance;

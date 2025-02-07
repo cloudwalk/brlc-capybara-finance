@@ -325,17 +325,15 @@ contract CreditLine is
     }
 
     /// @inheritdoc ICreditLinePrimary
-    function determineLateFeeAmount(uint256 loanTrackedBalance) external view returns (uint256) {
-        // The equivalent formula: round(loanTrackedBalance * lateFeeRate / INTEREST_RATE_FACTOR)
-        // Where division operator `/` takes into account the fractional part and
-        // the `round()` function returns an integer rounded according to standard mathematical rules.
-        uint256 product = loanTrackedBalance * _config.lateFeeRate;
-        uint256 reminder = product % Constants.INTEREST_RATE_FACTOR;
-        uint256 result = product / Constants.INTEREST_RATE_FACTOR;
-        if (reminder >= (Constants.INTEREST_RATE_FACTOR / 2)) {
-            ++result;
+    function determineLateFeeAmount(address borrower, uint256 loanTrackedBalance) external view returns (uint256) {
+        BorrowerConfig storage borrowerConfig = _borrowerConfigs[borrower];
+
+        if (borrowerConfig.lateFeePolicy == LateFeePolicy.Individual) {
+            return _determineLateFeeAmount(loanTrackedBalance, borrowerConfig.lateFeeRate);
         }
-        return result;
+
+        // The late fee rate is coming from the credit line configuration.
+        return _determineLateFeeAmount(loanTrackedBalance, _config.lateFeeRate);
     }
 
     // -------------------------------------------- //
@@ -404,6 +402,23 @@ contract CreditLine is
         _borrowerConfigs[borrower] = config;
 
         emit BorrowerConfigured(address(this), borrower);
+    }
+
+    /// @dev Calculates the late fee amount for the provided loan tracked balance and late fee rate.
+    /// @param loanTrackedBalance The tracked balance of the loan as the base to calculate the late fee amount.
+    /// @param lateFeeRate The late fee rate to be applied to the loan.
+    /// @return The amount of the late fee.
+    function _determineLateFeeAmount(uint256 loanTrackedBalance, uint256 lateFeeRate) private pure returns (uint256) {
+        // The equivalent formula: round(loanTrackedBalance * lateFeeRate / INTEREST_RATE_FACTOR)
+        // Where division operator `/` takes into account the fractional part and
+        // the `round()` function returns an integer rounded according to standard mathematical rules.
+        uint256 product = loanTrackedBalance * lateFeeRate;
+        uint256 reminder = product % Constants.INTEREST_RATE_FACTOR;
+        uint256 result = product / Constants.INTEREST_RATE_FACTOR;
+        if (reminder >= (Constants.INTEREST_RATE_FACTOR / 2)) {
+            ++result;
+        }
+        return result;
     }
 
     /// @dev Returns the current block timestamp with the time offset applied.

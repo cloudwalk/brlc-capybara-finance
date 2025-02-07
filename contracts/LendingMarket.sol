@@ -1053,7 +1053,7 @@ contract LendingMarket is
     ) internal view returns (uint256) {
         address creditLine = _programCreditLines[loan.programId];
         // The `creditLine` variable is not checked because it is always non-zero according to the contract logic.
-        return ICreditLine(creditLine).determineLateFeeAmount(trackedBalance);
+        return ICreditLine(creditLine).determineLateFeeAmount(loan.borrower, trackedBalance);
     }
 
     /// @dev Updates the stored late fee amount for a loan.

@@ -22,6 +22,17 @@ interface ICreditLineTypes {
         TotalActiveAmountLimit
     }
 
+    /// @dev Defines the available late fee policies.
+    ///
+    /// Possible values:
+    ///
+    /// - Common = 0 --------- The late fee rate is coming from the credit line configuration.
+    /// - Individual = 1 ----- The late fee rate is coming from the borrower configuration.
+    enum LateFeePolicy {
+        Common,
+        Individual
+    }
+
     /// @dev A struct that defines credit line configuration.
     ///
     /// Fields:
@@ -75,6 +86,8 @@ interface ICreditLineTypes {
     /// - interestRateSecondary -- The secondary interest rate to be applied to the loan.
     /// - addonFixedRate --------- The fixed rate for the loan addon calculation (extra charges or fees).
     /// - addonPeriodRate -------- The period rate for the loan addon calculation (extra charges or fees).
+    /// - lateFeePolicy ---------- The late fee policy to be applied to the borrower.
+    /// - lateFeeRate ------------ The late fee rate to be applied to the borrower.
     ///
     /// Note:
     /// Fields `addonFixedRate`, `addonPeriodRate` have been deprecated since version 1.8.0 and must be set to zero.
@@ -92,6 +105,8 @@ interface ICreditLineTypes {
         uint32 interestRateSecondary;
         uint32 addonFixedRate;
         uint32 addonPeriodRate;
+        LateFeePolicy lateFeePolicy;
+        uint32 lateFeeRate;
     }
 
     /// @dev Defines a borrower state.

@@ -18,6 +18,11 @@ enum BorrowingPolicy {
   TotalActiveAmountLimit = 2
 }
 
+enum LateFeePolicy {
+  Common = 0,
+  Individual = 1
+}
+
 interface CreditLineConfig {
   minBorrowedAmount: bigint;
   maxBorrowedAmount: bigint;
@@ -47,6 +52,8 @@ interface BorrowerConfig {
   interestRateSecondary: bigint;
   addonFixedRate: bigint;
   addonPeriodRate: bigint;
+  lateFeePolicy: LateFeePolicy;
+  lateFeeRate: bigint;
 
   [key: string]: bigint | BorrowingPolicy; // Index signature
 }
@@ -335,9 +342,12 @@ describe("Contract 'CreditLine'", async () => {
       interestRatePrimary: MIN_INTEREST_RATE_PRIMARY,
       interestRateSecondary: MIN_INTEREST_RATE_SECONDARY,
       addonFixedRate: 0n,
-      addonPeriodRate: 0n
+      addonPeriodRate: 0n,
+      lateFeePolicy: LateFeePolicy.Common,
+      lateFeeRate: 0n
     };
   }
+
 
   function createLoanTerms(
     tokenAddress: string,
@@ -1163,23 +1173,25 @@ describe("Contract 'CreditLine'", async () => {
       const creditLineConfigNew = { ...creditLineConfig, lateFeeRate };
       await proveTx(creditLine.configureCreditLine(creditLineConfigNew));
 
+      const borrowerAddress = borrower.address;
+
       let loanTrackedBalance = 0n;
-      let actualValue = await creditLine.determineLateFeeAmount(loanTrackedBalance);
+      let actualValue = await creditLine.determineLateFeeAmount(borrowerAddress, loanTrackedBalance);
       let expectedValue = 0n; // round(loanTrackedBalance * lateFeeRate / INTEREST_RATE_FACTOR)
       expect(actualValue).to.equal(expectedValue);
 
       loanTrackedBalance = 1000n;
-      actualValue = await creditLine.determineLateFeeAmount(loanTrackedBalance);
+      actualValue = await creditLine.determineLateFeeAmount(borrowerAddress, loanTrackedBalance);
       expectedValue = 1n; // round(loanTrackedBalance * lateFeeRate / INTEREST_RATE_FACTOR)
       expect(actualValue).to.equal(expectedValue);
 
       loanTrackedBalance = 1499n;
-      actualValue = await creditLine.determineLateFeeAmount(loanTrackedBalance);
+      actualValue = await creditLine.determineLateFeeAmount(borrowerAddress, loanTrackedBalance);
       expectedValue = 1n; // round(loanTrackedBalance * lateFeeRate / INTEREST_RATE_FACTOR)
       expect(actualValue).to.equal(expectedValue);
 
       loanTrackedBalance = 1500n;
-      actualValue = await creditLine.determineLateFeeAmount(loanTrackedBalance);
+      actualValue = await creditLine.determineLateFeeAmount(borrowerAddress, loanTrackedBalance);
       expectedValue = 2n; // round(loanTrackedBalance * lateFeeRate / INTEREST_RATE_FACTOR)
       expect(actualValue).to.equal(expectedValue);
     });
