@@ -26,8 +26,8 @@ interface ICreditLineTypes {
     ///
     /// Possible values:
     ///
-    /// - Common = 0 --------- The late fee rate is coming from the credit line configuration.
-    /// - Individual = 1 ----- The late fee rate is coming from the borrower configuration.
+    /// - Common = 0 ------ The late fee rate is coming from the credit line configuration.
+    /// - Individual = 1 -- The late fee rate is coming from the borrower configuration.
     enum LateFeePolicy {
         Common,
         Individual
