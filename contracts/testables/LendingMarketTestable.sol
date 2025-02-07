@@ -15,6 +15,9 @@ contract LendingMarketTestable is LendingMarket {
     /// @dev The maximum number of installments. Non-zero value overrides the constant in Constants.sol.
     uint256 public installmentCountMax;
 
+    /// @dev TODO
+    bool public areZeroAmountsAllowed;
+
     // -------------------------------------------- //
     //  Transactional functions                     //
     // -------------------------------------------- //
@@ -74,6 +77,11 @@ contract LendingMarketTestable is LendingMarket {
         }
     }
 
+    /// @dev TODO
+    function allowZeroAmounts() external {
+        areZeroAmountsAllowed = true;
+    }
+
     // -------------------------------------------- //
     //  Internal functions                          //
     // -------------------------------------------- //
@@ -85,6 +93,15 @@ contract LendingMarketTestable is LendingMarket {
             return super._installmentCountMax();
         } else {
             return installmentCountMax;
+        }
+    }
+
+    /// @dev TODO
+    function _checkTrackedBalanceChange(uint256 changeAmount) internal view override {
+        if (!areZeroAmountsAllowed) {
+            super._checkTrackedBalanceChange(changeAmount);
+        } else {
+            // just do nothing and allow zero amounts
         }
     }
 }
