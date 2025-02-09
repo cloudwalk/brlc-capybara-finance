@@ -461,8 +461,8 @@ contract CreditLine is
             borrowingPolicy: config.borrowingPolicy,
             interestRatePrimary: config.interestRatePrimary,
             interestRateSecondary: config.interestRateSecondary,
-            addonFixedRate: 0,
-            addonPeriodRate: 0,
+            addonFixedRate: config.addonFixedRate,
+            addonPeriodRate: config.addonPeriodRate,
             lateFeePolicy: LateFeePolicy.Individual,
             lateFeeRate: 0
         });
