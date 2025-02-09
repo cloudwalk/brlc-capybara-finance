@@ -40,7 +40,7 @@ interface ICreditLinePrimary is ICreditLineTypes {
     /// @dev Configures multiple borrowers at once.
     /// @param borrowers The addresses of the borrowers to configure.
     /// @param configs The array containing the legacy borrower configurations.
-    function configureBorrowers(address[] memory borrowers, BorrowerConfigLegacy[] memory configs) external;    
+    function configureBorrowers(address[] memory borrowers, BorrowerConfigLegacy[] memory configs) external;
 
     // -------------------------------------------- //
     //  View and pure functions                     //

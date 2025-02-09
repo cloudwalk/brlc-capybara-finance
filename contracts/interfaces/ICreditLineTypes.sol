@@ -140,7 +140,7 @@ interface ICreditLineTypes {
         uint32 interestRateSecondary;
         uint32 addonFixedRate;
         uint32 addonPeriodRate;
-    }    
+    }
 
     /// @dev Defines a borrower state.
     ///
