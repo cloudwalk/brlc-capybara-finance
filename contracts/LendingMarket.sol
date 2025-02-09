@@ -690,9 +690,7 @@ contract LendingMarket is
         Loan.State storage loan,
         uint256 changeAmount
     ) internal returns (uint256 newTrackedBalance, uint256 actualChangeAmount) {
-        if (changeAmount == 0) {
-            revert Error.InvalidAmount();
-        }
+        _checkTrackedBalanceChange(changeAmount);
         uint256 timestamp = _blockTimestamp();
         (uint256 oldTrackedBalance, uint256 lateFeeAmount) = _calculateTrackedBalance(loan, timestamp);
         uint256 outstandingBalance = Rounding.roundMath(oldTrackedBalance, Constants.ACCURACY_FACTOR);
@@ -718,6 +716,17 @@ contract LendingMarket is
         loan.trackedBalance = newTrackedBalance.toUint64();
         loan.trackedTimestamp = timestamp.toUint32();
         _updateStoredLateFee(lateFeeAmount, loan);
+    }
+
+    /// @dev Validates the change in the tracked balance of a loan.
+    ///
+    /// This function is made virtual to be overridden for testing purposes.
+    ///
+    /// @param changeAmount The amount of change in the tracked balance.
+    function _checkTrackedBalanceChange(uint256 changeAmount) internal view virtual {
+        if (changeAmount == 0) {
+            revert Error.InvalidAmount();
+        }
     }
 
     /// @dev Validates the main parameters of the loan.
