@@ -130,6 +130,19 @@ enum PayerKind {
   Stranger = 1
 }
 
+enum LoanOperationKind {
+  Repayment = 0,
+  Freezing = 1
+};
+
+interface LoanOperation {
+  kind: LoanOperationKind;
+  amount: number;
+  // if positive, then relative to the first loan start timestamp, otherwise relative to the loan overdue timestamp
+  relativeTimestamp: number;
+  subjectToUndo: boolean;
+}
+
 const ERROR_NAME_ADDON_TREASURY_ADDRESS_ZERO = "AddonTreasuryAddressZero";
 const ERROR_NAME_ALREADY_CONFIGURED = "AlreadyConfigured";
 const ERROR_NAME_ALREADY_INITIALIZED = "InvalidInitialization";
@@ -174,6 +187,7 @@ const EVENT_NAME_LOAN_REVOKED = "LoanRevoked";
 const EVENT_NAME_INSTALLMENT_LOAN_REVOKED = "InstallmentLoanRevoked";
 const EVENT_NAME_ON_AFTER_LOAN_REVOCATION = "OnAfterLoanRevocationCalled";
 const EVENT_NAME_TRANSFER = "Transfer";
+const ERROR_NAME_REPAYMENT_UNDONE = "RepaymentUndone";
 
 const OWNER_ROLE = ethers.id("OWNER_ROLE");
 const ADMIN_ROLE = ethers.id("ADMIN_ROLE");
@@ -197,8 +211,8 @@ const PROGRAM_ID = 1;
 const NEGATIVE_TIME_OFFSET = 3 * 60 * 60; // 3 hours
 
 const INSTALLMENT_COUNT = 3;
-const BORROWED_AMOUNTS: number[] = [BORROWED_AMOUNT * 3 - 2, BORROWED_AMOUNT * 2 + 1, BORROWED_AMOUNT + 1];
-const ADDON_AMOUNTS: number[] = [ADDON_AMOUNT * 3 - 2, ADDON_AMOUNT * 2 + 1, ADDON_AMOUNT + 1];
+const BORROWED_AMOUNTS: number[] = [BORROWED_AMOUNT * 3 - 1, BORROWED_AMOUNT * 2 + 1, BORROWED_AMOUNT];
+const ADDON_AMOUNTS: number[] = [ADDON_AMOUNT * 3 - 1, ADDON_AMOUNT * 2 + 1, ADDON_AMOUNT];
 const DURATIONS_IN_PERIODS: number[] = [0, DURATION_IN_PERIODS / 2, DURATION_IN_PERIODS];
 
 const EXPECTED_VERSION: Version = {
@@ -324,11 +338,13 @@ describe("Contract 'LendingMarket': base tests", async () => {
     liquidityPoolAddress = getAddress(liquidityPool);
     anotherLiquidityPoolAddress = getAddress(anotherLiquidityPool);
     tokenAddress = getAddress(token);
+  });
 
+  beforeEach(async () => {
     // Start tests at the beginning of a loan period to avoid rare failures due to crossing a border between two periods
     const periodIndex = calculatePeriodIndex(calculateTimestampWithOffset(await getLatestBlockTimestamp()));
     await increaseBlockTimestampToPeriodIndex(periodIndex + 1);
-  });
+  })
 
   function creatLoanTerms(): LoanTerms {
     return {
@@ -392,7 +408,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
         borrowedAmount: props.borrowedAmounts[i],
         addonAmount: props.addonAmounts[i],
         startTimestamp: timestampWithOffset,
-        durationInPeriods: DURATIONS_IN_PERIODS[i],
+        durationInPeriods: props.durations[i],
         token: tokenAddress,
         borrower: borrower.address,
         interestRatePrimary: INTEREST_RATE_PRIMARY,
@@ -409,6 +425,31 @@ describe("Contract 'LendingMarket': base tests", async () => {
       loans.push({ id: props.firstInstallmentId + i, startPeriod, state: loanState, config: loanConfig });
     }
     return loans;
+  }
+
+  async function takeInstallmentLoan(
+    marketUnderAdmin: Contract,
+    borrowedAmounts: number[],
+    addonAmounts: number[],
+    durations: number[]
+  ): Promise<Loan[]> {
+    const firstInstallmentId = Number(await marketUnderAdmin.loanCounter());
+    const tx = marketUnderAdmin.takeInstallmentLoanFor(
+      borrower.address,
+      PROGRAM_ID,
+      borrowedAmounts,
+      addonAmounts,
+      durations
+    );
+
+    return createInstallmentLoanParts({
+      firstInstallmentId,
+      borrowedAmounts: borrowedAmounts,
+      addonAmounts: addonAmounts,
+      durations: durations,
+      lateFeeAmount: LATE_FEE_AMOUNT,
+      timestamp: await getTxTimestamp(tx)
+    });
   }
 
   function calculateTrackedBalance(originalBalance: number, numberOfPeriods: number, interestRate: number): number {
@@ -637,8 +678,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
     const { marketUnderAdmin } = fixture;
 
     // Configure the late fee amount
-    const lateFeeAmount = (LATE_FEE_AMOUNT);
-    await proveTx(creditLine.mockLateFeeAmount(lateFeeAmount));
+    await proveTx(creditLine.mockLateFeeAmount(LATE_FEE_AMOUNT));
 
     // Take an ordinary loan
     const ordinaryLoanId = Number(await marketUnderAdmin.loanCounter());
@@ -653,29 +693,86 @@ describe("Contract 'LendingMarket': base tests", async () => {
       id: ordinaryLoanId,
       borrowedAmount: BORROWED_AMOUNT,
       addonAmount: ADDON_AMOUNT,
-      lateFeeAmount,
+      lateFeeAmount: LATE_FEE_AMOUNT,
       timestamp: await getTxTimestamp(tx1)
     });
 
     // Take an installment loan
-    const firstInstallmentId = Number(await marketUnderAdmin.loanCounter());
-    const tx2 = marketUnderAdmin.takeInstallmentLoanFor(
-      borrower.address,
-      PROGRAM_ID,
+    fixture.installmentLoanParts = await takeInstallmentLoan(
+      marketUnderAdmin,
       BORROWED_AMOUNTS,
       ADDON_AMOUNTS,
       DURATIONS_IN_PERIODS
     );
-
-    fixture.installmentLoanParts = createInstallmentLoanParts({
-      firstInstallmentId,
-      borrowedAmounts: BORROWED_AMOUNTS,
-      addonAmounts: ADDON_AMOUNTS,
-      durations: DURATIONS_IN_PERIODS,
-      lateFeeAmount,
-      timestamp: await getTxTimestamp(tx2)
-    });
     return fixture;
+  }
+
+  async function executeLoanOperations(
+    marketUnderAdmin: Contract,
+    loans: Loan[],
+    operations: LoanOperation[]
+  ): Promise<number[]> {
+    const actualTimestamps: number[] = [];
+
+    const loanStartTimestamp = removeTimestampOffset(loans[0].state.startTimestamp);
+    const loanOverdueTimestamp = removeTimestampOffset(
+      (loans[0].startPeriod + loans[0].state.durationInPeriods) * PERIOD_IN_SECONDS +
+      PERIOD_IN_SECONDS
+    );
+    const maxTimeBeforeOverdueInSeconds = 60;
+
+    for (const operation of operations) {
+      if (operation.relativeTimestamp >= 0) {
+        await increaseBlockTimestampTo(loanStartTimestamp + operation.relativeTimestamp);
+      } else if (operation.relativeTimestamp <= -maxTimeBeforeOverdueInSeconds) {
+        await increaseBlockTimestampTo(loanOverdueTimestamp + operation.relativeTimestamp);
+      } else {
+        throw new Error(
+          "The operation relative timestamp is too close to the overdue timestamp. " +
+          "The loan state can be different due to a blockchain delay"
+        );
+      }
+
+      const loanIds: number[] = loans.map(loan => loan.id);
+      switch (operation.kind) {
+        case LoanOperationKind.Repayment: {
+          const repaymentAmount = operation.amount;
+          const repaymentAmounts: number[] = Array.from({ length: loans.length }, () => repaymentAmount);
+          if (operation.subjectToUndo) {
+            if (!(await marketUnderAdmin.areZeroAmountsAllowed())) {
+              await proveTx(marketUnderAdmin.allowZeroAmounts()); // Call via the testable version
+            }
+            for (let i = 1; i < loans.length; ++i) {
+              repaymentAmounts[i] = 0;
+            }
+          }
+          const tx = marketUnderAdmin.repayLoanForBatch(
+            loanIds,
+            repaymentAmounts,
+            borrower.address
+          );
+          const repaymentTimestamp = await getTxTimestamp(tx);
+          actualTimestamps.push(repaymentTimestamp);
+          for (let i = 0; i < loans.length; ++i) {
+            const loan = loans[i];
+            const repaymentAmount = repaymentAmounts[i];
+            processRepayment(loan, { repaymentAmount, repaymentTimestamp });
+          }
+          break;
+        }
+        case LoanOperationKind.Freezing: {
+          if (operation.subjectToUndo) {
+            throw new Error("The freezing operation cannot be undone");
+          }
+          const tx = marketUnderAdmin.freezeBatch(loanIds); // Call via the testable version
+          const freezingTimestamp = await getTxTimestamp(tx);
+          loans.forEach(loan => loan.state.freezeTimestamp = calculateTimestampWithOffset(freezingTimestamp));
+          actualTimestamps.push(freezingTimestamp);
+          break;
+        }
+      }
+    }
+    return actualTimestamps;
   }
 
   describe("Function initialize()", async () => {
@@ -1263,7 +1360,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       // Check rounding of amounts
       expect(totalBorrowedAmount % ACCURACY_FACTOR).to.eq(0, `totalBorrowedAmount is unrounded, but must be`);
       expect(totalAddonAmount % ACCURACY_FACTOR).to.eq(0, `totalAddonAmount is unrounded, but must be`);
-      for (let i = 0; i < INSTALLMENT_COUNT; ++i) {
+      for (let i = 0; i < INSTALLMENT_COUNT - 1; ++i) {
         expect(BORROWED_AMOUNTS[i] % ACCURACY_FACTOR).not.to.eq(0, `borrowedAmounts[${i}] is rounded, but must not be`);
         expect(ADDON_AMOUNTS[i] % ACCURACY_FACTOR).not.to.eq(0, `addonAmounts[${i}] is rounded, but must not be`);
       }
@@ -2283,6 +2380,120 @@ describe("Contract 'LendingMarket': base tests", async () => {
 
         await expect(marketUnderAdmin.discountLoanForBatch(loanIds, discountAmounts))
           .to.be.revertedWithCustomError(marketUnderAdmin, ERROR_NAME_INVALID_AMOUNT);
+      });
+    });
+  });
+
+  describe("Function 'undoRepaymentFor()'", async () => {
+    describe("Execute as expected if", async () => {
+      async function executeAndCheck(operations: LoanOperation[]) {
+        const { marketUnderAdmin } = await setUpFixture(deployLendingMarketAndTakeLoans);
+        const loans: Loan[] = await takeInstallmentLoan(
+          marketUnderAdmin,
+          [BORROWED_AMOUNT, BORROWED_AMOUNT],
+          [ADDON_AMOUNT, ADDON_AMOUNT],
+          [DURATION_IN_PERIODS, DURATION_IN_PERIODS]
+        );
+
+        const operationToUndoIndex = operations.findIndex(operation => operation.subjectToUndo);
+        const actualTimestamps = await executeLoanOperations(marketUnderAdmin, loans, operations);
+
+        const repaymentAmount = operations[operationToUndoIndex].amount;
+        const repaymentTimestamp = calculateTimestampWithOffset(actualTimestamps[operationToUndoIndex]);
+        const tx = marketUnderAdmin.undoRepaymentFor(loans[0].id, repaymentAmount, repaymentTimestamp);
+        await proveTx(tx); // Made intentionally to check event emitting at the end of the test
+
+        const actualStateForReferenceLoan = await marketUnderAdmin.getLoanState(loans[1].id);
+        checkEquality(actualStateForReferenceLoan, loans[1].state);
+        const actualStateForTargetLoan = await marketUnderAdmin.getLoanState(loans[0].id);
+        checkEquality(actualStateForTargetLoan, loans[1].state);
+
+        await expect(tx).to.emit(marketUnderAdmin, ERROR_NAME_REPAYMENT_UNDONE).withArgs(
+          loans[0].id,
+          repaymentTimestamp,
+          loans[1].state.repaidAmount, // newRepaidAmount
+          loans[0].state.repaidAmount, // oldRepaidAmount
+          loans[1].state.trackedBalance, // newTrackedBalance
+          loans[0].state.trackedBalance, // oldTrackedBalance
+          loans[1].state.lateFeeAmount, // newLateFeeAmount
+          loans[0].state.lateFeeAmount // oldLateFeeAmount
+        );
+      }
+
+      describe("There are two repayment before the loan is overdue and", async () => {
+        it("The first one is being undone", async () => {
+          await executeAndCheck([
+            {
+              kind: LoanOperationKind.Repayment,
+              amount: REPAYMENT_AMOUNT,
+              relativeTimestamp: 2 * PERIOD_IN_SECONDS,
+              subjectToUndo: true
+            },
+            {
+              kind: LoanOperationKind.Repayment,
+              amount: REPAYMENT_AMOUNT,
+              relativeTimestamp: 4 * PERIOD_IN_SECONDS,
+              subjectToUndo: false
+            }
+          ]);
+        });
+
+        it("The first one is being undone and the second is exactly at the loan due date", async () => {
+          await executeAndCheck([
+            {
+              kind: LoanOperationKind.Repayment,
+              amount: REPAYMENT_AMOUNT,
+              relativeTimestamp: 2 * PERIOD_IN_SECONDS,
+              subjectToUndo: true
+            },
+            {
+              kind: LoanOperationKind.Repayment,
+              amount: REPAYMENT_AMOUNT,
+              relativeTimestamp: -60, // A negative value are seconds before the end of the loan due date
+              subjectToUndo: false
+            }
+          ]);
+        });
+
+        it("The first one is being undone and the loan is frozen before the second repayment", async () => {
+          await executeAndCheck([
+            {
+              kind: LoanOperationKind.Repayment,
+              amount: REPAYMENT_AMOUNT,
+              relativeTimestamp: 2 * PERIOD_IN_SECONDS,
+              subjectToUndo: true
+            },
+            {
+              kind: LoanOperationKind.Freezing,
+              amount: 0,
+              relativeTimestamp: 4 * PERIOD_IN_SECONDS,
+              subjectToUndo: false
+            },
+            {
+              kind: LoanOperationKind.Repayment,
+              amount: REPAYMENT_AMOUNT,
+              relativeTimestamp: 6 * PERIOD_IN_SECONDS,
+              subjectToUndo: false
+            }
+          ]);
+        });
+
+        it("The second one is being undone", async () => {
+          await executeAndCheck([
+            {
+              kind: LoanOperationKind.Repayment,
+              amount: REPAYMENT_AMOUNT,
+              relativeTimestamp: 2 * PERIOD_IN_SECONDS,
+              subjectToUndo: false
+            },
+            {
+              kind: LoanOperationKind.Repayment,
+              amount: REPAYMENT_AMOUNT,
+              relativeTimestamp: 4 * PERIOD_IN_SECONDS,
+              subjectToUndo: true
+            }
+          ]);
+        });
       });
     });
   });
