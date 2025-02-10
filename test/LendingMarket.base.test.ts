@@ -2410,29 +2410,62 @@ describe("Contract 'LendingMarket': base tests", async () => {
           [DURATION_IN_PERIODS, DURATION_IN_PERIODS]
         );
 
-        const operationToUndoIndex = operations.findIndex(operation => operation.subjectToUndo);
+        const operationToUndoIndexes: number[] = [];
+        operations.forEach((operation, index) => {
+          if (operation.subjectToUndo) {
+            operationToUndoIndexes.push(index);
+          }
+        });
+        if (operationToUndoIndexes.length === 0) {
+          throw new Error("No loans have been selected for undoing");
+        }
+
         const actualTimestamps = await executeLoanOperations(marketUnderAdmin, loans, operations);
 
-        const repaymentAmount = operations[operationToUndoIndex].amount;
-        const repaymentTimestamp = calculateTimestampWithOffset(actualTimestamps[operationToUndoIndex]);
-        const tx = marketUnderAdmin.undoRepaymentFor(loans[0].id, repaymentAmount, repaymentTimestamp);
-        await proveTx(tx); // Made intentionally to check event emitting at the end of the test
+        // Undo all the needed repayment except the last one
+        for (let i = 0; i < operationToUndoIndexes.length - 1; ++i) {
+          const operationToUndoIndex = operationToUndoIndexes[i];
+          const repaymentAmount = operations[operationToUndoIndex].amount;
+          const repaymentTimestamp = calculateTimestampWithOffset(actualTimestamps[operationToUndoIndex]);
+          await proveTx(marketUnderAdmin.undoRepaymentFor(loans[0].id, repaymentAmount, repaymentTimestamp));
+        }
 
-        const actualStateForReferenceLoan = await marketUnderAdmin.getLoanState(loans[1].id);
-        checkEquality(actualStateForReferenceLoan, loans[1].state);
-        const actualStateForTargetLoan = await marketUnderAdmin.getLoanState(loans[0].id);
-        checkEquality(actualStateForTargetLoan, loans[1].state);
+        // Undo the last needed repayment
+        const operationToUndoIndex = operationToUndoIndexes[operationToUndoIndexes.length - 1];
+        {
+          const repaymentAmount = operations[operationToUndoIndex].amount;
+          const repaymentTimestamp = calculateTimestampWithOffset(actualTimestamps[operationToUndoIndex]);
+          const tx = marketUnderAdmin.undoRepaymentFor(loans[0].id, repaymentAmount, repaymentTimestamp);
+          await proveTx(tx); // Made intentionally to check event emitting at the end of the test
 
-        await expect(tx).to.emit(marketUnderAdmin, ERROR_NAME_REPAYMENT_UNDONE).withArgs(
-          loans[0].id,
-          repaymentTimestamp,
-          loans[1].state.repaidAmount, // newRepaidAmount
-          loans[0].state.repaidAmount, // oldRepaidAmount
-          loans[1].state.trackedBalance, // newTrackedBalance
-          loans[0].state.trackedBalance, // oldTrackedBalance
-          loans[1].state.lateFeeAmount, // newLateFeeAmount
-          loans[0].state.lateFeeAmount // oldLateFeeAmount
-        );
+          const actualStateForReferenceLoan = await marketUnderAdmin.getLoanState(loans[1].id);
+          checkEquality(actualStateForReferenceLoan, loans[1].state);
+
+          const actualStateForTargetLoan = await marketUnderAdmin.getLoanState(loans[0].id);
+          const trackedBalanceDifference =
+            Number(actualStateForTargetLoan.trackedBalance) - loans[1].state.trackedBalance;
+          const lateFeeAmountDifference =
+            Number(actualStateForTargetLoan.lateFeeAmount) - loans[1].state.lateFeeAmount;
+          expect(Math.abs(trackedBalanceDifference)).to.be.lessThanOrEqual(1); // This can be due to rounding
+          expect(Math.abs(lateFeeAmountDifference)).to.be.lessThanOrEqual(1); // This can be due to rounding
+          loans[1].state.trackedBalance += trackedBalanceDifference;
+          loans[1].state.lateFeeAmount += lateFeeAmountDifference;
+          checkEquality(actualStateForTargetLoan, loans[1].state);
+
+          // Check the event if there is only a single repayment to undo
+          if (operationToUndoIndexes.length < 2) {
+            await expect(tx).to.emit(marketUnderAdmin, ERROR_NAME_REPAYMENT_UNDONE).withArgs(
+              loans[0].id,
+              repaymentTimestamp,
+              loans[1].state.repaidAmount, // newRepaidAmount
+              loans[0].state.repaidAmount, // oldRepaidAmount
+              loans[1].state.trackedBalance, // newTrackedBalance
+              loans[0].state.trackedBalance, // oldTrackedBalance
+              loans[1].state.lateFeeAmount, // newLateFeeAmount
+              loans[0].state.lateFeeAmount // oldLateFeeAmount
+            );
+          }
+        }
       }
 
       describe("There are repayments only before the loan is overdue and", async () => {
@@ -2489,6 +2522,46 @@ describe("Contract 'LendingMarket': base tests", async () => {
               amount: REPAYMENT_AMOUNT,
               relativeTimestamp: 6 * PERIOD_IN_SECONDS,
               subjectToUndo: false
+            }
+          ]);
+        });
+
+        it("The all repayments are being undone", async () => {
+          await executeAndCheck([
+            {
+              kind: LoanOperationKind.Repayment,
+              amount: REPAYMENT_AMOUNT,
+              relativeTimestamp: 2 * PERIOD_IN_SECONDS,
+              subjectToUndo: true
+            },
+            {
+              kind: LoanOperationKind.Repayment,
+              amount: REPAYMENT_AMOUNT,
+              relativeTimestamp: 4 * PERIOD_IN_SECONDS,
+              subjectToUndo: true
+            }
+          ]);
+        });
+
+        it("The all repayments are being undone and the loan is frozen before the second repayment", async () => {
+          await executeAndCheck([
+            {
+              kind: LoanOperationKind.Repayment,
+              amount: REPAYMENT_AMOUNT,
+              relativeTimestamp: 2 * PERIOD_IN_SECONDS,
+              subjectToUndo: true
+            },
+            {
+              kind: LoanOperationKind.Freezing,
+              amount: 0,
+              relativeTimestamp: 4 * PERIOD_IN_SECONDS,
+              subjectToUndo: false
+            },
+            {
+              kind: LoanOperationKind.Repayment,
+              amount: REPAYMENT_AMOUNT,
+              relativeTimestamp: 6 * PERIOD_IN_SECONDS,
+              subjectToUndo: true
             }
           ]);
         });
@@ -2630,6 +2703,70 @@ describe("Contract 'LendingMarket': base tests", async () => {
               amount: REPAYMENT_AMOUNT,
               relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 7 * PERIOD_IN_SECONDS,
               subjectToUndo: false
+            }
+          ]);
+        });
+
+        it("The all the repayment are being undone except the last one", async () => {
+          await executeAndCheck([
+            {
+              kind: LoanOperationKind.Repayment,
+              amount: REPAYMENT_AMOUNT,
+              relativeTimestamp: 2 * PERIOD_IN_SECONDS,
+              subjectToUndo: true
+            },
+            {
+              kind: LoanOperationKind.Repayment,
+              amount: REPAYMENT_AMOUNT,
+              relativeTimestamp: 4 * PERIOD_IN_SECONDS,
+              subjectToUndo: true
+            },
+            {
+              kind: LoanOperationKind.Repayment,
+              amount: REPAYMENT_AMOUNT,
+              relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 5 * PERIOD_IN_SECONDS,
+              subjectToUndo: true
+            },
+            {
+              kind: LoanOperationKind.Repayment,
+              amount: REPAYMENT_AMOUNT,
+              relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 7 * PERIOD_IN_SECONDS,
+              subjectToUndo: false
+            }
+          ]);
+        });
+
+        it("The all the repayment are being and the loan is frozen after the due date", async () => {
+          await executeAndCheck([
+            {
+              kind: LoanOperationKind.Repayment,
+              amount: REPAYMENT_AMOUNT,
+              relativeTimestamp: 2 * PERIOD_IN_SECONDS,
+              subjectToUndo: true
+            },
+            {
+              kind: LoanOperationKind.Repayment,
+              amount: REPAYMENT_AMOUNT,
+              relativeTimestamp: 4 * PERIOD_IN_SECONDS,
+              subjectToUndo: true
+            },
+            {
+              kind: LoanOperationKind.Freezing,
+              amount: REPAYMENT_AMOUNT,
+              relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 3 * PERIOD_IN_SECONDS,
+              subjectToUndo: false
+            },
+            {
+              kind: LoanOperationKind.Repayment,
+              amount: REPAYMENT_AMOUNT,
+              relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 5 * PERIOD_IN_SECONDS,
+              subjectToUndo: true
+            },
+            {
+              kind: LoanOperationKind.Repayment,
+              amount: REPAYMENT_AMOUNT,
+              relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 7 * PERIOD_IN_SECONDS,
+              subjectToUndo: true
             }
           ]);
         });
