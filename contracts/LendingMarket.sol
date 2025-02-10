@@ -901,8 +901,11 @@ contract LendingMarket is
     ) internal view returns (uint256 trackedBalance, uint256 lateFeeAmount) {
         trackedBalance = initialBalance;
 
-        if (loan.freezeTimestamp != 0) {
-            finishTimestamp = loan.freezeTimestamp;
+        {
+            uint256 freezeTimestamp = loan.freezeTimestamp;
+            if (freezeTimestamp != 0 && freezeTimestamp < finishTimestamp) {
+                finishTimestamp = freezeTimestamp;
+            }
         }
 
         uint256 finishPeriodIndex = _periodIndex(finishTimestamp, Constants.PERIOD_IN_SECONDS);
