@@ -259,7 +259,7 @@ const FUNC_DETERMINE_LATE_FEE_AMOUNT_LEGACY =
 
 const EXPECTED_VERSION: Version = {
   major: 1,
-  minor: 10,
+  minor: 11,
   patch: 0
 };
 
