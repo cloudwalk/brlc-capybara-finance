@@ -15,6 +15,9 @@ contract LendingMarketTestable is LendingMarket {
     /// @dev The maximum number of installments. Non-zero value overrides the constant in Constants.sol.
     uint256 public installmentCountMax;
 
+    /// @dev Flag to allow zero amounts for loans in test purposes.
+    bool public areZeroAmountsAllowed;
+
     // -------------------------------------------- //
     //  Transactional functions                     //
     // -------------------------------------------- //
@@ -74,6 +77,21 @@ contract LendingMarketTestable is LendingMarket {
         }
     }
 
+    /// @dev Allow zero amounts for a batch of loans.
+    function allowZeroAmounts() external {
+        areZeroAmountsAllowed = true;
+    }
+
+    /// @dev Freeze a batch of loans.
+    /// @param loanIds The unique identifiers of the loans to freeze.
+    function freezeBatch(uint256[] calldata loanIds) external {
+        uint256 len = loanIds.length;
+        _grantRole(ADMIN_ROLE, address(this));
+        for (uint256 i = 0; i < len; ++i) {
+            this.freeze(loanIds[i]);
+        }
+    }
+
     // -------------------------------------------- //
     //  Internal functions                          //
     // -------------------------------------------- //
@@ -85,6 +103,16 @@ contract LendingMarketTestable is LendingMarket {
             return super._installmentCountMax();
         } else {
             return installmentCountMax;
+        }
+    }
+
+    /// @dev Overrides the same name function in the lending market contract to allow zero amounts if the flag is set.
+    /// @param changeAmount The amount of change in the tracked balance.
+    function _checkTrackedBalanceChange(uint256 changeAmount) internal view override {
+        if (!areZeroAmountsAllowed) {
+            super._checkTrackedBalanceChange(changeAmount);
+        } else {
+            // just do nothing and allow zero amounts
         }
     }
 }
