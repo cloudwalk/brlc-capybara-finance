@@ -22,6 +22,17 @@ interface ICreditLineTypes {
         TotalActiveAmountLimit
     }
 
+    /// @dev Defines the available late fee policies.
+    ///
+    /// Possible values:
+    ///
+    /// - Common = 0 ------ The late fee rate is coming from the credit line configuration.
+    /// - Individual = 1 -- The late fee rate is coming from the borrower configuration.
+    enum LateFeePolicy {
+        Common,
+        Individual
+    }
+
     /// @dev A struct that defines credit line configuration.
     ///
     /// Fields:
@@ -75,10 +86,47 @@ interface ICreditLineTypes {
     /// - interestRateSecondary -- The secondary interest rate to be applied to the loan.
     /// - addonFixedRate --------- The fixed rate for the loan addon calculation (extra charges or fees).
     /// - addonPeriodRate -------- The period rate for the loan addon calculation (extra charges or fees).
+    /// - lateFeePolicy ---------- The late fee policy to be applied to the borrower.
+    /// - lateFeeRate ------------ The late fee rate to be applied to the borrower.
     ///
     /// Note:
     /// Fields `addonFixedRate`, `addonPeriodRate` have been deprecated since version 1.8.0 and must be set to zero.
     struct BorrowerConfig {
+        // Slot 1
+        uint32 expiration;
+        uint32 minDurationInPeriods;
+        uint32 maxDurationInPeriods;
+        uint64 minBorrowedAmount;
+        uint64 maxBorrowedAmount;
+        BorrowingPolicy borrowingPolicy;
+        // uint24 __reserved;
+        // Slot 2
+        uint32 interestRatePrimary;
+        uint32 interestRateSecondary;
+        uint32 addonFixedRate;
+        uint32 addonPeriodRate;
+        LateFeePolicy lateFeePolicy;
+        uint32 lateFeeRate;
+    }
+
+    /// @dev A legacy struct that defines borrower configuration.
+    ///
+    /// Fields:
+    ///
+    /// - expiration ------------- The expiration date of the configuration.
+    /// - minDurationInPeriods --- The minimum duration of the loan determined in periods.
+    /// - maxDurationInPeriods --- The maximum duration of the loan determined in periods.
+    /// - minBorrowedAmount ------ The minimum amount of tokens the borrower can take as a loan.
+    /// - maxBorrowedAmount ------ The maximum amount of tokens the borrower can take as a loan.
+    /// - borrowingPolicy -------- The borrowing policy to be applied to the borrower.
+    /// - interestRatePrimary ---- The primary interest rate to be applied to the loan.
+    /// - interestRateSecondary -- The secondary interest rate to be applied to the loan.
+    /// - addonFixedRate --------- The fixed rate for the loan addon calculation (extra charges or fees).
+    /// - addonPeriodRate -------- The period rate for the loan addon calculation (extra charges or fees).
+    ///
+    /// Note:
+    /// Fields `addonFixedRate`, `addonPeriodRate` have been deprecated since version 1.8.0 and must be set to zero.
+    struct BorrowerConfigLegacy {
         // Slot 1
         uint32 expiration;
         uint32 minDurationInPeriods;

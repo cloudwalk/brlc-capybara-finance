@@ -20,10 +20,18 @@ const PERIOD_IN_SECONDS = 86400;
 const PROGRAM_ID = 1;
 const NEGATIVE_TIME_OFFSET = 3 * 60 * 60; // 3 hours
 
+const FUNC_CONFIGURE_BORROWER_NEW =
+  "configureBorrower(address,(uint32,uint32,uint32,uint64,uint64,uint8,uint32,uint32,uint32,uint32,uint8,uint32))";
+
 enum BorrowingPolicy {
   // SingleActiveLoan = 0,
   // MultipleActiveLoans = 1
   TotalActiveAmountLimit = 2
+}
+
+enum LateFeePolicy {
+  Common = 0
+  // Individual = 1
 }
 
 enum ScenarioFinalAction {
@@ -107,6 +115,8 @@ interface BorrowerConfig {
   interestRateSecondary: number;
   addonFixedRate: number;
   addonPeriodRate: number;
+  lateFeePolicy: LateFeePolicy;
+  lateFeeRate: number;
 
   [key: string]: number | BorrowingPolicy; // Index signature
 }
@@ -284,7 +294,7 @@ describe("Contract 'LendingMarket': complex tests", async () => {
 
     // Configure borrower
     const borrowerConfig: BorrowerConfig = createBorrowerConfig(scenario);
-    await proveTx(creditLine.configureBorrower(borrower.address, borrowerConfig));
+    await proveTx(creditLine[FUNC_CONFIGURE_BORROWER_NEW](borrower.address, borrowerConfig));
   }
 
   function createCreditLineConfig(scenario: TestScenario): CreditLineConfig {
@@ -316,7 +326,9 @@ describe("Contract 'LendingMarket': complex tests", async () => {
       addonFixedRate: 0,
       addonPeriodRate: 0,
       borrowingPolicy: BorrowingPolicy.TotalActiveAmountLimit,
-      expiration: 2 ** 32 - 1
+      expiration: 2 ** 32 - 1,
+      lateFeePolicy: LateFeePolicy.Common,
+      lateFeeRate: 0
     };
   }
 

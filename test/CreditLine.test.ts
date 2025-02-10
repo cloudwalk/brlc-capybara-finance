@@ -18,6 +18,11 @@ enum BorrowingPolicy {
   TotalActiveAmountLimit = 2
 }
 
+enum LateFeePolicy {
+  Common = 0,
+  Individual = 1
+}
+
 interface CreditLineConfig {
   minBorrowedAmount: bigint;
   maxBorrowedAmount: bigint;
@@ -37,6 +42,23 @@ interface CreditLineConfig {
 }
 
 interface BorrowerConfig {
+  expiration: bigint;
+  minDurationInPeriods: bigint;
+  maxDurationInPeriods: bigint;
+  minBorrowedAmount: bigint;
+  maxBorrowedAmount: bigint;
+  borrowingPolicy: BorrowingPolicy;
+  interestRatePrimary: bigint;
+  interestRateSecondary: bigint;
+  addonFixedRate: bigint;
+  addonPeriodRate: bigint;
+  lateFeePolicy: LateFeePolicy;
+  lateFeeRate: bigint;
+
+  [key: string]: bigint | BorrowingPolicy | LateFeePolicy; // Index signature
+}
+
+interface BorrowerConfigLegacy {
   expiration: bigint;
   minDurationInPeriods: bigint;
   maxDurationInPeriods: bigint;
@@ -134,6 +156,21 @@ const defaultBorrowerConfig: BorrowerConfig = {
   interestRatePrimary: 0n,
   interestRateSecondary: 0n,
   addonFixedRate: 0n,
+  addonPeriodRate: 0n,
+  lateFeePolicy: LateFeePolicy.Common,
+  lateFeeRate: 0n
+};
+
+const defaultBorrowerConfigLegacy: BorrowerConfigLegacy = {
+  expiration: 0n,
+  minDurationInPeriods: 0n,
+  maxDurationInPeriods: 0n,
+  minBorrowedAmount: 0n,
+  maxBorrowedAmount: 0n,
+  borrowingPolicy: BorrowingPolicy.SingleActiveLoan,
+  interestRatePrimary: 0n,
+  interestRateSecondary: 0n,
+  addonFixedRate: 0n,
   addonPeriodRate: 0n
 };
 
@@ -204,12 +241,26 @@ const BORROWED_AMOUNT = 1234_567_890n;
 const LOAN_ID = 123n;
 const ADDON_AMOUNT = 123456789n;
 const REPAYMENT_AMOUNT = 12345678n;
-const LATE_FEE_RATE = 987654321n;
+const LATE_FEE_RATE_COMMON = 987654321n;
+const LATE_FEE_RATE_INDIVIDUAL = 129876543n;
 const INTEREST_RATE_FACTOR = 10n ** 9n;
+
+const FUNC_CONFIGURE_BORROWER_NEW =
+  "configureBorrower(address,(uint32,uint32,uint32,uint64,uint64,uint8,uint32,uint32,uint32,uint32,uint8,uint32))";
+const FUNC_CONFIGURE_BORROWER_LEGACY =
+  "configureBorrower(address,(uint32,uint32,uint32,uint64,uint64,uint8,uint32,uint32,uint32,uint32))";
+const FUNC_CONFIGURE_BORROWERS_NEW =
+  "configureBorrowers(address[],(uint32,uint32,uint32,uint64,uint64,uint8,uint32,uint32,uint32,uint32,uint8,uint32)[])";
+const FUNC_CONFIGURE_BORROWERS_LEGACY =
+  "configureBorrowers(address[],(uint32,uint32,uint32,uint64,uint64,uint8,uint32,uint32,uint32,uint32)[])";
+const FUNC_DETERMINE_LATE_FEE_AMOUNT_NEW =
+  "determineLateFeeAmount(address,uint256)";
+const FUNC_DETERMINE_LATE_FEE_AMOUNT_LEGACY =
+  "determineLateFeeAmount(uint256)";
 
 const EXPECTED_VERSION: Version = {
   major: 1,
-  minor: 9,
+  minor: 10,
   patch: 0
 };
 
@@ -299,7 +350,7 @@ describe("Contract 'CreditLine'", async () => {
     const { creditLineUnderAdmin } = fixture;
 
     fixture.borrowerConfig = createBorrowerConfiguration();
-    await proveTx(creditLineUnderAdmin.configureBorrower(borrower.address, fixture.borrowerConfig));
+    await proveTx(creditLineUnderAdmin[FUNC_CONFIGURE_BORROWER_NEW](borrower.address, fixture.borrowerConfig));
 
     return fixture;
   }
@@ -318,7 +369,7 @@ describe("Contract 'CreditLine'", async () => {
       maxAddonFixedRate: 0n,
       minAddonPeriodRate: 0n,
       maxAddonPeriodRate: 0n,
-      lateFeeRate: LATE_FEE_RATE
+      lateFeeRate: LATE_FEE_RATE_COMMON
     };
   }
 
@@ -335,8 +386,19 @@ describe("Contract 'CreditLine'", async () => {
       interestRatePrimary: MIN_INTEREST_RATE_PRIMARY,
       interestRateSecondary: MIN_INTEREST_RATE_SECONDARY,
       addonFixedRate: 0n,
-      addonPeriodRate: 0n
+      addonPeriodRate: 0n,
+      lateFeePolicy: LateFeePolicy.Common,
+      lateFeeRate: LATE_FEE_RATE_INDIVIDUAL
     };
+  }
+
+  function convertToLegacy(borrowerConfig: BorrowerConfig): BorrowerConfigLegacy {
+    const keys = Object.keys(defaultBorrowerConfigLegacy);
+    const result: BorrowerConfigLegacy = { ...defaultBorrowerConfigLegacy };
+    for (const key of keys) {
+      result[key] = (borrowerConfig as BorrowerConfigLegacy)[key];
+    }
+    return result;
   }
 
   function createLoanTerms(
@@ -389,6 +451,20 @@ describe("Contract 'CreditLine'", async () => {
       borrowers,
       configs
     };
+  }
+
+  async function reconfigureCreditLineLateFee(fixture: Fixture, props: {
+    lateFeeRatePolicy: LateFeePolicy;
+    lateFeeRateCommon: bigint;
+    lateFeeRateIndividual: bigint;
+  }) {
+    const creditLineConfigNew: CreditLineConfig = {
+      ...fixture.creditLineConfig, lateFeeRate: props.lateFeeRateCommon
+    };
+    const borrowerConfigNew: BorrowerConfig =
+      { ...fixture.borrowerConfig, lateFeeRate: props.lateFeeRateIndividual, lateFeePolicy: props.lateFeeRatePolicy };
+    await proveTx(fixture.creditLine.configureCreditLine(creditLineConfigNew));
+    await proveTx(fixture.creditLineUnderAdmin[FUNC_CONFIGURE_BORROWER_NEW](borrower.address, borrowerConfigNew));
   }
 
   describe("Function 'initialize()'", async () => {
@@ -645,12 +721,12 @@ describe("Contract 'CreditLine'", async () => {
     });
   });
 
-  describe("Function 'configureBorrower()'", async () => {
+  describe("Function 'configureBorrower()' new", async () => {
     it("Executes as expected and emits the correct event if is called by an admin", async () => {
       const { creditLineUnderAdmin } = await setUpFixture(deployAndConfigureContracts);
       const expectedConfig = createBorrowerConfiguration();
 
-      await expect(creditLineUnderAdmin.configureBorrower(borrower.address, expectedConfig))
+      await expect(creditLineUnderAdmin[FUNC_CONFIGURE_BORROWER_NEW](borrower.address, expectedConfig))
         .to.emit(creditLineUnderAdmin, EVENT_NAME_BORROWER_CONFIGURED)
         .withArgs(getAddress(creditLineUnderAdmin), borrower.address);
 
@@ -663,10 +739,10 @@ describe("Contract 'CreditLine'", async () => {
       const config = createBorrowerConfiguration();
 
       // Even the owner cannot configure a borrower
-      await expect(connect(creditLine, owner).configureBorrower(attacker.address, config))
+      await expect(connect(creditLine, owner)[FUNC_CONFIGURE_BORROWER_NEW](attacker.address, config))
         .to.be.revertedWithCustomError(creditLine, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
         .withArgs(owner.address, ADMIN_ROLE);
-      await expect(connect(creditLine, attacker).configureBorrower(attacker.address, config))
+      await expect(connect(creditLine, attacker)[FUNC_CONFIGURE_BORROWER_NEW](attacker.address, config))
         .to.be.revertedWithCustomError(creditLine, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
         .withArgs(attacker.address, ADMIN_ROLE);
     });
@@ -676,7 +752,7 @@ describe("Contract 'CreditLine'", async () => {
       const config = createBorrowerConfiguration();
       await proveTx(creditLine.pause());
 
-      await expect(creditLineUnderAdmin.configureBorrower(borrower.address, config))
+      await expect(creditLineUnderAdmin[FUNC_CONFIGURE_BORROWER_NEW](borrower.address, config))
         .to.be.revertedWithCustomError(creditLineUnderAdmin, ERROR_NAME_ENFORCED_PAUSED);
     });
 
@@ -684,7 +760,7 @@ describe("Contract 'CreditLine'", async () => {
       const { creditLineUnderAdmin } = await setUpFixture(deployAndConfigureContracts);
       const config = createBorrowerConfiguration();
 
-      await expect(creditLineUnderAdmin.configureBorrower(
+      await expect(creditLineUnderAdmin[FUNC_CONFIGURE_BORROWER_NEW](
         ZERO_ADDRESS, // borrower
         config
       )).to.be.revertedWithCustomError(creditLineUnderAdmin, ERROR_NAME_ZERO_ADDRESS);
@@ -695,7 +771,7 @@ describe("Contract 'CreditLine'", async () => {
       const config = createBorrowerConfiguration();
       config.minBorrowedAmount = config.maxBorrowedAmount + 1n;
 
-      await expect(creditLineUnderAdmin.configureBorrower(borrower.address, config))
+      await expect(creditLineUnderAdmin[FUNC_CONFIGURE_BORROWER_NEW](borrower.address, config))
         .to.be.revertedWithCustomError(creditLineUnderAdmin, ERROR_NAME_INVALID_BORROWER_CONFIGURATION);
     });
 
@@ -704,7 +780,7 @@ describe("Contract 'CreditLine'", async () => {
       const borrowerConfig = createBorrowerConfiguration();
       borrowerConfig.minBorrowedAmount = creditLineConfig.minBorrowedAmount - 1n;
 
-      await expect(creditLineUnderAdmin.configureBorrower(borrower.address, borrowerConfig))
+      await expect(creditLineUnderAdmin[FUNC_CONFIGURE_BORROWER_NEW](borrower.address, borrowerConfig))
         .to.be.revertedWithCustomError(creditLineUnderAdmin, ERROR_NAME_INVALID_BORROWER_CONFIGURATION);
     });
 
@@ -713,7 +789,7 @@ describe("Contract 'CreditLine'", async () => {
       const borrowerConfig = createBorrowerConfiguration();
       borrowerConfig.maxBorrowedAmount = creditLineConfig.maxBorrowedAmount + 1n;
 
-      await expect(creditLineUnderAdmin.configureBorrower(borrower.address, borrowerConfig))
+      await expect(creditLineUnderAdmin[FUNC_CONFIGURE_BORROWER_NEW](borrower.address, borrowerConfig))
         .to.be.revertedWithCustomError(creditLineUnderAdmin, ERROR_NAME_INVALID_BORROWER_CONFIGURATION);
     });
 
@@ -722,7 +798,7 @@ describe("Contract 'CreditLine'", async () => {
       const borrowerConfig = createBorrowerConfiguration();
       borrowerConfig.minDurationInPeriods = creditLineConfig.maxDurationInPeriods + 1n;
 
-      await expect(creditLineUnderAdmin.configureBorrower(borrower.address, borrowerConfig))
+      await expect(creditLineUnderAdmin[FUNC_CONFIGURE_BORROWER_NEW](borrower.address, borrowerConfig))
         .to.be.revertedWithCustomError(creditLineUnderAdmin, ERROR_NAME_INVALID_BORROWER_CONFIGURATION);
     });
 
@@ -731,7 +807,7 @@ describe("Contract 'CreditLine'", async () => {
       const borrowerConfig = createBorrowerConfiguration();
       borrowerConfig.minDurationInPeriods = creditLineConfig.minDurationInPeriods - 1n;
 
-      await expect(creditLineUnderAdmin.configureBorrower(borrower.address, borrowerConfig))
+      await expect(creditLineUnderAdmin[FUNC_CONFIGURE_BORROWER_NEW](borrower.address, borrowerConfig))
         .to.be.revertedWithCustomError(creditLineUnderAdmin, ERROR_NAME_INVALID_BORROWER_CONFIGURATION);
     });
 
@@ -740,7 +816,7 @@ describe("Contract 'CreditLine'", async () => {
       const borrowerConfig = createBorrowerConfiguration();
       borrowerConfig.maxDurationInPeriods = creditLineConfig.maxDurationInPeriods + 1n;
 
-      await expect(creditLineUnderAdmin.configureBorrower(borrower.address, borrowerConfig))
+      await expect(creditLineUnderAdmin[FUNC_CONFIGURE_BORROWER_NEW](borrower.address, borrowerConfig))
         .to.be.revertedWithCustomError(creditLineUnderAdmin, ERROR_NAME_INVALID_BORROWER_CONFIGURATION);
     });
 
@@ -749,7 +825,7 @@ describe("Contract 'CreditLine'", async () => {
       const borrowerConfig = createBorrowerConfiguration();
       borrowerConfig.interestRatePrimary = creditLineConfig.minInterestRatePrimary - 1n;
 
-      await expect(creditLineUnderAdmin.configureBorrower(borrower.address, borrowerConfig))
+      await expect(creditLineUnderAdmin[FUNC_CONFIGURE_BORROWER_NEW](borrower.address, borrowerConfig))
         .to.be.revertedWithCustomError(creditLineUnderAdmin, ERROR_NAME_INVALID_BORROWER_CONFIGURATION);
     });
 
@@ -758,7 +834,7 @@ describe("Contract 'CreditLine'", async () => {
       const borrowerConfig = createBorrowerConfiguration();
       borrowerConfig.interestRatePrimary = creditLineConfig.maxInterestRatePrimary + 1n;
 
-      await expect(creditLineUnderAdmin.configureBorrower(borrower.address, borrowerConfig))
+      await expect(creditLineUnderAdmin[FUNC_CONFIGURE_BORROWER_NEW](borrower.address, borrowerConfig))
         .to.be.revertedWithCustomError(creditLineUnderAdmin, ERROR_NAME_INVALID_BORROWER_CONFIGURATION);
     });
 
@@ -767,7 +843,7 @@ describe("Contract 'CreditLine'", async () => {
       const borrowerConfig = createBorrowerConfiguration();
       borrowerConfig.interestRateSecondary = creditLineConfig.minInterestRateSecondary - 1n;
 
-      await expect(creditLineUnderAdmin.configureBorrower(borrower.address, borrowerConfig))
+      await expect(creditLineUnderAdmin[FUNC_CONFIGURE_BORROWER_NEW](borrower.address, borrowerConfig))
         .to.be.revertedWithCustomError(creditLineUnderAdmin, ERROR_NAME_INVALID_BORROWER_CONFIGURATION);
     });
 
@@ -776,7 +852,7 @@ describe("Contract 'CreditLine'", async () => {
       const borrowerConfig = createBorrowerConfiguration();
       borrowerConfig.interestRateSecondary = creditLineConfig.maxInterestRateSecondary + 1n;
 
-      await expect(creditLineUnderAdmin.configureBorrower(borrower.address, borrowerConfig))
+      await expect(creditLineUnderAdmin[FUNC_CONFIGURE_BORROWER_NEW](borrower.address, borrowerConfig))
         .to.be.revertedWithCustomError(creditLineUnderAdmin, ERROR_NAME_INVALID_BORROWER_CONFIGURATION);
     });
 
@@ -785,7 +861,7 @@ describe("Contract 'CreditLine'", async () => {
       const borrowerConfig = createBorrowerConfiguration();
       borrowerConfig.addonFixedRate = 1n;
 
-      await expect(creditLineUnderAdmin.configureBorrower(borrower.address, borrowerConfig))
+      await expect(creditLineUnderAdmin[FUNC_CONFIGURE_BORROWER_NEW](borrower.address, borrowerConfig))
         .to.be.revertedWithCustomError(creditLineUnderAdmin, ERROR_NAME_INVALID_BORROWER_CONFIGURATION);
     });
 
@@ -794,17 +870,17 @@ describe("Contract 'CreditLine'", async () => {
       const borrowerConfig = createBorrowerConfiguration();
       borrowerConfig.addonPeriodRate = 1n;
 
-      await expect(creditLineUnderAdmin.configureBorrower(borrower.address, borrowerConfig))
+      await expect(creditLineUnderAdmin[FUNC_CONFIGURE_BORROWER_NEW](borrower.address, borrowerConfig))
         .to.be.revertedWithCustomError(creditLineUnderAdmin, ERROR_NAME_INVALID_BORROWER_CONFIGURATION);
     });
   });
 
-  describe("Function 'configureBorrowers()'", async () => {
+  describe("Function 'configureBorrowers()' new", async () => {
     it("Executes as expected and emits correct events if is called by an admin", async () => {
       const { creditLineUnderAdmin } = await setUpFixture(deployAndConfigureContracts);
       const { borrowers, configs } = await prepareDataForBatchBorrowerConfig();
 
-      const tx = creditLineUnderAdmin.configureBorrowers(borrowers, configs);
+      const tx = creditLineUnderAdmin[FUNC_CONFIGURE_BORROWERS_NEW](borrowers, configs);
 
       const creditLineAddress = getAddress(creditLineUnderAdmin);
       for (let i = 0; i < borrowers.length; i++) {
@@ -813,7 +889,7 @@ describe("Contract 'CreditLine'", async () => {
           .withArgs(creditLineAddress, borrowers[i]);
         const expectedConfig = configs[i];
         const actualConfig = await creditLineUnderAdmin.getBorrowerConfiguration(borrowers[i]);
-        checkEquality(actualConfig, expectedConfig);
+        checkEquality(actualConfig, expectedConfig, i);
       }
     });
 
@@ -821,10 +897,10 @@ describe("Contract 'CreditLine'", async () => {
       const { creditLine } = await setUpFixture(deployAndConfigureContracts);
       const { borrowers, configs } = await prepareDataForBatchBorrowerConfig();
 
-      await expect(connect(creditLine, owner).configureBorrowers(borrowers, configs))
+      await expect(connect(creditLine, owner)[FUNC_CONFIGURE_BORROWERS_NEW](borrowers, configs))
         .to.be.revertedWithCustomError(creditLine, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
         .withArgs(owner.address, ADMIN_ROLE);
-      await expect(connect(creditLine, attacker).configureBorrowers(borrowers, configs))
+      await expect(connect(creditLine, attacker)[FUNC_CONFIGURE_BORROWERS_NEW](borrowers, configs))
         .to.be.revertedWithCustomError(creditLine, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
         .withArgs(attacker.address, ADMIN_ROLE);
     });
@@ -834,7 +910,7 @@ describe("Contract 'CreditLine'", async () => {
       const { borrowers, configs } = await prepareDataForBatchBorrowerConfig();
       await proveTx(creditLine.pause());
 
-      await expect(creditLineUnderAdmin.configureBorrowers(borrowers, configs))
+      await expect(creditLineUnderAdmin[FUNC_CONFIGURE_BORROWERS_NEW](borrowers, configs))
         .to.be.revertedWithCustomError(creditLine, ERROR_NAME_ENFORCED_PAUSED);
     });
 
@@ -843,9 +919,232 @@ describe("Contract 'CreditLine'", async () => {
       const { borrowers, configs } = await prepareDataForBatchBorrowerConfig();
       borrowers.push(attacker.address);
 
-      await expect(creditLineUnderAdmin.configureBorrowers(borrowers, configs))
+      await expect(creditLineUnderAdmin[FUNC_CONFIGURE_BORROWERS_NEW](borrowers, configs))
         .to.be.revertedWithCustomError(creditLineUnderAdmin, ERROR_NAME_ARRAYS_LENGTH_MISMATCH);
     });
+
+    // Other test cases have been checked during tests of the 'configureBorrower()' legacy function
+  });
+
+  describe("Function 'configureBorrower()' legacy", async () => {
+    it("Executes as expected and emits the correct event if is called by an admin", async () => {
+      const { creditLineUnderAdmin } = await setUpFixture(deployAndConfigureContracts);
+      const expectedConfig = createBorrowerConfiguration();
+      expectedConfig.lateFeePolicy = LateFeePolicy.Individual;
+      expectedConfig.lateFeeRate = 0n;
+
+      const tx = creditLineUnderAdmin[FUNC_CONFIGURE_BORROWER_LEGACY](
+        borrower.address,
+        convertToLegacy(expectedConfig)
+      );
+      await expect(tx)
+        .to.emit(creditLineUnderAdmin, EVENT_NAME_BORROWER_CONFIGURED)
+        .withArgs(getAddress(creditLineUnderAdmin), borrower.address);
+
+      const actualConfig: BorrowerConfig = await creditLineUnderAdmin.getBorrowerConfiguration(borrower.address);
+      checkEquality(actualConfig, expectedConfig);
+    });
+
+    it("Is reverted if the caller does not have the admin role", async () => {
+      const { creditLine } = await setUpFixture(deployAndConfigureContracts);
+      const config = convertToLegacy(createBorrowerConfiguration());
+
+      // Even the owner cannot configure a borrower
+      await expect(connect(creditLine, owner)[FUNC_CONFIGURE_BORROWER_LEGACY](attacker.address, config))
+        .to.be.revertedWithCustomError(creditLine, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
+        .withArgs(owner.address, ADMIN_ROLE);
+      await expect(connect(creditLine, attacker)[FUNC_CONFIGURE_BORROWER_LEGACY](attacker.address, config))
+        .to.be.revertedWithCustomError(creditLine, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
+        .withArgs(attacker.address, ADMIN_ROLE);
+    });
+
+    it("Is reverted if the contract is paused", async () => {
+      const { creditLine, creditLineUnderAdmin } = await setUpFixture(deployAndConfigureContracts);
+      const config = convertToLegacy(createBorrowerConfiguration());
+      await proveTx(creditLine.pause());
+
+      await expect(creditLineUnderAdmin[FUNC_CONFIGURE_BORROWER_LEGACY](borrower.address, config))
+        .to.be.revertedWithCustomError(creditLineUnderAdmin, ERROR_NAME_ENFORCED_PAUSED);
+    });
+
+    it("Is reverted if the borrower address is zero", async () => {
+      const { creditLineUnderAdmin } = await setUpFixture(deployAndConfigureContracts);
+      const config = convertToLegacy(createBorrowerConfiguration());
+
+      await expect(creditLineUnderAdmin[FUNC_CONFIGURE_BORROWER_LEGACY](
+        ZERO_ADDRESS, // borrower
+        config
+      )).to.be.revertedWithCustomError(creditLineUnderAdmin, ERROR_NAME_ZERO_ADDRESS);
+    });
+
+    it("Is reverted if the min borrowed amount is greater than the max one", async () => {
+      const { creditLineUnderAdmin } = await setUpFixture(deployAndConfigureContracts);
+      const config = convertToLegacy(createBorrowerConfiguration());
+      config.minBorrowedAmount = config.maxBorrowedAmount + 1n;
+
+      await expect(creditLineUnderAdmin[FUNC_CONFIGURE_BORROWER_LEGACY](borrower.address, config))
+        .to.be.revertedWithCustomError(creditLineUnderAdmin, ERROR_NAME_INVALID_BORROWER_CONFIGURATION);
+    });
+
+    it("Is reverted if the min borrowed amount is less than credit line`s one", async () => {
+      const { creditLineUnderAdmin, creditLineConfig } = await setUpFixture(deployAndConfigureContracts);
+      const borrowerConfig = convertToLegacy(createBorrowerConfiguration());
+      borrowerConfig.minBorrowedAmount = creditLineConfig.minBorrowedAmount - 1n;
+
+      await expect(creditLineUnderAdmin[FUNC_CONFIGURE_BORROWER_LEGACY](borrower.address, borrowerConfig))
+        .to.be.revertedWithCustomError(creditLineUnderAdmin, ERROR_NAME_INVALID_BORROWER_CONFIGURATION);
+    });
+
+    it("Is reverted if the max borrowed amount is greater than credit line`s one", async () => {
+      const { creditLineUnderAdmin, creditLineConfig } = await setUpFixture(deployAndConfigureContracts);
+      const borrowerConfig = convertToLegacy(createBorrowerConfiguration());
+      borrowerConfig.maxBorrowedAmount = creditLineConfig.maxBorrowedAmount + 1n;
+
+      await expect(creditLineUnderAdmin[FUNC_CONFIGURE_BORROWER_LEGACY](borrower.address, borrowerConfig))
+        .to.be.revertedWithCustomError(creditLineUnderAdmin, ERROR_NAME_INVALID_BORROWER_CONFIGURATION);
+    });
+
+    it("Is reverted if the min duration in periods is greater than the max one", async () => {
+      const { creditLineUnderAdmin, creditLineConfig } = await setUpFixture(deployAndConfigureContracts);
+      const borrowerConfig = convertToLegacy(createBorrowerConfiguration());
+      borrowerConfig.minDurationInPeriods = creditLineConfig.maxDurationInPeriods + 1n;
+
+      await expect(creditLineUnderAdmin[FUNC_CONFIGURE_BORROWER_LEGACY](borrower.address, borrowerConfig))
+        .to.be.revertedWithCustomError(creditLineUnderAdmin, ERROR_NAME_INVALID_BORROWER_CONFIGURATION);
+    });
+
+    it("Is reverted if the min loan duration is less than credit line`s one", async () => {
+      const { creditLineUnderAdmin, creditLineConfig } = await setUpFixture(deployAndConfigureContracts);
+      const borrowerConfig = convertToLegacy(createBorrowerConfiguration());
+      borrowerConfig.minDurationInPeriods = creditLineConfig.minDurationInPeriods - 1n;
+
+      await expect(creditLineUnderAdmin[FUNC_CONFIGURE_BORROWER_LEGACY](borrower.address, borrowerConfig))
+        .to.be.revertedWithCustomError(creditLineUnderAdmin, ERROR_NAME_INVALID_BORROWER_CONFIGURATION);
+    });
+
+    it("Is reverted if the max loan duration is greater than credit line`s one", async () => {
+      const { creditLineUnderAdmin, creditLineConfig } = await setUpFixture(deployAndConfigureContracts);
+      const borrowerConfig = convertToLegacy(createBorrowerConfiguration());
+      borrowerConfig.maxDurationInPeriods = creditLineConfig.maxDurationInPeriods + 1n;
+
+      await expect(creditLineUnderAdmin[FUNC_CONFIGURE_BORROWER_LEGACY](borrower.address, borrowerConfig))
+        .to.be.revertedWithCustomError(creditLineUnderAdmin, ERROR_NAME_INVALID_BORROWER_CONFIGURATION);
+    });
+
+    it("Is reverted if the primary interest rate is less than credit line`s minimum one", async () => {
+      const { creditLineUnderAdmin, creditLineConfig } = await setUpFixture(deployAndConfigureContracts);
+      const borrowerConfig = convertToLegacy(createBorrowerConfiguration());
+      borrowerConfig.interestRatePrimary = creditLineConfig.minInterestRatePrimary - 1n;
+
+      await expect(creditLineUnderAdmin[FUNC_CONFIGURE_BORROWER_LEGACY](borrower.address, borrowerConfig))
+        .to.be.revertedWithCustomError(creditLineUnderAdmin, ERROR_NAME_INVALID_BORROWER_CONFIGURATION);
+    });
+
+    it("Is reverted if the primary interest rate is greater than credit line`s maximum one", async () => {
+      const { creditLineUnderAdmin, creditLineConfig } = await setUpFixture(deployAndConfigureContracts);
+      const borrowerConfig = convertToLegacy(createBorrowerConfiguration());
+      borrowerConfig.interestRatePrimary = creditLineConfig.maxInterestRatePrimary + 1n;
+
+      await expect(creditLineUnderAdmin[FUNC_CONFIGURE_BORROWER_LEGACY](borrower.address, borrowerConfig))
+        .to.be.revertedWithCustomError(creditLineUnderAdmin, ERROR_NAME_INVALID_BORROWER_CONFIGURATION);
+    });
+
+    it("Is reverted if the secondary interest rate is less than credit line`s minimum one", async () => {
+      const { creditLineUnderAdmin, creditLineConfig } = await setUpFixture(deployAndConfigureContracts);
+      const borrowerConfig = convertToLegacy(createBorrowerConfiguration());
+      borrowerConfig.interestRateSecondary = creditLineConfig.minInterestRateSecondary - 1n;
+
+      await expect(creditLineUnderAdmin[FUNC_CONFIGURE_BORROWER_LEGACY](borrower.address, borrowerConfig))
+        .to.be.revertedWithCustomError(creditLineUnderAdmin, ERROR_NAME_INVALID_BORROWER_CONFIGURATION);
+    });
+
+    it("Is reverted if the secondary interest rate is greater than credit line`s maximum one", async () => {
+      const { creditLineUnderAdmin, creditLineConfig } = await setUpFixture(deployAndConfigureContracts);
+      const borrowerConfig = convertToLegacy(createBorrowerConfiguration());
+      borrowerConfig.interestRateSecondary = creditLineConfig.maxInterestRateSecondary + 1n;
+
+      await expect(creditLineUnderAdmin[FUNC_CONFIGURE_BORROWER_LEGACY](borrower.address, borrowerConfig))
+        .to.be.revertedWithCustomError(creditLineUnderAdmin, ERROR_NAME_INVALID_BORROWER_CONFIGURATION);
+    });
+
+    it("Is reverted if the addon fixed rate is not zero", async () => {
+      const { creditLineUnderAdmin } = await setUpFixture(deployAndConfigureContracts);
+      const borrowerConfig = convertToLegacy(createBorrowerConfiguration());
+      borrowerConfig.addonFixedRate = 1n;
+
+      await expect(creditLineUnderAdmin[FUNC_CONFIGURE_BORROWER_LEGACY](borrower.address, borrowerConfig))
+        .to.be.revertedWithCustomError(creditLineUnderAdmin, ERROR_NAME_INVALID_BORROWER_CONFIGURATION);
+    });
+
+    it("Is reverted if the addon period rate is not zero", async () => {
+      const { creditLineUnderAdmin } = await setUpFixture(deployAndConfigureContracts);
+      const borrowerConfig = convertToLegacy(createBorrowerConfiguration());
+      borrowerConfig.addonPeriodRate = 1n;
+
+      await expect(creditLineUnderAdmin[FUNC_CONFIGURE_BORROWER_LEGACY](borrower.address, borrowerConfig))
+        .to.be.revertedWithCustomError(creditLineUnderAdmin, ERROR_NAME_INVALID_BORROWER_CONFIGURATION);
+    });
+  });
+
+  describe("Function 'configureBorrowers()' legacy", async () => {
+    it("Executes as expected and emits correct events if is called by an admin", async () => {
+      const { creditLineUnderAdmin } = await setUpFixture(deployAndConfigureContracts);
+      const { borrowers, configs } = await prepareDataForBatchBorrowerConfig();
+      configs.forEach(config => {
+        config.lateFeeRate = 0n;
+        config.lateFeePolicy = LateFeePolicy.Individual;
+      });
+
+      const tx = creditLineUnderAdmin[FUNC_CONFIGURE_BORROWERS_LEGACY](
+        borrowers,
+        configs.map(config => convertToLegacy(config))
+      );
+
+      const creditLineAddress = getAddress(creditLineUnderAdmin);
+      for (let i = 0; i < configs.length; i++) {
+        await expect(tx)
+          .to.emit(creditLineUnderAdmin, EVENT_NAME_BORROWER_CONFIGURED)
+          .withArgs(creditLineAddress, borrowers[i]);
+        const expectedConfig = configs[i];
+        const actualConfig = await creditLineUnderAdmin.getBorrowerConfiguration(borrowers[i]);
+        checkEquality(actualConfig, expectedConfig, i);
+      }
+    });
+
+    it("Is reverted if the caller does not have the admin role", async () => {
+      const { creditLine } = await setUpFixture(deployAndConfigureContracts);
+      const { borrowers, configs } = await prepareDataForBatchBorrowerConfig();
+      const legacyConfigs = configs.map(config => convertToLegacy(config));
+
+      await expect(connect(creditLine, owner)[FUNC_CONFIGURE_BORROWERS_LEGACY](borrowers, legacyConfigs))
+        .to.be.revertedWithCustomError(creditLine, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
+        .withArgs(owner.address, ADMIN_ROLE);
+      await expect(connect(creditLine, attacker)[FUNC_CONFIGURE_BORROWERS_LEGACY](borrowers, legacyConfigs))
+        .to.be.revertedWithCustomError(creditLine, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
+        .withArgs(attacker.address, ADMIN_ROLE);
+    });
+
+    it("Is reverted if the contract is paused", async () => {
+      const { creditLine, creditLineUnderAdmin } = await setUpFixture(deployAndConfigureContracts);
+      const { borrowers, configs } = await prepareDataForBatchBorrowerConfig();
+      const legacyConfigs = configs.map(config => convertToLegacy(config));
+      await proveTx(creditLine.pause());
+
+      await expect(creditLineUnderAdmin[FUNC_CONFIGURE_BORROWERS_LEGACY](borrowers, legacyConfigs))
+        .to.be.revertedWithCustomError(creditLine, ERROR_NAME_ENFORCED_PAUSED);
+    });
+
+    it("Is reverted if the length of arrays is different", async () => {
+      const { creditLineUnderAdmin } = await setUpFixture(deployAndConfigureContracts);
+      const { borrowers, configs } = await prepareDataForBatchBorrowerConfig();
+      const legacyConfigs = configs.map(config => convertToLegacy(config));
+      borrowers.push(attacker.address);
+
+      await expect(creditLineUnderAdmin[FUNC_CONFIGURE_BORROWERS_LEGACY](borrowers, legacyConfigs))
+        .to.be.revertedWithCustomError(creditLineUnderAdmin, ERROR_NAME_ARRAYS_LENGTH_MISMATCH);
+    });
+
+    // Other test cases have been checked during tests of the 'configureBorrower()' legacy function
   });
 
   describe("Function 'onBeforeLoanTaken()'", async () => {
@@ -860,7 +1159,7 @@ describe("Contract 'CreditLine'", async () => {
         totalClosedLoanAmount: BigInt(BORROWED_AMOUNT)
       };
 
-      await proveTx(creditLineUnderAdmin.configureBorrower(borrower.address, expectedBorrowerConfig));
+      await proveTx(creditLineUnderAdmin[FUNC_CONFIGURE_BORROWER_NEW](borrower.address, expectedBorrowerConfig));
       await proveTx(creditLineUnderAdmin.setBorrowerState(borrower.address, expectedBorrowerState));
       const loanState: LoanState = await prepareLoan(market);
 
@@ -1022,7 +1321,7 @@ describe("Contract 'CreditLine'", async () => {
       if (borrowingPolicy == BorrowingPolicy.TotalActiveAmountLimit) {
         borrowerState.totalActiveLoanAmount = BigInt(borrowerConfig.maxBorrowedAmount) - BigInt(borrowedAmount);
       }
-      await proveTx(creditLineUnderAdmin.configureBorrower(borrower.address, borrowerConfig));
+      await proveTx(creditLineUnderAdmin[FUNC_CONFIGURE_BORROWER_NEW](borrower.address, borrowerConfig));
       await proveTx(creditLineUnderAdmin.setBorrowerState(borrower.address, borrowerState));
 
       const expectedTerms: LoanTerms = createLoanTerms(tokenAddress, durationInPeriods, borrowerConfig);
@@ -1071,7 +1370,7 @@ describe("Contract 'CreditLine'", async () => {
       const borrowerConfigNew = { ...borrowerConfig };
 
       borrowerConfigNew.expiration = BigInt(await getLatestBlockTimestamp()) - NEGATIVE_TIME_OFFSET - 1n;
-      await proveTx(creditLineUnderAdmin.configureBorrower(borrower.address, borrowerConfigNew));
+      await proveTx(creditLineUnderAdmin[FUNC_CONFIGURE_BORROWER_NEW](borrower.address, borrowerConfigNew));
 
       await expect(creditLine.determineLoanTerms(
         borrower.address,
@@ -1124,7 +1423,7 @@ describe("Contract 'CreditLine'", async () => {
         ...defaultBorrowerState,
         activeLoanCount: 1n
       };
-      await proveTx(creditLineUnderAdmin.configureBorrower(borrower.address, borrowerConfigNew));
+      await proveTx(creditLineUnderAdmin[FUNC_CONFIGURE_BORROWER_NEW](borrower.address, borrowerConfigNew));
       await proveTx(creditLineUnderAdmin.setBorrowerState(borrower.address, borrowerState));
 
       await expect(creditLine.determineLoanTerms(
@@ -1142,7 +1441,7 @@ describe("Contract 'CreditLine'", async () => {
         ...defaultBorrowerState,
         totalActiveLoanAmount: borrowerConfig.maxBorrowedAmount - BORROWED_AMOUNT + 1n
       };
-      await proveTx(creditLineUnderAdmin.configureBorrower(borrower.address, borrowerConfigNew));
+      await proveTx(creditLineUnderAdmin[FUNC_CONFIGURE_BORROWER_NEW](borrower.address, borrowerConfigNew));
       await proveTx(creditLineUnderAdmin.setBorrowerState(borrower.address, borrowerState));
 
       await expect(creditLine.determineLoanTerms(
@@ -1156,31 +1455,71 @@ describe("Contract 'CreditLine'", async () => {
     });
   });
 
-  describe("Function 'determineLateFeeAmount()'", async () => {
-    it("Returns the expected value", async () => {
-      const { creditLine, creditLineConfig } = await setUpFixture(deployAndConfigureContractsWithBorrower);
-      const lateFeeRate = INTEREST_RATE_FACTOR / 1000n;
-      const creditLineConfigNew = { ...creditLineConfig, lateFeeRate };
-      await proveTx(creditLine.configureCreditLine(creditLineConfigNew));
+  describe("Function 'determineLateFeeAmount()' new", async () => {
+    it("Returns the expected value if the late fee policy for the account is 'Common'", async () => {
+      const fixture = await setUpFixture(deployAndConfigureContractsWithBorrower);
+      const { creditLine } = fixture;
+      await reconfigureCreditLineLateFee(fixture, {
+        lateFeeRatePolicy: LateFeePolicy.Common,
+        lateFeeRateCommon: INTEREST_RATE_FACTOR / 1000n,
+        lateFeeRateIndividual: 1n
+      });
+      const borrowerAddress = borrower.address;
 
       let loanTrackedBalance = 0n;
-      let actualValue = await creditLine.determineLateFeeAmount(loanTrackedBalance);
+      let actualValue = await creditLine[FUNC_DETERMINE_LATE_FEE_AMOUNT_NEW](borrowerAddress, loanTrackedBalance);
       let expectedValue = 0n; // round(loanTrackedBalance * lateFeeRate / INTEREST_RATE_FACTOR)
       expect(actualValue).to.equal(expectedValue);
 
       loanTrackedBalance = 1000n;
-      actualValue = await creditLine.determineLateFeeAmount(loanTrackedBalance);
+      actualValue = await creditLine[FUNC_DETERMINE_LATE_FEE_AMOUNT_NEW](borrowerAddress, loanTrackedBalance);
       expectedValue = 1n; // round(loanTrackedBalance * lateFeeRate / INTEREST_RATE_FACTOR)
       expect(actualValue).to.equal(expectedValue);
 
       loanTrackedBalance = 1499n;
-      actualValue = await creditLine.determineLateFeeAmount(loanTrackedBalance);
+      actualValue = await creditLine[FUNC_DETERMINE_LATE_FEE_AMOUNT_NEW](borrowerAddress, loanTrackedBalance);
       expectedValue = 1n; // round(loanTrackedBalance * lateFeeRate / INTEREST_RATE_FACTOR)
       expect(actualValue).to.equal(expectedValue);
 
       loanTrackedBalance = 1500n;
-      actualValue = await creditLine.determineLateFeeAmount(loanTrackedBalance);
+      actualValue = await creditLine[FUNC_DETERMINE_LATE_FEE_AMOUNT_NEW](borrowerAddress, loanTrackedBalance);
       expectedValue = 2n; // round(loanTrackedBalance * lateFeeRate / INTEREST_RATE_FACTOR)
+      expect(actualValue).to.equal(expectedValue);
+    });
+
+    it("Returns the expected value if the late fee policy for the account is 'Individual'", async () => {
+      const fixture = await setUpFixture(deployAndConfigureContractsWithBorrower);
+      const { creditLine } = fixture;
+
+      const borrowerAddress = borrower.address;
+      const loanTrackedBalance = 987654321n;
+      const lateFeeRate = 123456789n;
+
+      await reconfigureCreditLineLateFee(fixture, {
+        lateFeeRatePolicy: LateFeePolicy.Individual,
+        lateFeeRateCommon: 0n,
+        lateFeeRateIndividual: lateFeeRate
+      });
+
+      const actualValue = await creditLine[FUNC_DETERMINE_LATE_FEE_AMOUNT_NEW](borrowerAddress, loanTrackedBalance);
+      const expectedValue = Math.round(Number(loanTrackedBalance) * Number(lateFeeRate) / Number(INTEREST_RATE_FACTOR));
+      expect(actualValue).to.equal(expectedValue);
+    });
+  });
+
+  describe("Function 'determineLateFeeAmount()' legacy", async () => {
+    it("Returns the expected value despite the 'Individual' late fee policy of the borrower", async () => {
+      const fixture = await setUpFixture(deployAndConfigureContractsWithBorrower);
+      const { creditLine } = fixture;
+      await reconfigureCreditLineLateFee(fixture, {
+        lateFeeRatePolicy: LateFeePolicy.Individual,
+        lateFeeRateCommon: INTEREST_RATE_FACTOR / 1000n,
+        lateFeeRateIndividual: 0n
+      });
+
+      const loanTrackedBalance = 1500n;
+      const actualValue = await creditLine[FUNC_DETERMINE_LATE_FEE_AMOUNT_LEGACY](loanTrackedBalance);
+      const expectedValue = 2n; // round(loanTrackedBalance * lateFeeRate / INTEREST_RATE_FACTOR)
       expect(actualValue).to.equal(expectedValue);
     });
   });

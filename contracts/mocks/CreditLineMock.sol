@@ -68,7 +68,8 @@ contract CreditLineMock {
         terms.durationInPeriods = uint32(durationInPeriods);
     }
 
-    function determineLateFeeAmount(uint256 loanTrackedBalance) external view returns (uint256) {
+    function determineLateFeeAmount(address borrower, uint256 loanTrackedBalance) external view returns (uint256) {
+        borrower; // To prevent compiler warning about unused variable
         loanTrackedBalance; // To prevent compiler warning about unused variable
         return _lateFeeAmount;
     }
