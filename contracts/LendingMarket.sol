@@ -319,8 +319,8 @@ contract LendingMarket is
         uint256 repaymentTimestamp
     ) external whenNotPaused onlyOngoingLoan(loanId) onlyRole(ADMIN_ROLE) {
         Loan.State storage loan = _loans[loanId];
-        _checkRepaymentAmount(loan, repaymentAmount);
-        _checkRepaymentTimestamp(loan, repaymentTimestamp);
+        _checkUndoingRepaymentAmount(loan, repaymentAmount);
+        _checkUndoingRepaymentTimestamp(loan, repaymentTimestamp);
         uint256 oldTrackedBalance = loan.trackedBalance;
         (uint256 newTrackedBalance, ) = _calculateCustomTrackedBalance(
             loan,
@@ -852,10 +852,10 @@ contract LendingMarket is
         }
     }
 
-    /// @dev Checks if the repayment amount is valid.
+    /// @dev Checks if the undoing repayment amount is valid.
     /// @param loan The storage state of the loan.
     /// @param repaymentAmount The repayment amount to check.
-    function _checkRepaymentAmount(Loan.State storage loan, uint256 repaymentAmount) internal view {
+    function _checkUndoingRepaymentAmount(Loan.State storage loan, uint256 repaymentAmount) internal view {
         if (
             repaymentAmount == 0 ||
             repaymentAmount > loan.repaidAmount ||
@@ -865,10 +865,10 @@ contract LendingMarket is
         }
     }
 
-    /// @dev Checks if the repayment timestamp is valid.
+    /// @dev Checks if the undoing repayment timestamp is valid.
     /// @param loan The storage state of the loan.
     /// @param repaymentTimestamp The repayment timestamp to check in the lending market time zone.
-    function _checkRepaymentTimestamp(Loan.State storage loan, uint256 repaymentTimestamp) internal view {
+    function _checkUndoingRepaymentTimestamp(Loan.State storage loan, uint256 repaymentTimestamp) internal view {
         if (repaymentTimestamp < loan.startTimestamp) {
             revert RepaymentTimestampInvalid();
         }
