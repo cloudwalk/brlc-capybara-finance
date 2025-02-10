@@ -231,6 +231,43 @@ interface ILendingMarketPrimary {
     ) external;
 
     /// @dev Undoes a repayment for a loan.
+    ///
+    /// This function is based on the following formulas:
+    ///
+    /// 1. Bc1 = B + A*(1+R1)^(prd(tt) - prd(rt)).
+    /// 2. Bc2 = B + A*(1+R1)^(prd(td) - prd(rt))*(1+R2)^(prd(tt) - prd(td + 1))*(1+RF).
+    /// 3. Bc3 = B + A*(1+R2)^(prd(tt) - prd(rt)).
+    /// 4. Vc = V - A.
+    /// 5. Fc = F + A*(1+R1)^(prd(td) - prd(rt))*RF.
+    ///
+    /// Where:
+    ///
+    /// - Bc1, Bc2, Bc3 are the corrected (new) tracked balance of a loan in the following cases:
+    ///   - Bc1 -- the loan is NOT overdue,
+    ///   - Bc2 -- the loan is overdue but the repayment to undone happened before the overdue timestamp,
+    ///   - Bc3 -- the loan is overdue and the repayment to undone happened after the overdue timestamp;
+    /// - B is the tracked balance of a loan before the repayment undoing;
+    /// - A is the amount of the undoing repayment;
+    /// - R1 is the primary interest rate;
+    /// - R2 is the secondary interest rate;
+    /// - prd() is the function that returns the loan period index by a timestamp;
+    /// - tt is the tracked timestamp of a loan;
+    /// - rt is the timestamp of a repayment to undo;
+    /// - td is the last timestamp of a loan, when it is still considered NOT overdue;
+    /// - Vc is the corrected (new) repaid amount of a loan;
+    /// - V is the repaid amount of a loan before the repayment undoing;
+    /// - Fc is the corrected (new) late fee amount of a loan that is overdue;
+    /// - F is the late fee amount of a loan before the repayment undoing.
+    ///
+    /// Notes:
+    ///
+    /// 1. If a loan is not overdue then (Fc = F).
+    /// 2. If the repayment to undo is the last for a loan then (Bc = B + A) and (Vc = V - A).
+    /// 3. The formulas cannot be used for a loan that was frozen and then unfrozen.
+    /// 4. The formulas can be used for a loan that was only frozen, in that case the tt is the freezing timestamp.
+    /// 5. After undoing a repayment, the values of the tracked balance and late fee amount fields of a loan
+    ///    may differ from the expected values by plus or minus one least significant bit due to rounding.
+    ///
     /// @param loanId The unique identifier of the loan.
     /// @param repaymentAmount The amount of the repayment to undo.
     /// @param repaymentTimestamp The timestamp of the repayment in the lending market time zone.

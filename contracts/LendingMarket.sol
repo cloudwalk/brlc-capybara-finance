@@ -318,6 +318,7 @@ contract LendingMarket is
         uint256 repaymentAmount,
         uint256 repaymentTimestamp
     ) external whenNotPaused onlyOngoingLoan(loanId) onlyRole(ADMIN_ROLE) {
+        // See the explanation of this function in the interface file
         Loan.State storage loan = _loans[loanId];
         _checkUndoingRepaymentAmount(loan, repaymentAmount);
         _checkUndoingRepaymentTimestamp(loan, repaymentTimestamp);
