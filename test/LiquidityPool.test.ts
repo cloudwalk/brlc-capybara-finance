@@ -54,7 +54,6 @@ const EVENT_NAME_DEPOSIT = "Deposit";
 const EVENT_NAME_RESCUE = "Rescue";
 const EVENT_NAME_WITHDRAWAL = "Withdrawal";
 
-const DEFAULT_ADMIN_ROLE = ethers.ZeroHash;
 const OWNER_ROLE = ethers.id("OWNER_ROLE");
 const PAUSER_ROLE = ethers.id("PAUSER_ROLE");
 const ADMIN_ROLE = ethers.id("ADMIN_ROLE");
@@ -70,7 +69,7 @@ const REPAYMENT_AMOUNT = BORROWED_AMOUNT / 5n;
 const LOAN_ID = 123n;
 const EXPECTED_VERSION: Version = {
   major: 1,
-  minor: 10,
+  minor: 11,
   patch: 0
 };
 
@@ -193,7 +192,6 @@ describe("Contract 'LiquidityPool'", async () => {
 
       // The role admins
       expect(await liquidityPool.getRoleAdmin(OWNER_ROLE)).to.equal(OWNER_ROLE);
-      expect(await liquidityPool.getRoleAdmin(ADMIN_ROLE)).to.equal(DEFAULT_ADMIN_ROLE);
       expect(await liquidityPool.getRoleAdmin(PAUSER_ROLE)).to.equal(OWNER_ROLE);
 
       // Roles
@@ -766,30 +764,6 @@ describe("Contract 'LiquidityPool'", async () => {
         await expect(liquidityPool.onAfterLoanRevocation(LOAN_ID))
           .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_UNAUTHORIZED);
       });
-    });
-  });
-
-  describe("Function 'migrateAccessControl()'", async () => {
-    it("Executes as expected", async () => {
-      const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
-      await proveTx(liquidityPool.setRoleAdmin(ADMIN_ROLE, OWNER_ROLE));
-      await proveTx(liquidityPool.setRoleAdmin(OWNER_ROLE, DEFAULT_ADMIN_ROLE));
-
-      expect(await liquidityPool.getRoleAdmin(ADMIN_ROLE)).to.equal(OWNER_ROLE);
-      expect(await liquidityPool.getRoleAdmin(OWNER_ROLE)).to.equal(DEFAULT_ADMIN_ROLE);
-
-      await proveTx(liquidityPool.migrateAccessControl());
-
-      expect(await liquidityPool.getRoleAdmin(ADMIN_ROLE)).to.equal(DEFAULT_ADMIN_ROLE);
-      expect(await liquidityPool.getRoleAdmin(OWNER_ROLE)).to.equal(OWNER_ROLE);
-    });
-
-    it("Is reverted if the caller does not have the owner role", async () => {
-      const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
-
-      await expect(connect(liquidityPool, attacker).migrateAccessControl())
-        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
-        .withArgs(attacker.address, OWNER_ROLE);
     });
   });
 });

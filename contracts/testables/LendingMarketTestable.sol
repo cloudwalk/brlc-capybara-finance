@@ -15,6 +15,9 @@ contract LendingMarketTestable is LendingMarket {
     /// @dev The maximum number of installments. Non-zero value overrides the constant in Constants.sol.
     uint256 public installmentCountMax;
 
+    /// @dev Flag to allow zero amounts for loans in test purposes.
+    bool public areZeroAmountsAllowed;
+
     // -------------------------------------------- //
     //  Transactional functions                     //
     // -------------------------------------------- //
@@ -74,75 +77,19 @@ contract LendingMarketTestable is LendingMarket {
         }
     }
 
-    /// @dev Sets the admin role for a given role for testing purposes.
-    /// @param role The role to set the admin for.
-    /// @param adminRole The admin role to set.
-    function setRoleAdmin(bytes32 role, bytes32 adminRole) external {
-        _setRoleAdmin(role, adminRole);
+    /// @dev Allow zero amounts for a batch of loans.
+    function allowZeroAmounts() external {
+        areZeroAmountsAllowed = true;
     }
 
-    /// @dev Checks if the account is an admin for testing purposes.
-    /// @param account The address of the account to check.
-    function checkIfAdmin(address account) external view {
-        _checkIfAdmin(account);
-    }
-
-    /// @dev Sets the lender for a given program for testing purposes.
-    /// @param programId The ID of the program.
-    /// @param lender The address of the lender.
-    function setProgramLender(uint32 programId, address lender) external {
-        _programLenders[programId] = lender;
-    }
-
-    /// @dev Sets the lender for a given credit line for testing purposes.
-    /// @param creditLine The address of the credit line.
-    /// @param lender The address of the lender.
-    function setCreditLineLender(address creditLine, address lender) external {
-        _creditLineLenders[creditLine] = lender;
-    }
-
-    /// @dev Sets the lender for a given liquidity pool for testing purposes.
-    /// @param liquidityPool The address of the liquidity pool.
-    /// @param lender The address of the lender.
-    function setLiquidityPoolLender(address liquidityPool, address lender) external {
-        _liquidityPoolLenders[liquidityPool] = lender;
-    }
-
-    /// @dev Sets the alias for a given lender and account for testing purposes.
-    /// @param lender The address of the lender.
-    /// @param account The address of the account.
-    /// @param hasAlias The boolean value to set.
-    function setAlias(address lender, address account, bool hasAlias) external {
-        _hasAlias[lender][account] = hasAlias;
-    }
-
-    /// @dev Gets the lender for a given program for testing purposes.
-    /// @param programId The ID of the program.
-    /// @return The address of the lender.
-    function getProgramLender(uint32 programId) external view returns (address) {
-        return _programLenders[programId];
-    }
-
-    /// @dev Gets the lender for a given credit line for testing purposes.
-    /// @param creditLine The address of the credit line.
-    /// @return The address of the lender.
-    function getCreditLineLender(address creditLine) external view returns (address) {
-        return _creditLineLenders[creditLine];
-    }
-
-    /// @dev Gets the lender for a given liquidity pool for testing purposes.
-    /// @param liquidityPool The address of the liquidity pool.
-    /// @return The address of the lender.
-    function getLiquidityPoolLender(address liquidityPool) external view returns (address) {
-        return _liquidityPoolLenders[liquidityPool];
-    }
-
-    /// @dev Checks if the account is an alias for a given lender for testing purposes.
-    /// @param account The address of the account.
-    /// @param lender The address of the lender.
-    /// @return The boolean value indicating if the account is an alias.
-    function isAlias(address account, address lender) external view returns (bool) {
-        return _hasAlias[lender][account];
+    /// @dev Freeze a batch of loans.
+    /// @param loanIds The unique identifiers of the loans to freeze.
+    function freezeBatch(uint256[] calldata loanIds) external {
+        uint256 len = loanIds.length;
+        _grantRole(ADMIN_ROLE, address(this));
+        for (uint256 i = 0; i < len; ++i) {
+            this.freeze(loanIds[i]);
+        }
     }
 
     // -------------------------------------------- //
@@ -156,6 +103,16 @@ contract LendingMarketTestable is LendingMarket {
             return super._installmentCountMax();
         } else {
             return installmentCountMax;
+        }
+    }
+
+    /// @dev Overrides the same name function in the lending market contract to allow zero amounts if the flag is set.
+    /// @param changeAmount The amount of change in the tracked balance.
+    function _checkTrackedBalanceChange(uint256 changeAmount) internal view override {
+        if (!areZeroAmountsAllowed) {
+            super._checkTrackedBalanceChange(changeAmount);
+        } else {
+            // just do nothing and allow zero amounts
         }
     }
 }

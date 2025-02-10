@@ -2,6 +2,7 @@
 
 pragma solidity 0.8.24;
 
+import { Constants } from "../libraries/Constants.sol";
 import { Error } from "../libraries/Error.sol";
 import { Loan } from "../libraries/Loan.sol";
 import { ICreditLine } from "../interfaces/ICreditLine.sol";
@@ -15,7 +16,7 @@ contract CreditLineMock {
     // -------------------------------------------- //
 
     mapping(address => Loan.Terms) private _loanTerms;
-    uint256 private _lateFeeAmount;
+    uint256 private _lateFeeRate;
 
     // -------------------------------------------- //
     //  Events                                      //
@@ -50,8 +51,8 @@ contract CreditLineMock {
         _loanTerms[borrower] = terms;
     }
 
-    function mockLateFeeAmount(uint256 newAmount) external {
-        _lateFeeAmount = newAmount;
+    function mockLateFeeRate(uint256 newRate) external {
+        _lateFeeRate = newRate;
     }
 
     // -------------------------------------------- //
@@ -70,8 +71,17 @@ contract CreditLineMock {
 
     function determineLateFeeAmount(address borrower, uint256 loanTrackedBalance) external view returns (uint256) {
         borrower; // To prevent compiler warning about unused variable
-        loanTrackedBalance; // To prevent compiler warning about unused variable
-        return _lateFeeAmount;
+
+        // The equivalent formula: round(loanTrackedBalance * lateFeeRate / INTEREST_RATE_FACTOR)
+        // Where division operator `/` takes into account the fractional part and
+        // the `round()` function returns an integer rounded according to standard mathematical rules.
+        uint256 product = loanTrackedBalance * _lateFeeRate;
+        uint256 reminder = product % Constants.INTEREST_RATE_FACTOR;
+        uint256 result = product / Constants.INTEREST_RATE_FACTOR;
+        if (reminder >= (Constants.INTEREST_RATE_FACTOR / 2)) {
+            ++result;
+        }
+        return result;
     }
 
     function proveCreditLine() external pure {}
