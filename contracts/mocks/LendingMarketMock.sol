@@ -37,6 +37,13 @@ contract LendingMarketMock {
         ILiquidityPool(liquidityPool).onAfterLoanPayment(loanId, amount);
     }
 
+    function callOnAfterLoanRepaymentUndoingLiquidityPool(
+        address liquidityPool,
+        uint256 loanId, uint256 amount
+    ) external {
+        ILiquidityPool(liquidityPool).onAfterLoanRepaymentUndoing(loanId, amount);
+    }
+
     function callOnAfterLoanPaymentCreditLine(address creditLine, uint256 loanId, uint256 repaymentAmount) external {
         ICreditLine(creditLine).onAfterLoanPayment(loanId, repaymentAmount);
     }

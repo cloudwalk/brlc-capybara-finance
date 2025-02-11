@@ -231,6 +231,12 @@ contract LiquidityPool is
     }
 
     /// @inheritdoc ILiquidityPoolHooks
+    function onAfterLoanRepaymentUndoing(uint256 loanId, uint256 amount) external whenNotPaused onlyMarket {
+        loanId; // To prevent compiler warning about unused variable
+        _borrowableBalance -= amount.toUint64();
+    }
+
+    /// @inheritdoc ILiquidityPoolHooks
     function onAfterLoanRevocation(uint256 loanId) external whenNotPaused onlyMarket {
         Loan.State memory loan = ILendingMarket(_market).getLoanState(loanId);
         if (loan.borrowedAmount > loan.repaidAmount) {
