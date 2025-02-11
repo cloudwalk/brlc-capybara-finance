@@ -221,7 +221,7 @@ const DURATIONS_IN_PERIODS: number[] = [0, DURATION_IN_PERIODS / 2, DURATION_IN_
 const EXPECTED_VERSION: Version = {
   major: 1,
   minor: 11,
-  patch: 0
+  patch: 1
 };
 
 const defaultLoanState: LoanState = {
