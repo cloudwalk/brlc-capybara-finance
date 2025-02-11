@@ -2,7 +2,7 @@ apiVersion: backstage.io/v1alpha1
 kind: Component
 metadata:
   name: brlc-capybara-finance
-  description: BRLC Capybara Finance smart contracts
+  description: Capybara Finance smart contracts
   annotations:
     github.com/project-slug: cloudwalk/brlc-capybara-finance
     backstage.io/techdocs-ref: dir:.
