@@ -97,6 +97,8 @@ interface ILendingMarketPrimary {
 
     /// @dev Emitted when a repayment is undone.
     /// @param loanId The unique identifier of the loan.
+    /// @param receiver The address of the receiver of the tokens due to the repayment undoing.
+    /// @param borrower The address of the borrower of the loan.
     /// @param repaymentTimestamp The timestamp of the repayment in the lending market time zone.
     /// @param newRepaidAmount The new repaid amount of the loan.
     /// @param oldRepaidAmount The old repaid amount of the loan.
@@ -106,6 +108,8 @@ interface ILendingMarketPrimary {
     /// @param oldLateFeeAmount The old late fee amount of the loan.
     event RepaymentUndone(
         uint256 indexed loanId,
+        address indexed receiver,
+        address indexed borrower,
         uint256 repaymentTimestamp,
         uint256 newRepaidAmount,
         uint256 oldRepaidAmount,
@@ -271,10 +275,12 @@ interface ILendingMarketPrimary {
     /// @param loanId The unique identifier of the loan.
     /// @param repaymentAmount The amount of the repayment to undo.
     /// @param repaymentTimestamp The timestamp of the repayment in the lending market time zone.
+    /// @param receiver The address of the receiver of the tokens due to the repayment undoing.
     function undoRepaymentFor(
         uint256 loanId, // Tools: this comment prevents Prettier from formatting into a single line.
         uint256 repaymentAmount,
-        uint256 repaymentTimestamp
+        uint256 repaymentTimestamp,
+        address receiver
     ) external;
 
     /// @dev Freezes an ordinary loan or a sub-loan.

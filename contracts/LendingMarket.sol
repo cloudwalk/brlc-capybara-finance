@@ -316,7 +316,8 @@ contract LendingMarket is
     function undoRepaymentFor(
         uint256 loanId,
         uint256 repaymentAmount,
-        uint256 repaymentTimestamp
+        uint256 repaymentTimestamp,
+        address receiver
     ) external whenNotPaused onlyOngoingLoan(loanId) onlyRole(ADMIN_ROLE) {
         // See the explanation of this function in the interface file
         Loan.State storage loan = _loans[loanId];
@@ -331,10 +332,9 @@ contract LendingMarket is
         );
         newTrackedBalance += oldTrackedBalance;
 
-        uint256 oldRepaidAmount = loan.repaidAmount;
         uint256 newRepaidAmount;
         unchecked {
-            newRepaidAmount = oldRepaidAmount - repaymentAmount;
+            newRepaidAmount = loan.repaidAmount - repaymentAmount;
         }
 
         uint256 oldLateFeeAmount = loan.lateFeeAmount;
@@ -353,9 +353,11 @@ contract LendingMarket is
 
         emit RepaymentUndone(
             loanId,
+            receiver,
+            loan.borrower,
             repaymentTimestamp,
             newRepaidAmount,
-            oldRepaidAmount,
+            loan.repaidAmount, // oldRepaidAmount
             newTrackedBalance,
             oldTrackedBalance,
             newLateFeeAmount,
@@ -364,6 +366,12 @@ contract LendingMarket is
         loan.repaidAmount = newRepaidAmount.toUint64();
         loan.trackedBalance = newTrackedBalance.toUint64();
         loan.lateFeeAmount = newLateFeeAmount.toUint64();
+
+        if (receiver != address(0)) {
+            address liquidityPool = _programLiquidityPools[loan.programId];
+            ILiquidityPool(liquidityPool).onAfterLoanRepaymentUndoing(loanId, repaymentAmount);
+            IERC20(loan.token).safeTransferFrom(liquidityPool, receiver, repaymentAmount);
+        }
     }
 
     /// @inheritdoc ILendingMarketPrimary

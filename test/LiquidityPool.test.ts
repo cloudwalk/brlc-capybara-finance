@@ -672,6 +672,51 @@ describe("Contract 'LiquidityPool'", async () => {
     });
   });
 
+  describe("Function 'onAfterLoanRepaymentUndoing()'", async () => {
+    it("Executes as expected", async () => {
+      const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
+      await proveTx(liquidityPool.deposit(DEPOSIT_AMOUNT));
+
+      await proveTx(
+        market.callOnAfterLoanRepaymentUndoingLiquidityPool(getAddress(liquidityPool), LOAN_ID, REPAYMENT_AMOUNT)
+      );
+
+      const actualBalances = await liquidityPool.getBalances();
+      expect(actualBalances[0]).to.eq(DEPOSIT_AMOUNT - REPAYMENT_AMOUNT);
+      expect(actualBalances[1]).to.eq(0n);
+    });
+
+    it("Is reverted if the contract is paused", async () => {
+      const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
+      await proveTx(liquidityPool.pause());
+
+      await expect(
+        market.callOnAfterLoanRepaymentUndoingLiquidityPool(getAddress(liquidityPool), LOAN_ID, REPAYMENT_AMOUNT)
+      ).to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_ENFORCED_PAUSED);
+    });
+
+    it("Is reverted if the caller is not the market", async () => {
+      const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
+
+      await expect(liquidityPool.onAfterLoanRepaymentUndoing(LOAN_ID, REPAYMENT_AMOUNT))
+        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_UNAUTHORIZED);
+    });
+
+    it("Is reverted if there is an underflow in the borrowable balance", async () => {
+      const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
+      const depositAmount = 1n;
+      const repaymentAmount = 2n;
+      await proveTx(token.mint(owner.address, depositAmount));
+      await proveTx(liquidityPool.deposit(depositAmount));
+
+      await expect(market.callOnAfterLoanRepaymentUndoingLiquidityPool(
+        getAddress(liquidityPool),
+        LOAN_ID,
+        repaymentAmount
+      )).to.revertedWithPanic(0x11);
+    });
+  });
+
   describe("Function 'onAfterLoanRevocation()'", async () => {
     async function executeAndCheck(liquidityPool: Contract, props: {
       repaidAmount: bigint;

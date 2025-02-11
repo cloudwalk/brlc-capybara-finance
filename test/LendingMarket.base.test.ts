@@ -185,6 +185,7 @@ const EVENT_NAME_INSTALLMENT_LOAN_TAKEN = "InstallmentLoanTaken";
 const EVENT_NAME_LOAN_UNFROZEN = "LoanUnfrozen";
 const EVENT_NAME_ON_BEFORE_LOAN_TAKEN = "OnBeforeLoanTakenCalled";
 const EVENT_NAME_ON_AFTER_LOAN_PAYMENT = "OnAfterLoanPaymentCalled";
+const EVENT_NAME_ON_AFTER_LOAN_REPAYMENT_UNDOING_CALLED = "OnAfterLoanRepaymentUndoingCalled";
 const EVENT_NAME_LOAN_REVOKED = "LoanRevoked";
 const EVENT_NAME_INSTALLMENT_LOAN_REVOKED = "InstallmentLoanRevoked";
 const EVENT_NAME_ON_AFTER_LOAN_REVOCATION = "OnAfterLoanRevocationCalled";
@@ -309,6 +310,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
   let admin: HardhatEthersSigner;
   let stranger: HardhatEthersSigner;
   let addonTreasury: HardhatEthersSigner;
+  let receiver: HardhatEthersSigner;
 
   let creditLineAddress: string;
   let anotherCreditLineAddress: string;
@@ -317,7 +319,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
   let tokenAddress: string;
 
   before(async () => {
-    [deployer, owner, borrower, admin, stranger, addonTreasury] = await ethers.getSigners();
+    [deployer, owner, borrower, admin, stranger, addonTreasury, receiver] = await ethers.getSigners();
 
     // Factories with an explicitly specified deployer account
     lendingMarketFactory = await ethers.getContractFactory("LendingMarketTestable");
@@ -2400,74 +2402,101 @@ describe("Contract 'LendingMarket': base tests", async () => {
   });
 
   describe("Function 'undoRepaymentFor()'", async () => {
-    describe("Execute as expected if", async () => {
-      async function executeAndCheck(operations: LoanOperation[]) {
-        const { marketUnderAdmin } = await setUpFixture(deployLendingMarketAndTakeLoans);
-        const loans: Loan[] = await takeInstallmentLoan(
-          marketUnderAdmin,
-          [BORROWED_AMOUNT, BORROWED_AMOUNT],
-          [ADDON_AMOUNT, ADDON_AMOUNT],
-          [DURATION_IN_PERIODS, DURATION_IN_PERIODS]
-        );
+    async function executeAndCheck(operations: LoanOperation[], props: {
+      isReceiverAddressZero: boolean;
+    } = { isReceiverAddressZero: false }): Promise<void> {
+      const { marketUnderAdmin } = await setUpFixture(deployLendingMarketAndTakeLoans);
+      const loans: Loan[] = await takeInstallmentLoan(
+        marketUnderAdmin,
+        [BORROWED_AMOUNT, BORROWED_AMOUNT],
+        [ADDON_AMOUNT, ADDON_AMOUNT],
+        [DURATION_IN_PERIODS, DURATION_IN_PERIODS]
+      );
+      const receiverAddress = props.isReceiverAddressZero ? ZERO_ADDRESS : receiver.address;
 
-        const operationToUndoIndexes: number[] = [];
-        operations.forEach((operation, index) => {
-          if (operation.subjectToUndo) {
-            operationToUndoIndexes.push(index);
-          }
-        });
-        if (operationToUndoIndexes.length === 0) {
-          throw new Error("No loans have been selected for undoing");
+      const operationToUndoIndexes: number[] = [];
+      operations.forEach((operation, index) => {
+        if (operation.subjectToUndo) {
+          operationToUndoIndexes.push(index);
         }
-
-        const actualTimestamps = await executeLoanOperations(marketUnderAdmin, loans, operations);
-
-        // Undo all the needed repayment except the last one
-        for (let i = 0; i < operationToUndoIndexes.length - 1; ++i) {
-          const operationToUndoIndex = operationToUndoIndexes[i];
-          const repaymentAmount = operations[operationToUndoIndex].amount;
-          const repaymentTimestamp = calculateTimestampWithOffset(actualTimestamps[operationToUndoIndex]);
-          await proveTx(marketUnderAdmin.undoRepaymentFor(loans[0].id, repaymentAmount, repaymentTimestamp));
-        }
-
-        // Undo the last needed repayment
-        const operationToUndoIndex = operationToUndoIndexes[operationToUndoIndexes.length - 1];
-        {
-          const repaymentAmount = operations[operationToUndoIndex].amount;
-          const repaymentTimestamp = calculateTimestampWithOffset(actualTimestamps[operationToUndoIndex]);
-          const tx = marketUnderAdmin.undoRepaymentFor(loans[0].id, repaymentAmount, repaymentTimestamp);
-          await proveTx(tx); // Made intentionally to check event emitting at the end of the test
-
-          const actualStateForReferenceLoan = await marketUnderAdmin.getLoanState(loans[1].id);
-          checkEquality(actualStateForReferenceLoan, loans[1].state);
-
-          const actualStateForTargetLoan = await marketUnderAdmin.getLoanState(loans[0].id);
-          const trackedBalanceDifference =
-            Number(actualStateForTargetLoan.trackedBalance) - loans[1].state.trackedBalance;
-          const lateFeeAmountDifference =
-            Number(actualStateForTargetLoan.lateFeeAmount) - loans[1].state.lateFeeAmount;
-          expect(Math.abs(trackedBalanceDifference)).to.be.lessThanOrEqual(1); // This can be due to rounding
-          expect(Math.abs(lateFeeAmountDifference)).to.be.lessThanOrEqual(1); // This can be due to rounding
-          loans[1].state.trackedBalance += trackedBalanceDifference;
-          loans[1].state.lateFeeAmount += lateFeeAmountDifference;
-          checkEquality(actualStateForTargetLoan, loans[1].state);
-
-          // Check the event if there is only a single repayment to undo
-          if (operationToUndoIndexes.length < 2) {
-            await expect(tx).to.emit(marketUnderAdmin, ERROR_NAME_REPAYMENT_UNDONE).withArgs(
-              loans[0].id,
-              repaymentTimestamp,
-              loans[1].state.repaidAmount, // newRepaidAmount
-              loans[0].state.repaidAmount, // oldRepaidAmount
-              loans[1].state.trackedBalance, // newTrackedBalance
-              loans[0].state.trackedBalance, // oldTrackedBalance
-              loans[1].state.lateFeeAmount, // newLateFeeAmount
-              loans[0].state.lateFeeAmount // oldLateFeeAmount
-            );
-          }
-        }
+      });
+      if (operationToUndoIndexes.length === 0) {
+        throw new Error("No loans have been selected for undoing");
       }
 
+      const actualTimestamps = await executeLoanOperations(marketUnderAdmin, loans, operations);
+
+      // Undo all the needed repayment except the last one
+      for (let i = 0; i < operationToUndoIndexes.length - 1; ++i) {
+        const operationToUndoIndex = operationToUndoIndexes[i];
+        const repaymentAmount = operations[operationToUndoIndex].amount;
+        const repaymentTimestamp = calculateTimestampWithOffset(actualTimestamps[operationToUndoIndex]);
+        await proveTx(
+          marketUnderAdmin.undoRepaymentFor(loans[0].id, repaymentAmount, repaymentTimestamp, receiverAddress)
+        );
+      }
+
+      // Undo the last needed repayment
+      const operationToUndoIndex = operationToUndoIndexes[operationToUndoIndexes.length - 1];
+      {
+        const repaymentAmount = operations[operationToUndoIndex].amount;
+        const repaymentTimestamp = calculateTimestampWithOffset(actualTimestamps[operationToUndoIndex]);
+        const tx =
+          marketUnderAdmin.undoRepaymentFor(loans[0].id, repaymentAmount, repaymentTimestamp, receiverAddress);
+        await proveTx(tx); // Made intentionally to check event emitting at the end of the test
+
+        const actualStateForReferenceLoan = await marketUnderAdmin.getLoanState(loans[1].id);
+        checkEquality(actualStateForReferenceLoan, loans[1].state);
+
+        const actualStateForTargetLoan = await marketUnderAdmin.getLoanState(loans[0].id);
+        const trackedBalanceDifference =
+          Number(actualStateForTargetLoan.trackedBalance) - loans[1].state.trackedBalance;
+        const lateFeeAmountDifference =
+          Number(actualStateForTargetLoan.lateFeeAmount) - loans[1].state.lateFeeAmount;
+        expect(Math.abs(trackedBalanceDifference)).to.be.lessThanOrEqual(1); // This can be due to rounding
+        expect(Math.abs(lateFeeAmountDifference)).to.be.lessThanOrEqual(1); // This can be due to rounding
+        loans[1].state.trackedBalance += trackedBalanceDifference;
+        loans[1].state.lateFeeAmount += lateFeeAmountDifference;
+        checkEquality(actualStateForTargetLoan, loans[1].state);
+
+        if (receiverAddress !== ZERO_ADDRESS) {
+          await expect(tx).to.changeTokenBalances(
+            token,
+            [liquidityPool, borrower, receiver, marketUnderAdmin],
+            [-repaymentAmount, 0, +repaymentAmount, 0]
+          );
+
+          await expect(tx)
+            .to.emit(liquidityPool, EVENT_NAME_ON_AFTER_LOAN_REPAYMENT_UNDOING_CALLED)
+            .withArgs(loans[0].id, repaymentAmount);
+        } else {
+          await expect(tx).to.changeTokenBalances(
+            token,
+            [liquidityPool, borrower, receiver, marketUnderAdmin],
+            [0, 0, 0, 0]
+          );
+          await expect(tx).not.to.emit(liquidityPool, EVENT_NAME_ON_AFTER_LOAN_REPAYMENT_UNDOING_CALLED);
+        }
+
+        // Check the event if there is only a single repayment to undo
+        if (operationToUndoIndexes.length < 2) {
+          await expect(tx).to.emit(marketUnderAdmin, ERROR_NAME_REPAYMENT_UNDONE).withArgs(
+            loans[0].id,
+            receiverAddress,
+            borrower.address,
+            repaymentTimestamp,
+            loans[1].state.repaidAmount, // newRepaidAmount
+            loans[0].state.repaidAmount, // oldRepaidAmount
+            loans[1].state.trackedBalance, // newTrackedBalance
+            loans[0].state.trackedBalance, // oldTrackedBalance
+            loans[1].state.lateFeeAmount, // newLateFeeAmount
+            loans[0].state.lateFeeAmount // oldLateFeeAmount
+          );
+        }
+      }
+    }
+
+    describe("Execute as expected if the provided receiver address is NOT zero and", async () => {
       describe("There are repayments only before the loan is overdue and", async () => {
         it("The first one is being undone", async () => {
           await executeAndCheck([
@@ -2772,6 +2801,29 @@ describe("Contract 'LendingMarket': base tests", async () => {
         });
       });
     });
+    describe("Execute as expected if the provided receiver address is zero and", async () => {
+      describe("There are repayments only before the loan is overdue and", async () => {
+        it("The first one is being undone", async () => {
+          await executeAndCheck(
+            [
+              {
+                kind: LoanOperationKind.Repayment,
+                amount: REPAYMENT_AMOUNT,
+                relativeTimestamp: 2 * PERIOD_IN_SECONDS,
+                subjectToUndo: true
+              },
+              {
+                kind: LoanOperationKind.Repayment,
+                amount: REPAYMENT_AMOUNT,
+                relativeTimestamp: 4 * PERIOD_IN_SECONDS,
+                subjectToUndo: false
+              }
+            ],
+            { isReceiverAddressZero: true }
+          );
+        });
+      });
+    });
     describe("Is reverted if", async () => {
       it("The contract is paused", async () => {
         const { market, marketUnderAdmin, ordinaryLoan: loan } = await setUpFixture(deployLendingMarketAndTakeLoans);
@@ -2779,7 +2831,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
         const repaymentAmount = (REPAYMENT_AMOUNT);
         const repaymentTimestamp = (0);
 
-        await expect(marketUnderAdmin.undoRepaymentFor(loan.id, repaymentAmount, repaymentTimestamp))
+        await expect(marketUnderAdmin.undoRepaymentFor(loan.id, repaymentAmount, repaymentTimestamp, receiver.address))
           .to.be.revertedWithCustomError(market, ERROR_NAME_ENFORCED_PAUSED);
       });
 
@@ -2789,8 +2841,9 @@ describe("Contract 'LendingMarket': base tests", async () => {
         const repaymentAmount = (REPAYMENT_AMOUNT);
         const repaymentTimestamp = (0);
 
-        await expect(marketUnderAdmin.undoRepaymentFor(wrongLoanId, repaymentAmount, repaymentTimestamp))
-          .to.be.revertedWithCustomError(marketUnderAdmin, ERROR_NAME_LOAN_NOT_EXIST);
+        await expect(
+          marketUnderAdmin.undoRepaymentFor(wrongLoanId, repaymentAmount, repaymentTimestamp, receiver.address)
+        ).to.be.revertedWithCustomError(marketUnderAdmin, ERROR_NAME_LOAN_NOT_EXIST);
       });
 
       it("The loan is already repaid", async () => {
@@ -2799,8 +2852,9 @@ describe("Contract 'LendingMarket': base tests", async () => {
         const repaymentAmount = (REPAYMENT_AMOUNT);
         const repaymentTimestamp = (0);
 
-        await expect(marketUnderAdmin.undoRepaymentFor(loan.id, repaymentAmount, repaymentTimestamp))
-          .to.be.revertedWithCustomError(marketUnderAdmin, ERROR_NAME_LOAN_ALREADY_REPAID);
+        await expect(
+          marketUnderAdmin.undoRepaymentFor(loan.id, repaymentAmount, repaymentTimestamp, receiver.address)
+        ).to.be.revertedWithCustomError(marketUnderAdmin, ERROR_NAME_LOAN_ALREADY_REPAID);
       });
 
       it("The caller does not have the admin role", async () => {
@@ -2808,15 +2862,26 @@ describe("Contract 'LendingMarket': base tests", async () => {
         const repaymentAmount = (REPAYMENT_AMOUNT);
         const repaymentTimestamp = (0);
 
-        await expect(connect(market, owner).undoRepaymentFor(loan.id, repaymentAmount, repaymentTimestamp))
-          .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
-          .withArgs(owner.address, ADMIN_ROLE);
-        await expect(connect(market, borrower).undoRepaymentFor(loan.id, repaymentAmount, repaymentTimestamp))
-          .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
-          .withArgs(borrower.address, ADMIN_ROLE);
-        await expect(connect(market, stranger).undoRepaymentFor(loan.id, repaymentAmount, repaymentTimestamp))
-          .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
-          .withArgs(stranger.address, ADMIN_ROLE);
+        await expect(
+          connect(market, owner).undoRepaymentFor(loan.id, repaymentAmount, repaymentTimestamp, receiver.address)
+        ).to.be.revertedWithCustomError(
+          market,
+          ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED
+        ).withArgs(owner.address, ADMIN_ROLE);
+
+        await expect(
+          connect(market, borrower).undoRepaymentFor(loan.id, repaymentAmount, repaymentTimestamp, receiver.address)
+        ).to.be.revertedWithCustomError(
+          market,
+          ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED
+        ).withArgs(borrower.address, ADMIN_ROLE);
+
+        await expect(
+          connect(market, stranger).undoRepaymentFor(loan.id, repaymentAmount, repaymentTimestamp, receiver.address)
+        ).to.be.revertedWithCustomError(
+          market,
+          ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED
+        ).withArgs(stranger.address, ADMIN_ROLE);
       });
 
       it("The repayment amount is zero", async () => {
@@ -2824,8 +2889,9 @@ describe("Contract 'LendingMarket': base tests", async () => {
         const wrongRepaymentAmount = 0;
         const repaymentTimestamp = loan.state.startTimestamp + 1;
 
-        await expect(marketUnderAdmin.undoRepaymentFor(loan.id, wrongRepaymentAmount, repaymentTimestamp))
-          .to.be.revertedWithCustomError(marketUnderAdmin, ERROR_NAME_INVALID_AMOUNT);
+        await expect(
+          marketUnderAdmin.undoRepaymentFor(loan.id, wrongRepaymentAmount, repaymentTimestamp, receiver.address)
+        ).to.be.revertedWithCustomError(marketUnderAdmin, ERROR_NAME_INVALID_AMOUNT);
       });
 
       it("The repayment amount is greater than the loan repaid amount", async () => {
@@ -2834,8 +2900,9 @@ describe("Contract 'LendingMarket': base tests", async () => {
         const wrongRepaymentAmount = REPAYMENT_AMOUNT + ACCURACY_FACTOR;
         const repaymentTimestamp = loan.state.startTimestamp + 1;
 
-        await expect(marketUnderAdmin.undoRepaymentFor(loan.id, wrongRepaymentAmount, repaymentTimestamp))
-          .to.be.revertedWithCustomError(marketUnderAdmin, ERROR_NAME_INVALID_AMOUNT);
+        await expect(
+          marketUnderAdmin.undoRepaymentFor(loan.id, wrongRepaymentAmount, repaymentTimestamp, receiver.address)
+        ).to.be.revertedWithCustomError(marketUnderAdmin, ERROR_NAME_INVALID_AMOUNT);
       });
 
       it("The repayment amount is not rounded according to the accuracy factor", async () => {
@@ -2844,8 +2911,9 @@ describe("Contract 'LendingMarket': base tests", async () => {
         const wrongRepaymentAmount = REPAYMENT_AMOUNT - 1;
         const repaymentTimestamp = loan.state.startTimestamp + 1;
 
-        await expect(marketUnderAdmin.undoRepaymentFor(loan.id, wrongRepaymentAmount, repaymentTimestamp))
-          .to.be.revertedWithCustomError(marketUnderAdmin, ERROR_NAME_INVALID_AMOUNT);
+        await expect(
+          marketUnderAdmin.undoRepaymentFor(loan.id, wrongRepaymentAmount, repaymentTimestamp, receiver.address)
+        ).to.be.revertedWithCustomError(marketUnderAdmin, ERROR_NAME_INVALID_AMOUNT);
       });
 
       it("The repayment timestamp is less than the loan start timestamp", async () => {
@@ -2854,8 +2922,9 @@ describe("Contract 'LendingMarket': base tests", async () => {
         const repaymentAmount = REPAYMENT_AMOUNT;
         const wrongRepaymentTimestamp = loan.state.startTimestamp - 1;
 
-        await expect(marketUnderAdmin.undoRepaymentFor(loan.id, repaymentAmount, wrongRepaymentTimestamp))
-          .to.be.revertedWithCustomError(marketUnderAdmin, ERROR_NAME_REPAYMENT_TIMESTAMP_INVALID);
+        await expect(
+          marketUnderAdmin.undoRepaymentFor(loan.id, repaymentAmount, wrongRepaymentTimestamp, receiver.address)
+        ).to.be.revertedWithCustomError(marketUnderAdmin, ERROR_NAME_REPAYMENT_TIMESTAMP_INVALID);
       });
     });
   });
