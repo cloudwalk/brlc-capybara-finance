@@ -298,18 +298,6 @@ contract CreditLine is
             revert LoanDurationOutOfRange();
         }
 
-        BorrowerState storage borrowerState = _borrowerStates[borrower];
-        if (borrowerConfig.borrowingPolicy == BorrowingPolicy.SingleActiveLoan) {
-            if (borrowerState.activeLoanCount > 0) {
-                revert LimitViolationOnSingleActiveLoan();
-            }
-        } else if (borrowerConfig.borrowingPolicy == BorrowingPolicy.TotalActiveAmountLimit) {
-            uint256 newTotalActiveLoanAmount = borrowedAmount + borrowerState.totalActiveLoanAmount;
-            if (newTotalActiveLoanAmount > borrowerConfig.maxBorrowedAmount) {
-                revert LimitViolationOnTotalActiveLoanAmount(newTotalActiveLoanAmount);
-            }
-        } // else borrowerConfig.borrowingPolicy == BorrowingPolicy.MultipleActiveLoans
-
         terms.token = _token;
         terms.durationInPeriods = durationInPeriods;
         terms.interestRatePrimary = borrowerConfig.interestRatePrimary;
@@ -468,11 +456,25 @@ contract CreditLine is
     /// @dev Executes additional checks and updates the borrower structures when a loan is opened.
     /// @param loan The state of the loan that is being opened.
     function _openLoan(Loan.State memory loan) internal {
-        BorrowerState storage borrowerState = _borrowerStates[loan.borrower];
+        address borrower = loan.borrower;
+        uint256 borrowedAmount = loan.borrowedAmount;
+        BorrowerState storage borrowerState = _borrowerStates[borrower];
+        BorrowerConfig storage borrowerConfig = _borrowerConfigs[borrower];
 
         unchecked {
             uint256 newActiveLoanCount = uint256(borrowerState.activeLoanCount) + 1;
-            uint256 newTotalActiveLoanAmount = uint256(borrowerState.totalActiveLoanAmount) + loan.borrowedAmount;
+            uint256 newTotalActiveLoanAmount = uint256(borrowerState.totalActiveLoanAmount) + borrowedAmount;
+
+            if (borrowerConfig.borrowingPolicy == BorrowingPolicy.SingleActiveLoan) {
+                if (newActiveLoanCount > 1) {
+                    revert LimitViolationOnSingleActiveLoan();
+                }
+            } else if (borrowerConfig.borrowingPolicy == BorrowingPolicy.TotalActiveAmountLimit) {
+                if (newTotalActiveLoanAmount > borrowerConfig.maxBorrowedAmount) {
+                    revert LimitViolationOnTotalActiveLoanAmount(newTotalActiveLoanAmount);
+                }
+            } // else borrowerConfig.borrowingPolicy == BorrowingPolicy.MultipleActiveLoans
+
             if (
                 newActiveLoanCount + borrowerState.closedLoanCount > type(uint16).max ||
                 newTotalActiveLoanAmount + borrowerState.totalClosedLoanAmount > type(uint64).max
