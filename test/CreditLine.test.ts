@@ -1279,6 +1279,105 @@ describe("Contract 'CreditLine'", async () => {
     });
   });
 
+  describe("Function 'onBeforeLoanReopened()'", async () => {
+    it("Executes as expected if the borrowing policy is 'SingleActiveLoan'", async () => {
+      await executeAndCheckLoanOpeningHook(
+        "callOnBeforeLoanReopenedCreditLine(address,uint256)",
+        BorrowingPolicy.SingleActiveLoan
+      );
+    });
+
+    it("Executes as expected if the borrowing policy is 'MultipleActiveLoan'", async () => {
+      await executeAndCheckLoanOpeningHook(
+        "callOnBeforeLoanReopenedCreditLine(address,uint256)",
+        BorrowingPolicy.MultipleActiveLoans
+      );
+    });
+
+    it("Executes as expected if the borrowing policy is 'TotalActiveAmountLimit'", async () => {
+      await executeAndCheckLoanOpeningHook(
+        "callOnBeforeLoanReopenedCreditLine(address,uint256)",
+        BorrowingPolicy.TotalActiveAmountLimit
+      );
+    });
+
+    it("Is reverted if the caller is not the configured market", async () => {
+      const { creditLine } = await setUpFixture(deployAndConfigureContractsWithBorrower);
+
+      await expect(creditLine.onBeforeLoanReopened(LOAN_ID))
+        .to.be.revertedWithCustomError(creditLine, ERROR_NAME_UNAUTHORIZED);
+    });
+
+    it("Is reverted if the contract is paused", async () => {
+      const { creditLine } = await setUpFixture(deployAndConfigureContractsWithBorrower);
+      await proveTx(creditLine.pause());
+
+      await expect(market.callOnBeforeLoanReopenedCreditLine(getAddress(creditLine), LOAN_ID))
+        .to.be.revertedWithCustomError(creditLine, ERROR_NAME_ENFORCED_PAUSED);
+    });
+
+    it("Is reverted if the borrowing policy is 'SingleActiveLoan' but there is another active loan", async () => {
+      const fixture = await setUpFixture(deployAndConfigureContractsWithBorrower);
+      const { creditLine, creditLineUnderAdmin, borrowerConfig } = fixture;
+      await prepareLoan(market);
+      const borrowerConfigNew = { ...borrowerConfig, borrowingPolicy: BorrowingPolicy.SingleActiveLoan };
+      const borrowerState: BorrowerState = {
+        ...defaultBorrowerState,
+        activeLoanCount: 1n
+      };
+      await proveTx(creditLineUnderAdmin[FUNC_CONFIGURE_BORROWER_NEW](borrower.address, borrowerConfigNew));
+      await proveTx(creditLineUnderAdmin.setBorrowerState(borrower.address, borrowerState));
+
+      await expect(market.callOnBeforeLoanReopenedCreditLine(getAddress(creditLine), LOAN_ID))
+        .to.revertedWithCustomError(creditLine, ERROR_NAME_LIMIT_VIOLATION_ON_SINGLE_ACTIVE_LOAN);
+    });
+
+    it("Is reverted if the borrowing policy is 'TotalActiveAmountLimit' but total amount excess happens", async () => {
+      const fixture = await setUpFixture(deployAndConfigureContractsWithBorrower);
+      const { creditLine, creditLineUnderAdmin, borrowerConfig } = fixture;
+      const loanState: LoanState = await prepareLoan(market);
+      const borrowerConfigNew = { ...borrowerConfig, borrowingPolicy: BorrowingPolicy.TotalActiveAmountLimit };
+      const borrowerState: BorrowerState = {
+        ...defaultBorrowerState,
+        totalActiveLoanAmount: borrowerConfig.maxBorrowedAmount - loanState.borrowedAmount + 1n
+      };
+      await proveTx(creditLineUnderAdmin[FUNC_CONFIGURE_BORROWER_NEW](borrower.address, borrowerConfigNew));
+      await proveTx(creditLineUnderAdmin.setBorrowerState(borrower.address, borrowerState));
+
+      await expect(market.callOnBeforeLoanReopenedCreditLine(getAddress(creditLine), LOAN_ID))
+        .to.revertedWithCustomError(creditLine, ERROR_NAME_LIMIT_VIOLATION_ON_TOTAL_ACTIVE_LOAN_AMOUNT)
+        .withArgs(borrowerState.totalActiveLoanAmount + BigInt(BORROWED_AMOUNT));
+    });
+
+    it("Is reverted if the result total number of loans is greater than 16-bit unsigned integer", async () => {
+      const { creditLine, creditLineUnderAdmin } = await setUpFixture(deployAndConfigureContractsWithBorrower);
+      const borrowerState: BorrowerState = {
+        ...defaultBorrowerState,
+        activeLoanCount: 0n,
+        closedLoanCount: maxUintForBits(16)
+      };
+      await proveTx(creditLineUnderAdmin.setBorrowerState(borrower.address, borrowerState));
+      await prepareLoan(market);
+
+      await expect(market.callOnBeforeLoanReopenedCreditLine(getAddress(creditLine), LOAN_ID))
+        .to.revertedWithCustomError(creditLine, ERROR_NAME_BORROWER_STATE_OVERFLOW);
+    });
+
+    it("Is reverted if the result total amount of loans is greater than 64-bit unsigned integer", async () => {
+      const { creditLine, creditLineUnderAdmin } = await setUpFixture(deployAndConfigureContractsWithBorrower);
+      const borrowerState: BorrowerState = {
+        ...defaultBorrowerState,
+        totalActiveLoanAmount: 0n,
+        totalClosedLoanAmount: maxUintForBits(64) - BORROWED_AMOUNT + 1n
+      };
+      await proveTx(creditLineUnderAdmin.setBorrowerState(borrower.address, borrowerState));
+      await prepareLoan(market);
+
+      await expect(market.callOnBeforeLoanReopenedCreditLine(getAddress(creditLine), LOAN_ID))
+        .to.revertedWithCustomError(creditLine, ERROR_NAME_BORROWER_STATE_OVERFLOW);
+    });
+  });
+
   describe("Function onAfterLoanPayment()", async () => {
     it("Executes as expected if the loan tracked balance is not zero", async () => {
       const { creditLine } = await setUpFixture(deployAndConfigureContractsWithBorrower);

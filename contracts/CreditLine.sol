@@ -243,6 +243,12 @@ contract CreditLine is
     }
 
     /// @inheritdoc ICreditLineHooks
+    function onBeforeLoanReopened(uint256 loanId) external whenNotPaused onlyMarket {
+        Loan.State memory loan = ILendingMarket(_market).getLoanState(loanId);
+        _openLoan(loan);
+    }
+
+    /// @inheritdoc ICreditLineHooks
     function onAfterLoanPayment(uint256 loanId, uint256 repaymentAmount) external whenNotPaused onlyMarket {
         repaymentAmount; // To prevent compiler warning about unused variable
 
