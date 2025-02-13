@@ -318,11 +318,11 @@ contract LendingMarket is
         uint256 repaymentAmount,
         uint256 repaymentTimestamp,
         address receiver
-    ) external whenNotPaused onlyOngoingLoan(loanId) onlyRole(ADMIN_ROLE) {
+    ) external whenNotPaused onlyRole(ADMIN_ROLE) {
         // See the explanation of this function in the interface file
         Loan.State storage loan = _loans[loanId];
-        _checkUndoingRepaymentAmount(loan, repaymentAmount);
-        _checkUndoingRepaymentTimestamp(loan, repaymentTimestamp);
+        _checkLoanExistence(loan);
+        _checkUndoingRepaymentParameters(loan, repaymentAmount, repaymentTimestamp);
         uint256 oldTrackedBalance = loan.trackedBalance;
         (uint256 newTrackedBalance, ) = _calculateCustomTrackedBalance(
             loan,
@@ -334,7 +334,7 @@ contract LendingMarket is
 
         uint256 newRepaidAmount;
         unchecked {
-            newRepaidAmount = loan.repaidAmount - repaymentAmount;
+            newRepaidAmount = loan.repaidAmount - Rounding.roundMath(repaymentAmount, Constants.ACCURACY_FACTOR);
         }
 
         uint256 oldLateFeeAmount = loan.lateFeeAmount;
@@ -363,6 +363,10 @@ contract LendingMarket is
             newLateFeeAmount,
             oldLateFeeAmount
         );
+        if (oldTrackedBalance == 0) {
+            address creditLine = _programCreditLines[loan.programId];
+            ICreditLine(creditLine).onBeforeLoanReopened(loanId);
+        }
         loan.repaidAmount = newRepaidAmount.toUint64();
         loan.trackedBalance = newTrackedBalance.toUint64();
         loan.lateFeeAmount = newLateFeeAmount.toUint64();
@@ -708,9 +712,6 @@ contract LendingMarket is
         if (changeAmount == type(uint256).max) {
             changeAmount = outstandingBalance;
         } else {
-            if (changeAmount != Rounding.roundMath(changeAmount, Constants.ACCURACY_FACTOR)) {
-                revert Error.InvalidAmount();
-            }
             if (changeAmount > outstandingBalance) {
                 revert Error.InvalidAmount();
             }
@@ -734,6 +735,12 @@ contract LendingMarket is
     /// @param changeAmount The amount of change in the tracked balance.
     function _checkTrackedBalanceChange(uint256 changeAmount) internal view virtual {
         if (changeAmount == 0) {
+            revert Error.InvalidAmount();
+        }
+        if (changeAmount == type(uint256).max) {
+            return;
+        }
+        if (changeAmount != Rounding.roundMath(changeAmount, Constants.ACCURACY_FACTOR)) {
             revert Error.InvalidAmount();
         }
     }
@@ -861,25 +868,27 @@ contract LendingMarket is
         }
     }
 
-    /// @dev Checks if the undoing repayment amount is valid.
+    /// @dev Checks if the undoing repayment parameters are valid.
     /// @param loan The storage state of the loan.
     /// @param repaymentAmount The repayment amount to check.
-    function _checkUndoingRepaymentAmount(Loan.State storage loan, uint256 repaymentAmount) internal view {
-        if (
-            repaymentAmount == 0 ||
-            repaymentAmount > loan.repaidAmount ||
-            repaymentAmount != Rounding.roundMath(repaymentAmount, Constants.ACCURACY_FACTOR)
-        ) {
+    /// @param repaymentTimestamp The repayment timestamp to check in the lending market time zone.
+    function _checkUndoingRepaymentParameters(
+        Loan.State storage loan,
+        uint256 repaymentAmount,
+        uint256 repaymentTimestamp
+    ) internal view {
+        uint256 roundedRepaymentAmount = Rounding.roundMath(repaymentAmount, Constants.ACCURACY_FACTOR);
+        if (repaymentAmount == 0 || roundedRepaymentAmount > loan.repaidAmount) {
             revert Error.InvalidAmount();
         }
-    }
-
-    /// @dev Checks if the undoing repayment timestamp is valid.
-    /// @param loan The storage state of the loan.
-    /// @param repaymentTimestamp The repayment timestamp to check in the lending market time zone.
-    function _checkUndoingRepaymentTimestamp(Loan.State storage loan, uint256 repaymentTimestamp) internal view {
         if (repaymentTimestamp < loan.startTimestamp) {
             revert RepaymentTimestampInvalid();
+        }
+        if (loan.trackedTimestamp == repaymentTimestamp && loan.trackedBalance == 0) {
+            return; // Skip further checks for the last repayment of a closed loan
+        }
+        if (roundedRepaymentAmount != repaymentAmount) {
+            revert UndoingRepaymentAmountUnrounded();
         }
     }
 

@@ -137,7 +137,7 @@ enum LoanOperationKind {
 
 interface LoanOperation {
   kind: LoanOperationKind;
-  amount: number;
+  amount: number | bigint;
   // if positive, then it is relative to the start timestamp of the first loan,
   // otherwise it is relative to the overdue timestamp of the first loan
   relativeTimestamp: number;
@@ -171,6 +171,7 @@ const ERROR_NAME_LOAN_TYPE_UNEXPECTED = "LoanTypeUnexpected";
 const ERROR_NAME_LOAN_ID_EXCESS = "LoanIdExcess";
 const ERROR_NAME_PROGRAM_ID_EXCESS = "ProgramIdExcess";
 const ERROR_NAME_REPAYMENT_TIMESTAMP_INVALID = "RepaymentTimestampInvalid";
+const ERROR_NAME_UNDOING_REPAYMENT_AMOUNT_UNROUNDED = "UndoingRepaymentAmountUnrounded";
 
 const EVENT_NAME_PROGRAM_CREATED = "ProgramCreated";
 const EVENT_NAME_PROGRAM_UPDATED = "ProgramUpdated";
@@ -183,6 +184,7 @@ const EVENT_NAME_LOAN_DISCOUNTED = "LoanDiscounted";
 const EVENT_NAME_LOAN_TAKEN = "LoanTaken";
 const EVENT_NAME_INSTALLMENT_LOAN_TAKEN = "InstallmentLoanTaken";
 const EVENT_NAME_LOAN_UNFROZEN = "LoanUnfrozen";
+const EVENT_NAME_ON_BEFORE_LOAN_REOPENED_CALLED = "OnBeforeLoanReopenedCalled";
 const EVENT_NAME_ON_BEFORE_LOAN_TAKEN = "OnBeforeLoanTakenCalled";
 const EVENT_NAME_ON_AFTER_LOAN_PAYMENT = "OnAfterLoanPaymentCalled";
 const EVENT_NAME_ON_AFTER_LOAN_REPAYMENT_UNDOING_CALLED = "OnAfterLoanRepaymentUndoingCalled";
@@ -590,10 +592,10 @@ describe("Contract 'LendingMarket': base tests", async () => {
   function processRepayment(loan: Loan, props: {
     repaymentAmount: number | bigint;
     repaymentTimestamp: number;
-  }) {
+  }): number {
     const repaymentTimestampWithOffset = calculateTimestampWithOffset(props.repaymentTimestamp);
     if (loan.state.trackedTimestamp >= repaymentTimestampWithOffset) {
-      return;
+      return -1;
     }
     let repaymentAmount = props.repaymentAmount;
     const loanPreviewBeforeRepayment = determineLoanPreview(loan, props.repaymentTimestamp);
@@ -606,13 +608,15 @@ describe("Contract 'LendingMarket': base tests", async () => {
     }
     if (repaymentAmount === FULL_REPAYMENT_AMOUNT) {
       loan.state.trackedBalance = 0;
-      loan.state.repaidAmount += loanPreviewBeforeRepayment.outstandingBalance;
+      repaymentAmount = loanPreviewBeforeRepayment.outstandingBalance;
+      loan.state.repaidAmount += repaymentAmount;
     } else {
       repaymentAmount = Number(repaymentAmount);
       loan.state.trackedBalance = loanPreviewBeforeRepayment.trackedBalance - repaymentAmount;
       loan.state.repaidAmount += repaymentAmount;
     }
     loan.state.trackedTimestamp = repaymentTimestampWithOffset;
+    return loanPreviewBeforeRepayment.trackedBalance;
   }
 
   function processDiscount(loan: Loan, props: {
@@ -723,8 +727,9 @@ describe("Contract 'LendingMarket': base tests", async () => {
     marketUnderAdmin: Contract,
     loans: Loan[],
     operations: LoanOperation[]
-  ): Promise<number[]> {
+  ): Promise<{ actualTimestamps: number[]; firstLoanTrackedBalanceBeforeRepayments: number[] }> {
     const actualTimestamps: number[] = [];
+    const firstLoanTrackedBalanceBeforeRepayments: number[] = [];
 
     const loanStartTimestamp = removeTimestampOffset(loans[0].state.startTimestamp);
     const loanOverdueTimestamp = removeTimestampOffset(
@@ -732,6 +737,11 @@ describe("Contract 'LendingMarket': base tests", async () => {
       PERIOD_IN_SECONDS
     );
     const maxTimeBeforeOverdueInSeconds = 60;
+
+    const hasSubjectToUndo = operations.filter(operation => operation.subjectToUndo).length > 0;
+    if (hasSubjectToUndo && !(await marketUnderAdmin.areAnyAmountsAllowed())) {
+      await proveTx(marketUnderAdmin.allowAnyAmounts()); // Call via the testable version
+    }
 
     for (const operation of operations) {
       if (operation.relativeTimestamp >= 0) {
@@ -749,7 +759,17 @@ describe("Contract 'LendingMarket': base tests", async () => {
       switch (operation.kind) {
         case LoanOperationKind.Repayment: {
           const repaymentAmount = operation.amount;
-          const repaymentAmounts: number[] = Array.from({ length: loans.length }, () => repaymentAmount);
+          const repaymentAmounts: (number | bigint)[] = Array.from({ length: loans.length }, () => repaymentAmount);
+
+          // If we are going to undo a repayment replace any full repayment with the tracked balance of the first loan
+          if (hasSubjectToUndo && repaymentAmount === FULL_REPAYMENT_AMOUNT) {
+            const timestamp = await getLatestBlockTimestamp();
+            const specialRepaymentAmount = determineLoanPreview(loans[0], timestamp).trackedBalance;
+            for (let i = 1; i < loans.length; ++i) {
+              repaymentAmounts[i] = specialRepaymentAmount;
+            }
+          }
+
           if (operation.subjectToUndo) {
             // If the repayment will be undone it is executed only for the first loan in the array.
             // For other loans in the array a fake repayment with zero amount is executed.
@@ -757,9 +777,6 @@ describe("Contract 'LendingMarket': base tests", async () => {
             // the overridden function '_checkTrackedBalanceChange()' in the testable version of the contract.
             for (let i = 1; i < loans.length; ++i) {
               repaymentAmounts[i] = 0;
-            }
-            if (!(await marketUnderAdmin.areZeroAmountsAllowed())) {
-              await proveTx(marketUnderAdmin.allowZeroAmounts()); // Call via the testable version
             }
           }
 
@@ -773,7 +790,10 @@ describe("Contract 'LendingMarket': base tests", async () => {
           for (let i = 0; i < loans.length; ++i) {
             const loan = loans[i];
             const repaymentAmount = repaymentAmounts[i];
-            processRepayment(loan, { repaymentAmount, repaymentTimestamp });
+            const trackedBalanceBeforeRepayment = processRepayment(loan, { repaymentAmount, repaymentTimestamp });
+            if (i === 0) {
+              firstLoanTrackedBalanceBeforeRepayments.push(trackedBalanceBeforeRepayment);
+            }
           }
           break;
         }
@@ -785,11 +805,12 @@ describe("Contract 'LendingMarket': base tests", async () => {
           const freezingTimestamp = await getTxTimestamp(tx);
           loans.forEach(loan => loan.state.freezeTimestamp = calculateTimestampWithOffset(freezingTimestamp));
           actualTimestamps.push(freezingTimestamp);
+          firstLoanTrackedBalanceBeforeRepayments.push(-1);
           break;
         }
       }
     }
-    return actualTimestamps;
+    return { actualTimestamps, firstLoanTrackedBalanceBeforeRepayments };
   }
 
   describe("Function initialize()", async () => {
@@ -2403,8 +2424,9 @@ describe("Contract 'LendingMarket': base tests", async () => {
 
   describe("Function 'undoRepaymentFor()'", async () => {
     async function executeAndCheck(operations: LoanOperation[], props: {
-      isReceiverAddressZero: boolean;
-    } = { isReceiverAddressZero: false }): Promise<void> {
+      isReceiverAddressZero?: boolean;
+      undoRepaymentsInReverseOrder?: boolean;
+    } = {}): Promise<void> {
       const { marketUnderAdmin } = await setUpFixture(deployLendingMarketAndTakeLoans);
       const loans: Loan[] = await takeInstallmentLoan(
         marketUnderAdmin,
@@ -2412,7 +2434,9 @@ describe("Contract 'LendingMarket': base tests", async () => {
         [ADDON_AMOUNT, ADDON_AMOUNT],
         [DURATION_IN_PERIODS, DURATION_IN_PERIODS]
       );
-      const receiverAddress = props.isReceiverAddressZero ? ZERO_ADDRESS : receiver.address;
+      const isReceiverAddressZero = props.isReceiverAddressZero ?? false;
+      const undoRepaymentsInReverseOrder = props.undoRepaymentsInReverseOrder ?? false;
+      const receiverAddress = isReceiverAddressZero ? ZERO_ADDRESS : receiver.address;
 
       const operationToUndoIndexes: number[] = [];
       operations.forEach((operation, index) => {
@@ -2424,22 +2448,32 @@ describe("Contract 'LendingMarket': base tests", async () => {
         throw new Error("No loans have been selected for undoing");
       }
 
-      const actualTimestamps = await executeLoanOperations(marketUnderAdmin, loans, operations);
+      const { actualTimestamps, firstLoanTrackedBalanceBeforeRepayments } =
+        await executeLoanOperations(marketUnderAdmin, loans, operations);
 
-      // Undo all the needed repayment except the last one
-      for (let i = 0; i < operationToUndoIndexes.length - 1; ++i) {
-        const operationToUndoIndex = operationToUndoIndexes[i];
-        const repaymentAmount = operations[operationToUndoIndex].amount;
-        const repaymentTimestamp = calculateTimestampWithOffset(actualTimestamps[operationToUndoIndex]);
-        await proveTx(
-          marketUnderAdmin.undoRepaymentFor(loans[0].id, repaymentAmount, repaymentTimestamp, receiverAddress)
-        );
+      if (undoRepaymentsInReverseOrder) {
+        operationToUndoIndexes.reverse();
+      }
+      const operationToUndoIndex = operationToUndoIndexes[operationToUndoIndexes.length - 1];
+
+      // Undo all the needed repayment except one
+      for (const operationIndex of operationToUndoIndexes) {
+        if (operationIndex !== operationToUndoIndex) {
+          const repaymentAmount = operations[operationIndex].amount === FULL_REPAYMENT_AMOUNT
+            ? firstLoanTrackedBalanceBeforeRepayments[operationIndex]
+            : operations[operationIndex].amount;
+          const repaymentTimestamp = calculateTimestampWithOffset(actualTimestamps[operationIndex]);
+          await proveTx(
+            marketUnderAdmin.undoRepaymentFor(loans[0].id, repaymentAmount, repaymentTimestamp, receiverAddress)
+          );
+        }
       }
 
       // Undo the last needed repayment
-      const operationToUndoIndex = operationToUndoIndexes[operationToUndoIndexes.length - 1];
       {
-        const repaymentAmount = operations[operationToUndoIndex].amount;
+        const repaymentAmount = operations[operationToUndoIndex].amount === FULL_REPAYMENT_AMOUNT
+          ? firstLoanTrackedBalanceBeforeRepayments[operationToUndoIndex]
+          : operations[operationToUndoIndex].amount;
         const repaymentTimestamp = calculateTimestampWithOffset(actualTimestamps[operationToUndoIndex]);
         const tx =
           marketUnderAdmin.undoRepaymentFor(loans[0].id, repaymentAmount, repaymentTimestamp, receiverAddress);
@@ -2457,13 +2491,15 @@ describe("Contract 'LendingMarket': base tests", async () => {
         expect(Math.abs(lateFeeAmountDifference)).to.be.lessThanOrEqual(1); // This can be due to rounding
         loans[1].state.trackedBalance += trackedBalanceDifference;
         loans[1].state.lateFeeAmount += lateFeeAmountDifference;
+        // This is needed because unrounded amounts can be used for a repayment during this test
+        loans[1].state.repaidAmount = roundSpecific(loans[1].state.repaidAmount);
         checkEquality(actualStateForTargetLoan, loans[1].state);
 
         if (receiverAddress !== ZERO_ADDRESS) {
           await expect(tx).to.changeTokenBalances(
             token,
             [liquidityPool, borrower, receiver, marketUnderAdmin],
-            [-repaymentAmount, 0, +repaymentAmount, 0]
+            [-repaymentAmount, 0, repaymentAmount, 0]
           );
 
           await expect(tx)
@@ -2478,8 +2514,16 @@ describe("Contract 'LendingMarket': base tests", async () => {
           await expect(tx).not.to.emit(liquidityPool, EVENT_NAME_ON_AFTER_LOAN_REPAYMENT_UNDOING_CALLED);
         }
 
-        // Check the event if there is only a single repayment to undo
+        // Check some events if there is only a single repayment to undo
         if (operationToUndoIndexes.length < 2) {
+          if (loans[0].state.trackedBalance === 0) {
+            await expect(tx)
+              .to.emit(creditLine, EVENT_NAME_ON_BEFORE_LOAN_REOPENED_CALLED)
+              .withArgs(loans[0].id);
+          } else {
+            await expect(tx).not.to.emit(creditLine, EVENT_NAME_ON_BEFORE_LOAN_REOPENED_CALLED);
+          }
+
           await expect(tx).to.emit(marketUnderAdmin, ERROR_NAME_REPAYMENT_UNDONE).withArgs(
             loans[0].id,
             receiverAddress,
@@ -2497,315 +2541,10 @@ describe("Contract 'LendingMarket': base tests", async () => {
     }
 
     describe("Execute as expected if the provided receiver address is NOT zero and", async () => {
-      describe("There are repayments only before the loan is overdue and", async () => {
-        it("The first one is being undone", async () => {
-          await executeAndCheck([
-            {
-              kind: LoanOperationKind.Repayment,
-              amount: REPAYMENT_AMOUNT,
-              relativeTimestamp: 2 * PERIOD_IN_SECONDS,
-              subjectToUndo: true
-            },
-            {
-              kind: LoanOperationKind.Repayment,
-              amount: REPAYMENT_AMOUNT,
-              relativeTimestamp: 4 * PERIOD_IN_SECONDS,
-              subjectToUndo: false
-            }
-          ]);
-        });
-
-        it("The first one is being undone and the second is exactly at the loan due date", async () => {
-          await executeAndCheck([
-            {
-              kind: LoanOperationKind.Repayment,
-              amount: REPAYMENT_AMOUNT,
-              relativeTimestamp: 2 * PERIOD_IN_SECONDS,
-              subjectToUndo: true
-            },
-            {
-              kind: LoanOperationKind.Repayment,
-              amount: REPAYMENT_AMOUNT,
-              relativeTimestamp: -60, // A negative value are seconds before the end of the loan due date
-              subjectToUndo: false
-            }
-          ]);
-        });
-
-        it("The first one is being undone and the loan is frozen before the second repayment", async () => {
-          await executeAndCheck([
-            {
-              kind: LoanOperationKind.Repayment,
-              amount: REPAYMENT_AMOUNT,
-              relativeTimestamp: 2 * PERIOD_IN_SECONDS,
-              subjectToUndo: true
-            },
-            {
-              kind: LoanOperationKind.Freezing,
-              amount: 0,
-              relativeTimestamp: 4 * PERIOD_IN_SECONDS,
-              subjectToUndo: false
-            },
-            {
-              kind: LoanOperationKind.Repayment,
-              amount: REPAYMENT_AMOUNT,
-              relativeTimestamp: 6 * PERIOD_IN_SECONDS,
-              subjectToUndo: false
-            }
-          ]);
-        });
-
-        it("The all repayments are being undone", async () => {
-          await executeAndCheck([
-            {
-              kind: LoanOperationKind.Repayment,
-              amount: REPAYMENT_AMOUNT,
-              relativeTimestamp: 2 * PERIOD_IN_SECONDS,
-              subjectToUndo: true
-            },
-            {
-              kind: LoanOperationKind.Repayment,
-              amount: REPAYMENT_AMOUNT,
-              relativeTimestamp: 4 * PERIOD_IN_SECONDS,
-              subjectToUndo: true
-            }
-          ]);
-        });
-
-        it("The all repayments are being undone and the loan is frozen before the second repayment", async () => {
-          await executeAndCheck([
-            {
-              kind: LoanOperationKind.Repayment,
-              amount: REPAYMENT_AMOUNT,
-              relativeTimestamp: 2 * PERIOD_IN_SECONDS,
-              subjectToUndo: true
-            },
-            {
-              kind: LoanOperationKind.Freezing,
-              amount: 0,
-              relativeTimestamp: 4 * PERIOD_IN_SECONDS,
-              subjectToUndo: false
-            },
-            {
-              kind: LoanOperationKind.Repayment,
-              amount: REPAYMENT_AMOUNT,
-              relativeTimestamp: 6 * PERIOD_IN_SECONDS,
-              subjectToUndo: true
-            }
-          ]);
-        });
-
-        it("The second one is being undone", async () => {
-          await executeAndCheck([
-            {
-              kind: LoanOperationKind.Repayment,
-              amount: REPAYMENT_AMOUNT,
-              relativeTimestamp: 2 * PERIOD_IN_SECONDS,
-              subjectToUndo: false
-            },
-            {
-              kind: LoanOperationKind.Repayment,
-              amount: REPAYMENT_AMOUNT,
-              relativeTimestamp: 4 * PERIOD_IN_SECONDS,
-              subjectToUndo: true
-            }
-          ]);
-        });
-      });
-
-      describe("There are repayments before and after the loan is overdue and", async () => {
-        it("The first one is being undone", async () => {
-          await executeAndCheck([
-            {
-              kind: LoanOperationKind.Repayment,
-              amount: REPAYMENT_AMOUNT,
-              relativeTimestamp: 2 * PERIOD_IN_SECONDS,
-              subjectToUndo: true
-            },
-            {
-              kind: LoanOperationKind.Repayment,
-              amount: REPAYMENT_AMOUNT,
-              relativeTimestamp: 4 * PERIOD_IN_SECONDS,
-              subjectToUndo: false
-            },
-            {
-              kind: LoanOperationKind.Repayment,
-              amount: REPAYMENT_AMOUNT,
-              relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 3 * PERIOD_IN_SECONDS,
-              subjectToUndo: false
-            },
-            {
-              kind: LoanOperationKind.Repayment,
-              amount: REPAYMENT_AMOUNT,
-              relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 5 * PERIOD_IN_SECONDS,
-              subjectToUndo: false
-            }
-          ]);
-        });
-
-        it("The third one is being undone", async () => {
-          await executeAndCheck([
-            {
-              kind: LoanOperationKind.Repayment,
-              amount: REPAYMENT_AMOUNT,
-              relativeTimestamp: 2 * PERIOD_IN_SECONDS,
-              subjectToUndo: false
-            },
-            {
-              kind: LoanOperationKind.Repayment,
-              amount: REPAYMENT_AMOUNT,
-              relativeTimestamp: 4 * PERIOD_IN_SECONDS,
-              subjectToUndo: false
-            },
-            {
-              kind: LoanOperationKind.Repayment,
-              amount: REPAYMENT_AMOUNT,
-              relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 3 * PERIOD_IN_SECONDS,
-              subjectToUndo: true
-            },
-            {
-              kind: LoanOperationKind.Repayment,
-              amount: REPAYMENT_AMOUNT,
-              relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 5 * PERIOD_IN_SECONDS,
-              subjectToUndo: false
-            }
-          ]);
-        });
-
-        it("The last one is being undone", async () => {
-          await executeAndCheck([
-            {
-              kind: LoanOperationKind.Repayment,
-              amount: REPAYMENT_AMOUNT,
-              relativeTimestamp: 2 * PERIOD_IN_SECONDS,
-              subjectToUndo: false
-            },
-            {
-              kind: LoanOperationKind.Repayment,
-              amount: REPAYMENT_AMOUNT,
-              relativeTimestamp: 4 * PERIOD_IN_SECONDS,
-              subjectToUndo: false
-            },
-            {
-              kind: LoanOperationKind.Repayment,
-              amount: REPAYMENT_AMOUNT,
-              relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 3 * PERIOD_IN_SECONDS,
-              subjectToUndo: false
-            },
-            {
-              kind: LoanOperationKind.Repayment,
-              amount: REPAYMENT_AMOUNT,
-              relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 5 * PERIOD_IN_SECONDS,
-              subjectToUndo: true
-            }
-          ]);
-        });
-
-        it("The third one is being undone and the loan is frozen after the due date", async () => {
-          await executeAndCheck([
-            {
-              kind: LoanOperationKind.Repayment,
-              amount: REPAYMENT_AMOUNT,
-              relativeTimestamp: 2 * PERIOD_IN_SECONDS,
-              subjectToUndo: false
-            },
-            {
-              kind: LoanOperationKind.Repayment,
-              amount: REPAYMENT_AMOUNT,
-              relativeTimestamp: 4 * PERIOD_IN_SECONDS,
-              subjectToUndo: false
-            },
-            {
-              kind: LoanOperationKind.Freezing,
-              amount: REPAYMENT_AMOUNT,
-              relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 3 * PERIOD_IN_SECONDS,
-              subjectToUndo: false
-            },
-            {
-              kind: LoanOperationKind.Repayment,
-              amount: REPAYMENT_AMOUNT,
-              relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 5 * PERIOD_IN_SECONDS,
-              subjectToUndo: true
-            },
-            {
-              kind: LoanOperationKind.Repayment,
-              amount: REPAYMENT_AMOUNT,
-              relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 7 * PERIOD_IN_SECONDS,
-              subjectToUndo: false
-            }
-          ]);
-        });
-
-        it("The all the repayment are being undone except the last one", async () => {
-          await executeAndCheck([
-            {
-              kind: LoanOperationKind.Repayment,
-              amount: REPAYMENT_AMOUNT,
-              relativeTimestamp: 2 * PERIOD_IN_SECONDS,
-              subjectToUndo: true
-            },
-            {
-              kind: LoanOperationKind.Repayment,
-              amount: REPAYMENT_AMOUNT,
-              relativeTimestamp: 4 * PERIOD_IN_SECONDS,
-              subjectToUndo: true
-            },
-            {
-              kind: LoanOperationKind.Repayment,
-              amount: REPAYMENT_AMOUNT,
-              relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 5 * PERIOD_IN_SECONDS,
-              subjectToUndo: true
-            },
-            {
-              kind: LoanOperationKind.Repayment,
-              amount: REPAYMENT_AMOUNT,
-              relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 7 * PERIOD_IN_SECONDS,
-              subjectToUndo: false
-            }
-          ]);
-        });
-
-        it("The all the repayment are being and the loan is frozen after the due date", async () => {
-          await executeAndCheck([
-            {
-              kind: LoanOperationKind.Repayment,
-              amount: REPAYMENT_AMOUNT,
-              relativeTimestamp: 2 * PERIOD_IN_SECONDS,
-              subjectToUndo: true
-            },
-            {
-              kind: LoanOperationKind.Repayment,
-              amount: REPAYMENT_AMOUNT,
-              relativeTimestamp: 4 * PERIOD_IN_SECONDS,
-              subjectToUndo: true
-            },
-            {
-              kind: LoanOperationKind.Freezing,
-              amount: REPAYMENT_AMOUNT,
-              relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 3 * PERIOD_IN_SECONDS,
-              subjectToUndo: false
-            },
-            {
-              kind: LoanOperationKind.Repayment,
-              amount: REPAYMENT_AMOUNT,
-              relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 5 * PERIOD_IN_SECONDS,
-              subjectToUndo: true
-            },
-            {
-              kind: LoanOperationKind.Repayment,
-              amount: REPAYMENT_AMOUNT,
-              relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 7 * PERIOD_IN_SECONDS,
-              subjectToUndo: true
-            }
-          ]);
-        });
-      });
-    });
-    describe("Execute as expected if the provided receiver address is zero and", async () => {
-      describe("There are repayments only before the loan is overdue and", async () => {
-        it("The first one is being undone", async () => {
-          await executeAndCheck(
-            [
+      describe("The loan is NOT fully repaid and", async () => {
+        describe("There are repayments only before the loan is overdue and", async () => {
+          it("The first repayment is being undone", async () => {
+            await executeAndCheck([
               {
                 kind: LoanOperationKind.Repayment,
                 amount: REPAYMENT_AMOUNT,
@@ -2818,9 +2557,466 @@ describe("Contract 'LendingMarket': base tests", async () => {
                 relativeTimestamp: 4 * PERIOD_IN_SECONDS,
                 subjectToUndo: false
               }
-            ],
-            { isReceiverAddressZero: true }
-          );
+            ]);
+          });
+
+          it("The first repayment is being undone and the second is exactly at the loan due date", async () => {
+            await executeAndCheck([
+              {
+                kind: LoanOperationKind.Repayment,
+                amount: REPAYMENT_AMOUNT,
+                relativeTimestamp: 2 * PERIOD_IN_SECONDS,
+                subjectToUndo: true
+              },
+              {
+                kind: LoanOperationKind.Repayment,
+                amount: REPAYMENT_AMOUNT,
+                relativeTimestamp: -60, // A negative value are seconds before the end of the loan due date
+                subjectToUndo: false
+              }
+            ]);
+          });
+
+          it("The first repayment is being undone and the loan is frozen before the second repayment", async () => {
+            await executeAndCheck([
+              {
+                kind: LoanOperationKind.Repayment,
+                amount: REPAYMENT_AMOUNT,
+                relativeTimestamp: 2 * PERIOD_IN_SECONDS,
+                subjectToUndo: true
+              },
+              {
+                kind: LoanOperationKind.Freezing,
+                amount: 0,
+                relativeTimestamp: 4 * PERIOD_IN_SECONDS,
+                subjectToUndo: false
+              },
+              {
+                kind: LoanOperationKind.Repayment,
+                amount: REPAYMENT_AMOUNT,
+                relativeTimestamp: 6 * PERIOD_IN_SECONDS,
+                subjectToUndo: false
+              }
+            ]);
+          });
+
+          it("All the repayments are being undone", async () => {
+            await executeAndCheck([
+              {
+                kind: LoanOperationKind.Repayment,
+                amount: REPAYMENT_AMOUNT,
+                relativeTimestamp: 2 * PERIOD_IN_SECONDS,
+                subjectToUndo: true
+              },
+              {
+                kind: LoanOperationKind.Repayment,
+                amount: REPAYMENT_AMOUNT,
+                relativeTimestamp: 4 * PERIOD_IN_SECONDS,
+                subjectToUndo: true
+              }
+            ]);
+          });
+
+          it("All the repayments are being undone and the loan is frozen before the second repayment", async () => {
+            await executeAndCheck([
+              {
+                kind: LoanOperationKind.Repayment,
+                amount: REPAYMENT_AMOUNT,
+                relativeTimestamp: 2 * PERIOD_IN_SECONDS,
+                subjectToUndo: true
+              },
+              {
+                kind: LoanOperationKind.Freezing,
+                amount: 0,
+                relativeTimestamp: 4 * PERIOD_IN_SECONDS,
+                subjectToUndo: false
+              },
+              {
+                kind: LoanOperationKind.Repayment,
+                amount: REPAYMENT_AMOUNT,
+                relativeTimestamp: 6 * PERIOD_IN_SECONDS,
+                subjectToUndo: true
+              }
+            ]);
+          });
+
+          it("The last repayment is being undone", async () => {
+            await executeAndCheck([
+              {
+                kind: LoanOperationKind.Repayment,
+                amount: REPAYMENT_AMOUNT,
+                relativeTimestamp: 2 * PERIOD_IN_SECONDS,
+                subjectToUndo: false
+              },
+              {
+                kind: LoanOperationKind.Repayment,
+                amount: REPAYMENT_AMOUNT,
+                relativeTimestamp: 4 * PERIOD_IN_SECONDS,
+                subjectToUndo: true
+              }
+            ]);
+          });
+        });
+
+        describe("There are repayments before and after the loan is overdue and", async () => {
+          it("The first repayment is being undone", async () => {
+            await executeAndCheck([
+              {
+                kind: LoanOperationKind.Repayment,
+                amount: REPAYMENT_AMOUNT,
+                relativeTimestamp: 2 * PERIOD_IN_SECONDS,
+                subjectToUndo: true
+              },
+              {
+                kind: LoanOperationKind.Repayment,
+                amount: REPAYMENT_AMOUNT,
+                relativeTimestamp: 4 * PERIOD_IN_SECONDS,
+                subjectToUndo: false
+              },
+              {
+                kind: LoanOperationKind.Repayment,
+                amount: REPAYMENT_AMOUNT,
+                relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 3 * PERIOD_IN_SECONDS,
+                subjectToUndo: false
+              },
+              {
+                kind: LoanOperationKind.Repayment,
+                amount: REPAYMENT_AMOUNT,
+                relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 5 * PERIOD_IN_SECONDS,
+                subjectToUndo: false
+              }
+            ]);
+          });
+
+          it("The repayment before the last one is being undone", async () => {
+            await executeAndCheck([
+              {
+                kind: LoanOperationKind.Repayment,
+                amount: REPAYMENT_AMOUNT,
+                relativeTimestamp: 2 * PERIOD_IN_SECONDS,
+                subjectToUndo: false
+              },
+              {
+                kind: LoanOperationKind.Repayment,
+                amount: REPAYMENT_AMOUNT,
+                relativeTimestamp: 4 * PERIOD_IN_SECONDS,
+                subjectToUndo: false
+              },
+              {
+                kind: LoanOperationKind.Repayment,
+                amount: REPAYMENT_AMOUNT,
+                relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 3 * PERIOD_IN_SECONDS,
+                subjectToUndo: true
+              },
+              {
+                kind: LoanOperationKind.Repayment,
+                amount: REPAYMENT_AMOUNT,
+                relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 5 * PERIOD_IN_SECONDS,
+                subjectToUndo: false
+              }
+            ]);
+          });
+
+          it("The last repayment is being undone", async () => {
+            await executeAndCheck([
+              {
+                kind: LoanOperationKind.Repayment,
+                amount: REPAYMENT_AMOUNT,
+                relativeTimestamp: 2 * PERIOD_IN_SECONDS,
+                subjectToUndo: false
+              },
+              {
+                kind: LoanOperationKind.Repayment,
+                amount: REPAYMENT_AMOUNT,
+                relativeTimestamp: 4 * PERIOD_IN_SECONDS,
+                subjectToUndo: false
+              },
+              {
+                kind: LoanOperationKind.Repayment,
+                amount: REPAYMENT_AMOUNT,
+                relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 3 * PERIOD_IN_SECONDS,
+                subjectToUndo: false
+              },
+              {
+                kind: LoanOperationKind.Repayment,
+                amount: REPAYMENT_AMOUNT,
+                relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 5 * PERIOD_IN_SECONDS,
+                subjectToUndo: true
+              }
+            ]);
+          });
+
+          it("The repayment before the last one is being undone and the loan is frozen after due date", async () => {
+            await executeAndCheck([
+              {
+                kind: LoanOperationKind.Repayment,
+                amount: REPAYMENT_AMOUNT,
+                relativeTimestamp: 2 * PERIOD_IN_SECONDS,
+                subjectToUndo: false
+              },
+              {
+                kind: LoanOperationKind.Repayment,
+                amount: REPAYMENT_AMOUNT,
+                relativeTimestamp: 4 * PERIOD_IN_SECONDS,
+                subjectToUndo: false
+              },
+              {
+                kind: LoanOperationKind.Freezing,
+                amount: REPAYMENT_AMOUNT,
+                relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 3 * PERIOD_IN_SECONDS,
+                subjectToUndo: false
+              },
+              {
+                kind: LoanOperationKind.Repayment,
+                amount: REPAYMENT_AMOUNT,
+                relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 5 * PERIOD_IN_SECONDS,
+                subjectToUndo: true
+              },
+              {
+                kind: LoanOperationKind.Repayment,
+                amount: REPAYMENT_AMOUNT,
+                relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 7 * PERIOD_IN_SECONDS,
+                subjectToUndo: false
+              }
+            ]);
+          });
+
+          it("All the repayments are being undone except the last one", async () => {
+            await executeAndCheck([
+              {
+                kind: LoanOperationKind.Repayment,
+                amount: REPAYMENT_AMOUNT,
+                relativeTimestamp: 2 * PERIOD_IN_SECONDS,
+                subjectToUndo: true
+              },
+              {
+                kind: LoanOperationKind.Repayment,
+                amount: REPAYMENT_AMOUNT,
+                relativeTimestamp: 4 * PERIOD_IN_SECONDS,
+                subjectToUndo: true
+              },
+              {
+                kind: LoanOperationKind.Repayment,
+                amount: REPAYMENT_AMOUNT,
+                relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 5 * PERIOD_IN_SECONDS,
+                subjectToUndo: true
+              },
+              {
+                kind: LoanOperationKind.Repayment,
+                amount: REPAYMENT_AMOUNT,
+                relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 7 * PERIOD_IN_SECONDS,
+                subjectToUndo: false
+              }
+            ]);
+          });
+
+          it("All the repayments are being and the loan is frozen after the due date", async () => {
+            await executeAndCheck([
+              {
+                kind: LoanOperationKind.Repayment,
+                amount: REPAYMENT_AMOUNT,
+                relativeTimestamp: 2 * PERIOD_IN_SECONDS,
+                subjectToUndo: true
+              },
+              {
+                kind: LoanOperationKind.Repayment,
+                amount: REPAYMENT_AMOUNT,
+                relativeTimestamp: 4 * PERIOD_IN_SECONDS,
+                subjectToUndo: true
+              },
+              {
+                kind: LoanOperationKind.Freezing,
+                amount: REPAYMENT_AMOUNT,
+                relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 3 * PERIOD_IN_SECONDS,
+                subjectToUndo: false
+              },
+              {
+                kind: LoanOperationKind.Repayment,
+                amount: REPAYMENT_AMOUNT,
+                relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 5 * PERIOD_IN_SECONDS,
+                subjectToUndo: true
+              },
+              {
+                kind: LoanOperationKind.Repayment,
+                amount: REPAYMENT_AMOUNT,
+                relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 7 * PERIOD_IN_SECONDS,
+                subjectToUndo: true
+              }
+            ]);
+          });
+        });
+      });
+      describe("The loan is fully repaid and", async () => {
+        describe("There are repayments only before the loan is overdue and", async () => {
+          it("The first repayment is being undone", async () => {
+            await executeAndCheck([
+              {
+                kind: LoanOperationKind.Repayment,
+                amount: REPAYMENT_AMOUNT,
+                relativeTimestamp: 2 * PERIOD_IN_SECONDS,
+                subjectToUndo: true
+              },
+              {
+                kind: LoanOperationKind.Repayment,
+                amount: FULL_REPAYMENT_AMOUNT,
+                relativeTimestamp: 4 * PERIOD_IN_SECONDS,
+                subjectToUndo: false
+              }
+            ]);
+          });
+
+          it("The last repayment is being undone", async () => {
+            await executeAndCheck([
+              {
+                kind: LoanOperationKind.Repayment,
+                amount: REPAYMENT_AMOUNT,
+                relativeTimestamp: 2 * PERIOD_IN_SECONDS,
+                subjectToUndo: false
+              },
+              {
+                kind: LoanOperationKind.Repayment,
+                amount: FULL_REPAYMENT_AMOUNT,
+                relativeTimestamp: 4 * PERIOD_IN_SECONDS,
+                subjectToUndo: true
+              }
+            ]);
+          });
+
+          it("All the repayments are being undone in reverse order", async () => {
+            await executeAndCheck([
+              {
+                kind: LoanOperationKind.Repayment,
+                amount: REPAYMENT_AMOUNT,
+                relativeTimestamp: 2 * PERIOD_IN_SECONDS,
+                subjectToUndo: true
+              },
+              {
+                kind: LoanOperationKind.Repayment,
+                amount: FULL_REPAYMENT_AMOUNT,
+                relativeTimestamp: 4 * PERIOD_IN_SECONDS,
+                subjectToUndo: true
+              }
+            ], { undoRepaymentsInReverseOrder: true });
+          });
+        });
+        describe("There are repayments before and after the loan is overdue and", async () => {
+          it("The first repayment is being undone", async () => {
+            await executeAndCheck([
+              {
+                kind: LoanOperationKind.Repayment,
+                amount: REPAYMENT_AMOUNT,
+                relativeTimestamp: 2 * PERIOD_IN_SECONDS,
+                subjectToUndo: true
+              },
+              {
+                kind: LoanOperationKind.Repayment,
+                amount: REPAYMENT_AMOUNT,
+                relativeTimestamp: 4 * PERIOD_IN_SECONDS,
+                subjectToUndo: false
+              },
+              {
+                kind: LoanOperationKind.Repayment,
+                amount: REPAYMENT_AMOUNT,
+                relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 3 * PERIOD_IN_SECONDS,
+                subjectToUndo: false
+              },
+              {
+                kind: LoanOperationKind.Repayment,
+                amount: FULL_REPAYMENT_AMOUNT,
+                relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 5 * PERIOD_IN_SECONDS,
+                subjectToUndo: false
+              }
+            ]);
+          });
+
+          it("The repayment before the last one is being undone", async () => {
+            await executeAndCheck([
+              {
+                kind: LoanOperationKind.Repayment,
+                amount: REPAYMENT_AMOUNT,
+                relativeTimestamp: 2 * PERIOD_IN_SECONDS,
+                subjectToUndo: false
+              },
+              {
+                kind: LoanOperationKind.Repayment,
+                amount: REPAYMENT_AMOUNT,
+                relativeTimestamp: 4 * PERIOD_IN_SECONDS,
+                subjectToUndo: false
+              },
+              {
+                kind: LoanOperationKind.Repayment,
+                amount: REPAYMENT_AMOUNT,
+                relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 3 * PERIOD_IN_SECONDS,
+                subjectToUndo: true
+              },
+              {
+                kind: LoanOperationKind.Repayment,
+                amount: FULL_REPAYMENT_AMOUNT,
+                relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 5 * PERIOD_IN_SECONDS,
+                subjectToUndo: false
+              }
+            ]);
+          });
+
+          it("All the repayments are being undone in reverse order and the loan is frozen after due date", async () => {
+            await executeAndCheck([
+              {
+                kind: LoanOperationKind.Repayment,
+                amount: REPAYMENT_AMOUNT,
+                relativeTimestamp: 2 * PERIOD_IN_SECONDS,
+                subjectToUndo: true
+              },
+              {
+                kind: LoanOperationKind.Repayment,
+                amount: REPAYMENT_AMOUNT,
+                relativeTimestamp: 4 * PERIOD_IN_SECONDS,
+                subjectToUndo: true
+              },
+              {
+                kind: LoanOperationKind.Freezing,
+                amount: 0,
+                relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 3 * PERIOD_IN_SECONDS,
+                subjectToUndo: false
+              },
+              {
+                kind: LoanOperationKind.Repayment,
+                amount: REPAYMENT_AMOUNT,
+                relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 5 * PERIOD_IN_SECONDS,
+                subjectToUndo: true
+              },
+              {
+                kind: LoanOperationKind.Repayment,
+                amount: FULL_REPAYMENT_AMOUNT,
+                relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 7 * PERIOD_IN_SECONDS,
+                subjectToUndo: true
+              }
+            ], { undoRepaymentsInReverseOrder: true });
+          });
+        });
+      });
+    });
+    describe("Execute as expected if the provided receiver address is zero and", async () => {
+      describe("The loan is NOT fully repaid and", async () => {
+        describe("There are repayments only before the loan is overdue and", async () => {
+          it("The first one is being undone", async () => {
+            await executeAndCheck(
+              [
+                {
+                  kind: LoanOperationKind.Repayment,
+                  amount: REPAYMENT_AMOUNT,
+                  relativeTimestamp: 2 * PERIOD_IN_SECONDS,
+                  subjectToUndo: true
+                },
+                {
+                  kind: LoanOperationKind.Repayment,
+                  amount: REPAYMENT_AMOUNT,
+                  relativeTimestamp: 4 * PERIOD_IN_SECONDS,
+                  subjectToUndo: false
+                }
+              ],
+              { isReceiverAddressZero: true }
+            );
+          });
         });
       });
     });
@@ -2844,17 +3040,6 @@ describe("Contract 'LendingMarket': base tests", async () => {
         await expect(
           marketUnderAdmin.undoRepaymentFor(wrongLoanId, repaymentAmount, repaymentTimestamp, receiver.address)
         ).to.be.revertedWithCustomError(marketUnderAdmin, ERROR_NAME_LOAN_NOT_EXIST);
-      });
-
-      it("The loan is already repaid", async () => {
-        const { marketUnderAdmin, ordinaryLoan: loan } = await setUpFixture(deployLendingMarketAndTakeLoans);
-        await proveTx(marketUnderAdmin.repayLoanForBatch([loan.id], [FULL_REPAYMENT_AMOUNT], borrower.address));
-        const repaymentAmount = (REPAYMENT_AMOUNT);
-        const repaymentTimestamp = (0);
-
-        await expect(
-          marketUnderAdmin.undoRepaymentFor(loan.id, repaymentAmount, repaymentTimestamp, receiver.address)
-        ).to.be.revertedWithCustomError(marketUnderAdmin, ERROR_NAME_LOAN_ALREADY_REPAID);
       });
 
       it("The caller does not have the admin role", async () => {
@@ -2913,7 +3098,27 @@ describe("Contract 'LendingMarket': base tests", async () => {
 
         await expect(
           marketUnderAdmin.undoRepaymentFor(loan.id, wrongRepaymentAmount, repaymentTimestamp, receiver.address)
-        ).to.be.revertedWithCustomError(marketUnderAdmin, ERROR_NAME_INVALID_AMOUNT);
+        ).to.be.revertedWithCustomError(marketUnderAdmin, ERROR_NAME_UNDOING_REPAYMENT_AMOUNT_UNROUNDED);
+      });
+
+      it("The repayment timestamp does not match the last repayment of a closed loan", async () => {
+        const { marketUnderAdmin, ordinaryLoan } = await setUpFixture(deployLendingMarketAndTakeLoans);
+        const loan = clone(ordinaryLoan);
+        await increaseBlockTimestampToPeriodIndex(loan.startPeriod + 2);
+        const tx = marketUnderAdmin.repayLoanForBatch([loan.id], [FULL_REPAYMENT_AMOUNT], borrower.address);
+        const repaymentTimestamp = await getTxTimestamp(tx);
+        const trackedBalanceBeforeRepayment = processRepayment(loan, {
+          repaymentAmount: FULL_REPAYMENT_AMOUNT,
+          repaymentTimestamp
+        });
+        const repaymentAmount = (trackedBalanceBeforeRepayment);
+        expect(repaymentAmount).not.to.eq(roundSpecific(repaymentAmount));
+        expect(roundSpecific(repaymentAmount)).lessThan(repaymentAmount);
+        const wrongRepaymentTimestamp = calculateTimestampWithOffset(repaymentTimestamp) + 1;
+
+        await expect(
+          marketUnderAdmin.undoRepaymentFor(loan.id, repaymentAmount, wrongRepaymentTimestamp, receiver.address)
+        ).to.be.revertedWithCustomError(marketUnderAdmin, ERROR_NAME_UNDOING_REPAYMENT_AMOUNT_UNROUNDED);
       });
 
       it("The repayment timestamp is less than the loan start timestamp", async () => {
