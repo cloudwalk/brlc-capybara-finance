@@ -14,8 +14,6 @@ import {
   proveTx
 } from "../test-utils/eth";
 import { checkEquality, maxUintForBits, roundMath, setUpFixture } from "../test-utils/common";
-import { Rule } from "eslint";
-import Fix = Rule.Fix;
 
 enum LoanType {
   Ordinary = 0,
@@ -2475,6 +2473,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
         const repaymentAmount = operations[operationToUndoIndex].amount === FULL_REPAYMENT_AMOUNT
           ? firstLoanTrackedBalanceBeforeRepayments[operationToUndoIndex]
           : operations[operationToUndoIndex].amount;
+        const roundedRepaymentAmount = roundSpecific(repaymentAmount);
         const repaymentTimestamp = calculateTimestampWithOffset(actualTimestamps[operationToUndoIndex]);
         const tx =
           marketUnderAdmin.undoRepaymentFor(loans[0].id, repaymentAmount, repaymentTimestamp, receiverAddress);
@@ -2500,7 +2499,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
           await expect(tx).to.changeTokenBalances(
             token,
             [liquidityPool, borrower, receiver, marketUnderAdmin],
-            [-repaymentAmount, 0, repaymentAmount, 0]
+            [-roundedRepaymentAmount, 0, +roundedRepaymentAmount, 0]
           );
 
           await expect(tx)
@@ -3124,7 +3123,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
         await expect(tx).to.changeTokenBalances(
           token,
           [liquidityPool, borrower, receiver, marketUnderAdmin],
-          [-repaymentAmount, 0, repaymentAmount, 0]
+          [-roundedRepaymentAmount, 0, roundedRepaymentAmount, 0]
         );
       }
 

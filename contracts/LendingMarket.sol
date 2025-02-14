@@ -332,23 +332,26 @@ contract LendingMarket is
         );
         newTrackedBalance += oldTrackedBalance;
 
-        uint256 newRepaidAmount;
-        unchecked {
-            newRepaidAmount = loan.repaidAmount - Rounding.roundMath(repaymentAmount, Constants.ACCURACY_FACTOR);
-        }
-
         uint256 oldLateFeeAmount = loan.lateFeeAmount;
         uint256 newLateFeeAmount = oldLateFeeAmount;
-        uint256 dueTimestamp = _getDueTimestamp(loan);
-        if (repaymentTimestamp <= dueTimestamp && oldLateFeeAmount != 0) {
-            (uint256 additionalLateFeeAmount, ) = _calculateCustomTrackedBalance(
-                loan,
-                repaymentAmount,
-                repaymentTimestamp,
-                dueTimestamp
-            );
-            additionalLateFeeAmount = _calculateLateFee(additionalLateFeeAmount, loan);
-            newLateFeeAmount += additionalLateFeeAmount;
+        {
+            uint256 dueTimestamp = _getDueTimestamp(loan);
+            if (repaymentTimestamp <= dueTimestamp && oldLateFeeAmount != 0) {
+                (uint256 additionalLateFeeAmount,) = _calculateCustomTrackedBalance(
+                    loan,
+                    repaymentAmount,
+                    repaymentTimestamp,
+                    dueTimestamp
+                );
+                additionalLateFeeAmount = _calculateLateFee(additionalLateFeeAmount, loan);
+                newLateFeeAmount += additionalLateFeeAmount;
+            }
+        }
+
+        uint256 oldRepaidAmount = loan.repaidAmount;
+        uint256 newRepaidAmount = oldRepaidAmount;
+        unchecked {
+            newRepaidAmount -= Rounding.roundMath(repaymentAmount, Constants.ACCURACY_FACTOR);
         }
 
         emit RepaymentUndone(
@@ -357,7 +360,7 @@ contract LendingMarket is
             loan.borrower,
             repaymentTimestamp,
             newRepaidAmount,
-            loan.repaidAmount, // oldRepaidAmount
+            oldRepaidAmount,
             newTrackedBalance,
             oldTrackedBalance,
             newLateFeeAmount,
@@ -374,7 +377,7 @@ contract LendingMarket is
         if (receiver != address(0)) {
             address liquidityPool = _programLiquidityPools[loan.programId];
             ILiquidityPool(liquidityPool).onAfterLoanRepaymentUndoing(loanId, repaymentAmount);
-            IERC20(loan.token).safeTransferFrom(liquidityPool, receiver, repaymentAmount);
+            IERC20(loan.token).safeTransferFrom(liquidityPool, receiver, oldRepaidAmount - newRepaidAmount);
         }
     }
 
