@@ -259,8 +259,8 @@ const FUNC_DETERMINE_LATE_FEE_AMOUNT_LEGACY =
 
 const EXPECTED_VERSION: Version = {
   major: 1,
-  minor: 11,
-  patch: 1
+  minor: 12,
+  patch: 0
 };
 
 function processLoanClosing(borrowerState: BorrowerState, borrowedAmount: bigint) {
