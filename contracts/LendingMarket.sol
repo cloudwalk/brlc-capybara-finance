@@ -366,13 +366,14 @@ contract LendingMarket is
             newLateFeeAmount,
             oldLateFeeAmount
         );
+        loan.repaidAmount = newRepaidAmount.toUint64();
+        loan.trackedBalance = newTrackedBalance.toUint64();
+        loan.lateFeeAmount = newLateFeeAmount.toUint64();
+
         if (oldTrackedBalance == 0) {
             address creditLine = _programCreditLines[loan.programId];
             ICreditLine(creditLine).onBeforeLoanReopened(loanId);
         }
-        loan.repaidAmount = newRepaidAmount.toUint64();
-        loan.trackedBalance = newTrackedBalance.toUint64();
-        loan.lateFeeAmount = newLateFeeAmount.toUint64();
 
         if (receiver != address(0)) {
             address liquidityPool = _programLiquidityPools[loan.programId];
