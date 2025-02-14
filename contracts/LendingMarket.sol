@@ -337,7 +337,7 @@ contract LendingMarket is
         {
             uint256 dueTimestamp = _getDueTimestamp(loan);
             if (repaymentTimestamp <= dueTimestamp && oldLateFeeAmount != 0) {
-                (uint256 additionalLateFeeAmount,) = _calculateCustomTrackedBalance(
+                (uint256 additionalLateFeeAmount, ) = _calculateCustomTrackedBalance(
                     loan,
                     repaymentAmount,
                     repaymentTimestamp,
