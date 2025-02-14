@@ -884,12 +884,6 @@ contract LendingMarket is
         if (repaymentTimestamp < loan.startTimestamp) {
             revert RepaymentTimestampInvalid();
         }
-        if (loan.trackedTimestamp == repaymentTimestamp && loan.trackedBalance == 0) {
-            return; // Skip further checks for the last repayment of a closed loan
-        }
-        if (roundedRepaymentAmount != repaymentAmount) {
-            revert UndoingRepaymentAmountUnrounded();
-        }
     }
 
     /// @dev Calculates the tracked balance of a loan.

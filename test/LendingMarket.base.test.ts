@@ -14,6 +14,8 @@ import {
   proveTx
 } from "../test-utils/eth";
 import { checkEquality, maxUintForBits, roundMath, setUpFixture } from "../test-utils/common";
+import { Rule } from "eslint";
+import Fix = Rule.Fix;
 
 enum LoanType {
   Ordinary = 0,
@@ -171,7 +173,6 @@ const ERROR_NAME_LOAN_TYPE_UNEXPECTED = "LoanTypeUnexpected";
 const ERROR_NAME_LOAN_ID_EXCESS = "LoanIdExcess";
 const ERROR_NAME_PROGRAM_ID_EXCESS = "ProgramIdExcess";
 const ERROR_NAME_REPAYMENT_TIMESTAMP_INVALID = "RepaymentTimestampInvalid";
-const ERROR_NAME_UNDOING_REPAYMENT_AMOUNT_UNROUNDED = "UndoingRepaymentAmountUnrounded";
 
 const EVENT_NAME_PROGRAM_CREATED = "ProgramCreated";
 const EVENT_NAME_PROGRAM_UPDATED = "ProgramUpdated";
@@ -2540,7 +2541,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       }
     }
 
-    describe("Execute as expected if the provided receiver address is NOT zero and", async () => {
+    describe("Executes as expected if the provided receiver address is NOT zero and", async () => {
       describe("The loan is NOT fully repaid and", async () => {
         describe("There are repayments only before the loan is overdue and", async () => {
           it("The first repayment is being undone", async () => {
@@ -2882,6 +2883,23 @@ describe("Contract 'LendingMarket': base tests", async () => {
             ]);
           });
 
+          it("All payments are cancelled in direct order of timestamps", async () => {
+            await executeAndCheck([
+              {
+                kind: LoanOperationKind.Repayment,
+                amount: REPAYMENT_AMOUNT,
+                relativeTimestamp: 2 * PERIOD_IN_SECONDS,
+                subjectToUndo: true
+              },
+              {
+                kind: LoanOperationKind.Repayment,
+                amount: FULL_REPAYMENT_AMOUNT,
+                relativeTimestamp: 4 * PERIOD_IN_SECONDS,
+                subjectToUndo: true
+              }
+            ]);
+          });
+
           it("All the repayments are being undone in reverse order", async () => {
             await executeAndCheck([
               {
@@ -2958,6 +2976,41 @@ describe("Contract 'LendingMarket': base tests", async () => {
             ]);
           });
 
+          it("All the repayments are being undone in direct order and the loan is frozen after due date", async () => {
+            await executeAndCheck([
+              {
+                kind: LoanOperationKind.Repayment,
+                amount: REPAYMENT_AMOUNT,
+                relativeTimestamp: 2 * PERIOD_IN_SECONDS,
+                subjectToUndo: true
+              },
+              {
+                kind: LoanOperationKind.Repayment,
+                amount: REPAYMENT_AMOUNT,
+                relativeTimestamp: 4 * PERIOD_IN_SECONDS,
+                subjectToUndo: true
+              },
+              {
+                kind: LoanOperationKind.Freezing,
+                amount: 0,
+                relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 3 * PERIOD_IN_SECONDS,
+                subjectToUndo: false
+              },
+              {
+                kind: LoanOperationKind.Repayment,
+                amount: REPAYMENT_AMOUNT,
+                relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 5 * PERIOD_IN_SECONDS,
+                subjectToUndo: true
+              },
+              {
+                kind: LoanOperationKind.Repayment,
+                amount: FULL_REPAYMENT_AMOUNT,
+                relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 7 * PERIOD_IN_SECONDS,
+                subjectToUndo: true
+              }
+            ]);
+          });
+
           it("All the repayments are being undone in reverse order and the loan is frozen after due date", async () => {
             await executeAndCheck([
               {
@@ -2995,7 +3048,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
         });
       });
     });
-    describe("Execute as expected if the provided receiver address is zero and", async () => {
+    describe("Executes as expected if the provided receiver address is zero and", async () => {
       describe("The loan is NOT fully repaid and", async () => {
         describe("There are repayments only before the loan is overdue and", async () => {
           it("The first one is being undone", async () => {
@@ -3020,6 +3073,74 @@ describe("Contract 'LendingMarket': base tests", async () => {
         });
       });
     });
+
+    describe("Executes as expected when the provided repayment amount after rounding becomes", async () => {
+      async function executeAndCheck(props: { isRoundedAmountLess: boolean }) {
+        const { marketUnderAdmin, ordinaryLoan } = await setUpFixture(deployLendingMarketAndTakeLoans);
+        const loan = clone(ordinaryLoan);
+        const loanPeriodCountMax = 10;
+        let loanPeriodCount = 2;
+        for (; loanPeriodCount < loanPeriodCountMax; ++loanPeriodCount) {
+          const previewTimestamp = loan.state.startTimestamp + loanPeriodCount * PERIOD_IN_SECONDS;
+          const loanPreview: LoanPreview = await marketUnderAdmin.getLoanPreview(loan.id, previewTimestamp);
+          const trackedBalance = Number(loanPreview.trackedBalance);
+          const roundedTrackedBalance = roundSpecific(trackedBalance);
+          if (props.isRoundedAmountLess && roundedTrackedBalance < trackedBalance) {
+            break;
+          }
+          if (!props.isRoundedAmountLess && roundedTrackedBalance > trackedBalance) {
+            break;
+          }
+        }
+        if (loanPeriodCount >= loanPeriodCountMax) {
+          throw new Error("Can't find a suitable tracked balance for the loan by increasing the passed loan periods");
+        }
+        await increaseBlockTimestampToPeriodIndex(loan.startPeriod + loanPeriodCount);
+        const repaymentTx = marketUnderAdmin.repayLoanForBatch([loan.id], [FULL_REPAYMENT_AMOUNT], borrower.address);
+        const repaymentTxTimestamp = await getTxTimestamp(repaymentTx);
+        const trackedBalanceBeforeRepayment = processRepayment(loan, {
+          repaymentAmount: FULL_REPAYMENT_AMOUNT,
+          repaymentTimestamp: repaymentTxTimestamp
+        });
+        const repaymentAmount = (trackedBalanceBeforeRepayment);
+        const roundedRepaymentAmount = roundSpecific(repaymentAmount);
+        expect(repaymentAmount).not.to.eq(roundedRepaymentAmount);
+        // Double check
+        if (props.isRoundedAmountLess) {
+          expect(roundedRepaymentAmount).lessThan(repaymentAmount);
+        } else {
+          expect(roundedRepaymentAmount).greaterThan(repaymentAmount);
+        }
+        const repaymentTimestamp = calculateTimestampWithOffset(repaymentTxTimestamp);
+
+        const tx = marketUnderAdmin.undoRepaymentFor(loan.id, repaymentAmount, repaymentTimestamp, receiver.address);
+        await proveTx(tx);
+
+        loan.state.trackedBalance = trackedBalanceBeforeRepayment;
+        loan.state.repaidAmount = 0;
+        const actualLoanState = await marketUnderAdmin.getLoanState(loan.id);
+        checkEquality(actualLoanState, loan.state);
+
+        await expect(tx).to.changeTokenBalances(
+          token,
+          [liquidityPool, borrower, receiver, marketUnderAdmin],
+          [-repaymentAmount, 0, repaymentAmount, 0]
+        );
+      }
+
+      it("Less than initial amount", async () => {
+        const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
+        await increaseBlockTimestampToPeriodIndex(fixture.ordinaryLoan.startPeriod + 2);
+        await executeAndCheck({ isRoundedAmountLess: true });
+      });
+
+      it("Less than initial amount", async () => {
+        const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
+        await increaseBlockTimestampToPeriodIndex(fixture.ordinaryLoan.startPeriod + 2);
+        await executeAndCheck({ isRoundedAmountLess: false });
+      });
+    });
+
     describe("Is reverted if", async () => {
       it("The contract is paused", async () => {
         const { market, marketUnderAdmin, ordinaryLoan: loan } = await setUpFixture(deployLendingMarketAndTakeLoans);
@@ -3082,43 +3203,12 @@ describe("Contract 'LendingMarket': base tests", async () => {
       it("The repayment amount is greater than the loan repaid amount", async () => {
         const { marketUnderAdmin, ordinaryLoan: loan } = await setUpFixture(deployLendingMarketAndTakeLoans);
         await proveTx(marketUnderAdmin.repayLoanForBatch([loan.id], [REPAYMENT_AMOUNT], borrower.address));
-        const wrongRepaymentAmount = REPAYMENT_AMOUNT + ACCURACY_FACTOR;
+        const wrongRepaymentAmount = REPAYMENT_AMOUNT + ACCURACY_FACTOR / 2;
         const repaymentTimestamp = loan.state.startTimestamp + 1;
 
         await expect(
           marketUnderAdmin.undoRepaymentFor(loan.id, wrongRepaymentAmount, repaymentTimestamp, receiver.address)
         ).to.be.revertedWithCustomError(marketUnderAdmin, ERROR_NAME_INVALID_AMOUNT);
-      });
-
-      it("The repayment amount is not rounded according to the accuracy factor", async () => {
-        const { marketUnderAdmin, ordinaryLoan: loan } = await setUpFixture(deployLendingMarketAndTakeLoans);
-        await proveTx(marketUnderAdmin.repayLoanForBatch([loan.id], [REPAYMENT_AMOUNT], borrower.address));
-        const wrongRepaymentAmount = REPAYMENT_AMOUNT - 1;
-        const repaymentTimestamp = loan.state.startTimestamp + 1;
-
-        await expect(
-          marketUnderAdmin.undoRepaymentFor(loan.id, wrongRepaymentAmount, repaymentTimestamp, receiver.address)
-        ).to.be.revertedWithCustomError(marketUnderAdmin, ERROR_NAME_UNDOING_REPAYMENT_AMOUNT_UNROUNDED);
-      });
-
-      it("The repayment timestamp does not match the last repayment of a closed loan", async () => {
-        const { marketUnderAdmin, ordinaryLoan } = await setUpFixture(deployLendingMarketAndTakeLoans);
-        const loan = clone(ordinaryLoan);
-        await increaseBlockTimestampToPeriodIndex(loan.startPeriod + 2);
-        const tx = marketUnderAdmin.repayLoanForBatch([loan.id], [FULL_REPAYMENT_AMOUNT], borrower.address);
-        const repaymentTimestamp = await getTxTimestamp(tx);
-        const trackedBalanceBeforeRepayment = processRepayment(loan, {
-          repaymentAmount: FULL_REPAYMENT_AMOUNT,
-          repaymentTimestamp
-        });
-        const repaymentAmount = (trackedBalanceBeforeRepayment);
-        expect(repaymentAmount).not.to.eq(roundSpecific(repaymentAmount));
-        expect(roundSpecific(repaymentAmount)).lessThan(repaymentAmount);
-        const wrongRepaymentTimestamp = calculateTimestampWithOffset(repaymentTimestamp) + 1;
-
-        await expect(
-          marketUnderAdmin.undoRepaymentFor(loan.id, repaymentAmount, wrongRepaymentTimestamp, receiver.address)
-        ).to.be.revertedWithCustomError(marketUnderAdmin, ERROR_NAME_UNDOING_REPAYMENT_AMOUNT_UNROUNDED);
       });
 
       it("The repayment timestamp is less than the loan start timestamp", async () => {

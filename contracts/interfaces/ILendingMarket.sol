@@ -515,9 +515,6 @@ interface ILendingMarketErrors {
 
     /// @dev Thrown when the provided repayment timestamp is invalid.
     error RepaymentTimestampInvalid();
-
-    /// @dev Thrown when undoing repayment amount is not rounded as required for non-final repayments.
-    error UndoingRepaymentAmountUnrounded();
 }
 
 /// @title ILendingMarket interface
