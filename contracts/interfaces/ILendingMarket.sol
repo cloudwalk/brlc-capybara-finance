@@ -271,6 +271,21 @@ interface ILendingMarketPrimary {
     /// 4. The formulas can be used for a loan that was only frozen, in that case the tt is the freezing timestamp.
     /// 5. After undoing a repayment, the values of the tracked balance and late fee amount fields of a loan
     ///    may differ from the expected values by plus or minus one least significant bit due to rounding.
+    /// 6. There are final and ordinary repayments to undo. The final repayment is one that caused closing of a loan.
+    /// 7. To properly undo a final repayment the caller must provide the tracked balance of the loan before
+    ///    the repayment instead of the final repayment amount.
+    ///    To get the right tracked balance the following steps should be used:
+    ///        * a. Determine the block of the final repayment: `B`.
+    ///        * b. Determine the timestamp of the `B` block: `BT`.
+    ///        * c. Determine the timestamp in the timezone of the lending contract: `BTZ`.
+    ///             E.g. for `America/Sao_Paulo` timezone: `BTZ = BT - 3 * 60 * 60`.
+    ///        * d. Call the `getLoanPreview()` function at the `B-1` block with the `BTZ` timestamp.
+    ///        * e. Use the trackedBalance field of the returned structure as the `repaymentAmount` parameter
+    ///             to undo the final repayment.
+    /// 8. The recommended algorithm for selecting the value of parameter `repaymentAmount`:
+    ///        * a. If the being undone repayment is NOT a final one use its repayment amount as the value.
+    ///        * b. Otherwise the repayment is a final one and so use the tracked balance of the loan before
+    ///             the repayment as the value. See the previous note for details.
     ///
     /// @param loanId The unique identifier of the loan.
     /// @param repaymentAmount The amount of the repayment to undo.

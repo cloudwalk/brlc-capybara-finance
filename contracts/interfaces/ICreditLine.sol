@@ -125,6 +125,10 @@ interface ICreditLineHooks {
     /// @param loanId The unique identifier of the loan being taken.
     function onBeforeLoanTaken(uint256 loanId) external;
 
+    /// @dev A hook that is triggered by the associated market before a loan is reopened.
+    /// @param loanId The unique identifier of the loan being opened.
+    function onBeforeLoanReopened(uint256 loanId) external;
+
     /// @dev A hook that is triggered by the associated market after the loan payment.
     /// @param loanId The unique identifier of the loan being paid.
     /// @param repaymentAmount The amount of tokens that was repaid.

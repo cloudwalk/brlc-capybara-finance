@@ -23,6 +23,7 @@ contract CreditLineMock {
     // -------------------------------------------- //
 
     event OnBeforeLoanTakenCalled(uint256 indexed loanId);
+    event OnBeforeLoanReopenedCalled(uint256 indexed loanId);
     event OnAfterLoanPaymentCalled(uint256 indexed loanId, uint256 indexed repaymentAmount);
     event OnAfterLoanRevocationCalled(uint256 indexed loanId);
 
@@ -32,6 +33,10 @@ contract CreditLineMock {
 
     function onBeforeLoanTaken(uint256 loanId) external {
         emit OnBeforeLoanTakenCalled(loanId);
+    }
+
+    function onBeforeLoanReopened(uint256 loanId) external {
+        emit OnBeforeLoanReopenedCalled(loanId);
     }
 
     function onAfterLoanPayment(uint256 loanId, uint256 repaymentAmount) external {

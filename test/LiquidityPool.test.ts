@@ -69,8 +69,8 @@ const REPAYMENT_AMOUNT = BORROWED_AMOUNT / 5n;
 const LOAN_ID = 123n;
 const EXPECTED_VERSION: Version = {
   major: 1,
-  minor: 11,
-  patch: 1
+  minor: 12,
+  patch: 0
 };
 
 const defaultLoanState: LoanState = {
