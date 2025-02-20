@@ -4,6 +4,7 @@ import { Contract, ContractFactory, TransactionResponse } from "ethers";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import { checkContractUupsUpgrading, connect, deployAndConnectContract, getAddress, proveTx } from "../test-utils/eth";
 import { checkEquality, maxUintForBits, setUpFixture } from "../test-utils/common";
+import { EXPECTED_VERSION } from "../test-utils/specific";
 
 interface LoanState {
   programId: bigint;
@@ -23,14 +24,6 @@ interface LoanState {
   installmentCount: bigint;
   lateFeeAmount: bigint;
   discountAmount: bigint;
-}
-
-interface Version {
-  major: number;
-  minor: number;
-  patch: number;
-
-  [key: string]: number; // Indexing signature to ensure that fields are iterated over in a key-value style
 }
 
 const ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED = "AccessControlUnauthorizedAccount";
@@ -76,11 +69,6 @@ const BORROWED_AMOUNT = DEPOSIT_AMOUNT / 10n;
 const ADDON_AMOUNT = BORROWED_AMOUNT / 10n;
 const REPAYMENT_AMOUNT = BORROWED_AMOUNT / 5n;
 const LOAN_ID = 123n;
-const EXPECTED_VERSION: Version = {
-  major: 1,
-  minor: 12,
-  patch: 0
-};
 
 const defaultLoanState: LoanState = {
   programId: 0n,

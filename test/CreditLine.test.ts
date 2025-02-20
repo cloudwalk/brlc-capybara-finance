@@ -11,6 +11,7 @@ import {
   proveTx
 } from "../test-utils/eth";
 import { checkEquality, maxUintForBits, setUpFixture } from "../test-utils/common";
+import { EXPECTED_VERSION } from "../test-utils/specific";
 
 enum BorrowingPolicy {
   SingleActiveLoan = 0,
@@ -110,14 +111,6 @@ interface LoanState {
   installmentCount: bigint;
   lateFeeAmount: bigint;
   discountAmount: bigint;
-}
-
-interface Version {
-  major: number;
-  minor: number;
-  patch: number;
-
-  [key: string]: number; // Indexing signature to ensure that fields are iterated over in a key-value style
 }
 
 interface Fixture {
@@ -256,12 +249,6 @@ const FUNC_DETERMINE_LATE_FEE_AMOUNT_NEW =
   "determineLateFeeAmount(address,uint256)";
 const FUNC_DETERMINE_LATE_FEE_AMOUNT_LEGACY =
   "determineLateFeeAmount(uint256)";
-
-const EXPECTED_VERSION: Version = {
-  major: 1,
-  minor: 12,
-  patch: 0
-};
 
 function processLoanClosing(borrowerState: BorrowerState, borrowedAmount: bigint) {
   borrowerState.activeLoanCount -= 1n;
