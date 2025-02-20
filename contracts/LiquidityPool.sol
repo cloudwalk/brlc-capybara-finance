@@ -43,6 +43,8 @@ contract LiquidityPool is
 
     /// @dev The role of this contract owner.
     bytes32 public constant OWNER_ROLE = keccak256("OWNER_ROLE");
+    /// @dev The role of this contract admin.
+    bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
 
     // -------------------------------------------- //
     //  Modifiers                                   //
@@ -137,6 +139,7 @@ contract LiquidityPool is
         }
 
         _setRoleAdmin(OWNER_ROLE, OWNER_ROLE);
+        _setRoleAdmin(ADMIN_ROLE, OWNER_ROLE);
         _grantRole(OWNER_ROLE, owner_);
 
         _market = market_;
@@ -157,6 +160,14 @@ contract LiquidityPool is
         _setExternalTreasury(newTreasury);
     }
 
+    /// @dev Initializes the admin role for already deployed contracts.
+    ///
+    /// This function can be removed after the admin role is initialized in all deployed contracts.
+    function initAdminRole() external onlyRole(OWNER_ROLE) {
+        _setRoleAdmin(ADMIN_ROLE, OWNER_ROLE);
+        _grantRole(ADMIN_ROLE, msg.sender);
+    }
+
     // -------------------------------------------- //
     //  Primary transactional functions             //
     // -------------------------------------------- //
@@ -167,7 +178,7 @@ contract LiquidityPool is
     }
 
     /// @inheritdoc ILiquidityPoolPrimary
-    function depositFromExternalTreasury(uint256 amount) external onlyRole(OWNER_ROLE) {
+    function depositFromExternalTreasury(uint256 amount) external onlyRole(ADMIN_ROLE) {
         _deposit(amount, _getAndCheckExternalTreasury());
     }
 
@@ -177,7 +188,7 @@ contract LiquidityPool is
     }
 
     /// @inheritdoc ILiquidityPoolPrimary
-    function withdrawToExternalTreasury(uint256 amount) external onlyRole(OWNER_ROLE) {
+    function withdrawToExternalTreasury(uint256 amount) external onlyRole(ADMIN_ROLE) {
         _withdraw(amount, 0, _getAndCheckExternalTreasury());
     }
 
