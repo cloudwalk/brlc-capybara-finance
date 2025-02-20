@@ -333,7 +333,7 @@ contract LiquidityPool is
     }
 
     /// @dev Sets the new address of the external treasury internally.
-    /// @param newTreasury The new address of the external treasury.    
+    /// @param newTreasury The new address of the external treasury.
     function _setExternalTreasury(address newTreasury) internal {
         address oldTreasury = _externalTreasury;
         if (oldTreasury == newTreasury) {
