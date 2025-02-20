@@ -72,7 +72,7 @@ interface ILiquidityPoolPrimary {
 
     /// @dev Returns the external treasury address.
     ///
-    /// The external treasury is used to deposit and withdraw tokens by special functions.
+    /// The external treasury is used to deposit and withdraw tokens through special functions.
     ///
     /// @return The current address of the external treasury.
     function externalTreasury() external view returns (address);

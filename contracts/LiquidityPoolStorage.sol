@@ -31,7 +31,7 @@ abstract contract LiquidityPoolStorage {
 
     /// @dev The address of the external treasury.
     ///
-    /// The external treasury is used to deposit and withdraw tokens by special functions.
+    /// The external treasury is used to deposit and withdraw tokens through special functions.
     address internal _externalTreasury;
 
     /// @dev This empty reserved space is put in place to allow future versions
