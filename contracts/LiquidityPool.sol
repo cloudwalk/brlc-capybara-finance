@@ -152,46 +152,33 @@ contract LiquidityPool is
         _setAddonTreasury(newTreasury);
     }
 
+    /// @inheritdoc ILiquidityPoolConfiguration
+    function setExternalTreasury(address newTreasury) external onlyRole(OWNER_ROLE) {
+        _setExternalTreasury(newTreasury);
+    }
+
     // -------------------------------------------- //
     //  Primary transactional functions             //
     // -------------------------------------------- //
 
     /// @inheritdoc ILiquidityPoolPrimary
     function deposit(uint256 amount) external onlyRole(OWNER_ROLE) {
-        if (amount == 0) {
-            revert Error.InvalidAmount();
-        }
+        _deposit(amount, msg.sender);
+    }
 
-        IERC20 underlyingToken = IERC20(_token);
-
-        if (underlyingToken.allowance(address(this), _market) == 0) {
-            underlyingToken.approve(_market, type(uint256).max);
-        }
-
-        _borrowableBalance += amount.toUint64();
-        underlyingToken.safeTransferFrom(msg.sender, address(this), amount);
-
-        emit Deposit(amount);
+    /// @inheritdoc ILiquidityPoolPrimary
+    function depositFromExternalTreasury(uint256 amount) external onlyRole(OWNER_ROLE) {
+        _deposit(amount, _getAndCheckExternalTreasury());
     }
 
     /// @inheritdoc ILiquidityPoolPrimary
     function withdraw(uint256 borrowableAmount, uint256 addonAmount) external onlyRole(OWNER_ROLE) {
-        if (borrowableAmount == 0) {
-            revert Error.InvalidAmount();
-        }
-        if (addonAmount != 0) {
-            revert Error.InvalidAmount();
-        }
+        _withdraw(borrowableAmount, addonAmount, msg.sender);
+    }
 
-        if (_borrowableBalance < borrowableAmount) {
-            revert InsufficientBalance();
-        }
-
-        _borrowableBalance -= borrowableAmount.toUint64();
-
-        IERC20(_token).safeTransfer(msg.sender, borrowableAmount + addonAmount);
-
-        emit Withdrawal(borrowableAmount, addonAmount);
+    /// @inheritdoc ILiquidityPoolPrimary
+    function withdrawToExternalTreasury(uint256 amount) external onlyRole(OWNER_ROLE) {
+        _withdraw(amount, 0, _getAndCheckExternalTreasury());
     }
 
     /// @inheritdoc ILiquidityPoolPrimary
@@ -256,6 +243,11 @@ contract LiquidityPool is
     }
 
     /// @inheritdoc ILiquidityPoolPrimary
+    function externalTreasury() external view returns (address) {
+        return _externalTreasury;
+    }
+
+    /// @inheritdoc ILiquidityPoolPrimary
     function getBalances() external view returns (uint256, uint256) {
         return (_borrowableBalance, _addonsBalance);
     }
@@ -281,7 +273,50 @@ contract LiquidityPool is
     //  Internal functions                          //
     // -------------------------------------------- //
 
-    /// @dev Sets the new address of the  addon treasury internally.
+    /// @dev Deposits the tokens into the liquidity pool internally.
+    /// @param amount The amount of tokens to deposit.
+    /// @param sender The address of the tokens sender.
+    function _deposit(uint256 amount, address sender) internal {
+        if (amount == 0) {
+            revert Error.InvalidAmount();
+        }
+
+        IERC20 underlyingToken = IERC20(_token);
+
+        if (underlyingToken.allowance(address(this), _market) == 0) {
+            underlyingToken.approve(_market, type(uint256).max);
+        }
+
+        _borrowableBalance += amount.toUint64();
+        underlyingToken.safeTransferFrom(sender, address(this), amount);
+
+        emit Deposit(amount);
+    }
+
+    /// @dev Withdraws the tokens from the liquidity pool internally.
+    /// @param borrowableAmount The amount of borrowable tokens to withdraw.
+    /// @param addonAmount The amount of addon tokens to withdraw.
+    /// @param recipient The address of the tokens recipient.
+    function _withdraw(uint256 borrowableAmount, uint256 addonAmount, address recipient) internal {
+        if (borrowableAmount == 0) {
+            revert Error.InvalidAmount();
+        }
+        if (addonAmount != 0) {
+            revert Error.InvalidAmount();
+        }
+
+        if (_borrowableBalance < borrowableAmount) {
+            revert InsufficientBalance();
+        }
+
+        _borrowableBalance -= borrowableAmount.toUint64();
+
+        IERC20(_token).safeTransfer(recipient, borrowableAmount);
+
+        emit Withdrawal(borrowableAmount, addonAmount);
+    }
+
+    /// @dev Sets the new address of the addon treasury internally.
     function _setAddonTreasury(address newTreasury) internal {
         address oldTreasury = _addonTreasury;
         if (oldTreasury == newTreasury) {
@@ -295,6 +330,31 @@ contract LiquidityPool is
         }
         emit AddonTreasuryChanged(newTreasury, oldTreasury);
         _addonTreasury = newTreasury;
+    }
+
+    /// @dev Sets the new address of the external treasury internally.
+    /// @param newTreasury The new address of the external treasury.    
+    function _setExternalTreasury(address newTreasury) internal {
+        address oldTreasury = _externalTreasury;
+        if (oldTreasury == newTreasury) {
+            revert Error.AlreadyConfigured();
+        }
+        if (newTreasury != address(0)) {
+            if (IERC20(_token).allowance(newTreasury, address(this)) == 0) {
+                revert ExternalTreasuryZeroAllowanceForPool();
+            }
+        }
+        emit ExternalTreasuryChanged(newTreasury, oldTreasury);
+        _externalTreasury = newTreasury;
+    }
+
+    /// @dev Returns the external treasury address and validates it.
+    function _getAndCheckExternalTreasury() internal view returns (address) {
+        address externalTreasury_ = _externalTreasury;
+        if (externalTreasury_ == address(0)) {
+            revert ExternalTreasuryAddressZero();
+        }
+        return externalTreasury_;
     }
 
     /// @dev The upgrade validation function for the UUPSExtUpgradeable contract.
