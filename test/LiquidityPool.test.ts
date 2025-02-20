@@ -57,6 +57,7 @@ const EVENT_NAME_EXTERNAL_TREASURY_CHANGED = "ExternalTreasuryChanged";
 const EVENT_NAME_RESCUE = "Rescue";
 const EVENT_NAME_WITHDRAWAL = "Withdrawal";
 
+const DEFAULT_ADMIN_ROLE = ethers.ZeroHash;
 const OWNER_ROLE = ethers.id("OWNER_ROLE");
 const PAUSER_ROLE = ethers.id("PAUSER_ROLE");
 const ADMIN_ROLE = ethers.id("ADMIN_ROLE");
@@ -111,6 +112,7 @@ describe("Contract 'LiquidityPool'", async () => {
 
   let deployer: HardhatEthersSigner;
   let owner: HardhatEthersSigner;
+  let admin: HardhatEthersSigner;
   let attacker: HardhatEthersSigner;
   let addonTreasury: HardhatEthersSigner;
   let externalTreasury: HardhatEthersSigner;
@@ -119,7 +121,7 @@ describe("Contract 'LiquidityPool'", async () => {
   let marketAddress: string;
 
   before(async () => {
-    [deployer, owner, attacker, addonTreasury, externalTreasury] = await ethers.getSigners();
+    [deployer, owner, admin, attacker, addonTreasury, externalTreasury] = await ethers.getSigners();
 
     // Factories with an explicitly specified deployer account
     liquidityPoolFactory = await ethers.getContractFactory("LiquidityPoolTestable");
@@ -161,6 +163,7 @@ describe("Contract 'LiquidityPool'", async () => {
   async function deployAndConfigureLiquidityPool(): Promise<{ liquidityPool: Contract }> {
     const { liquidityPool } = await deployLiquidityPool();
     await proveTx(liquidityPool.grantRole(PAUSER_ROLE, owner.address));
+    await proveTx(liquidityPool.grantRole(ADMIN_ROLE, admin.address));
     await proveTx(connect(token, addonTreasury).approve(getAddress(market), MAX_ALLOWANCE));
     await proveTx(connect(token, externalTreasury).approve(getAddress(liquidityPool), MAX_ALLOWANCE));
     await proveTx(liquidityPool.setExternalTreasury(externalTreasury.address));
@@ -202,19 +205,21 @@ describe("Contract 'LiquidityPool'", async () => {
   ): Promise<TransactionResponse> {
     const balancesBefore = await liquidityPool.getBalances();
 
-    const tx: Promise<TransactionResponse> = liquidityPool[functionSignature](depositAmount);
+    let tx: Promise<TransactionResponse>;
 
     if (functionSignature === FUNC_SIGNATURE_DEPOSIT) {
+      tx = liquidityPool[functionSignature](depositAmount);
       await expect(tx).to.changeTokenBalances(
         token,
-        [liquidityPool, owner, externalTreasury],
-        [depositAmount, -depositAmount, 0]
+        [liquidityPool, owner, admin, externalTreasury],
+        [depositAmount, -depositAmount, 0, 0]
       );
     } else if (functionSignature === FUNC_SIGNATURE_DEPOSIT_FROM_EXTERNAL_TREASURY) {
+      tx = connect(liquidityPool, admin)[functionSignature](depositAmount);
       await expect(tx).to.changeTokenBalances(
         token,
-        [liquidityPool, owner, externalTreasury],
-        [depositAmount, 0, -depositAmount]
+        [liquidityPool, owner, admin, externalTreasury],
+        [depositAmount, 0, 0, -depositAmount]
       );
     } else {
       throw new Error(`Unknown function signature: '${functionSignature}'`);
@@ -248,15 +253,15 @@ describe("Contract 'LiquidityPool'", async () => {
       tx = liquidityPool[functionSignature](borrowableAmount, addonAmount);
       await expect(tx).to.changeTokenBalances(
         token,
-        [liquidityPool, owner, externalTreasury],
-        [-borrowableAmount, borrowableAmount, 0]
+        [liquidityPool, owner, admin, externalTreasury],
+        [-borrowableAmount, borrowableAmount, 0, 0]
       );
     } else if (functionSignature === FUNC_SIGNATURE_WITHDRAW_TO_EXTERNAL_TREASURY) {
-      tx = liquidityPool[functionSignature](borrowableAmount);
+      tx = connect(liquidityPool, admin)[functionSignature](borrowableAmount);
       await expect(tx).to.changeTokenBalances(
         token,
-        [liquidityPool, owner, externalTreasury],
-        [-borrowableAmount, 0, borrowableAmount]
+        [liquidityPool, owner, admin, externalTreasury],
+        [-borrowableAmount, 0, 0, borrowableAmount]
       );
     } else {
       throw new Error(`Unknown function signature: '${functionSignature}'`);
@@ -281,6 +286,7 @@ describe("Contract 'LiquidityPool'", async () => {
 
       // The role admins
       expect(await liquidityPool.getRoleAdmin(OWNER_ROLE)).to.equal(OWNER_ROLE);
+      expect(await liquidityPool.getRoleAdmin(ADMIN_ROLE)).to.equal(OWNER_ROLE);
       expect(await liquidityPool.getRoleAdmin(PAUSER_ROLE)).to.equal(OWNER_ROLE);
 
       // Roles
@@ -522,6 +528,27 @@ describe("Contract 'LiquidityPool'", async () => {
     });
   });
 
+  describe("Function 'initAdminRole()", async () => {
+    it("Executes as expected", async () => {
+      const { liquidityPool } = await setUpFixture(deployLiquidityPool);
+      await proveTx(liquidityPool.setRoleAdmin(ADMIN_ROLE, DEFAULT_ADMIN_ROLE));
+      expect(await liquidityPool.getRoleAdmin(ADMIN_ROLE)).to.equal(DEFAULT_ADMIN_ROLE);
+
+      await proveTx(liquidityPool.initAdminRole());
+
+      expect(await liquidityPool.getRoleAdmin(ADMIN_ROLE)).to.equal(OWNER_ROLE);
+      expect(await liquidityPool.hasRole(ADMIN_ROLE, owner.address)).to.equal(true);
+    });
+
+    it("Is reverted if caller does not have the owner role", async () => {
+      const { liquidityPool } = await setUpFixture(deployLiquidityPool);
+
+      await expect(connect(liquidityPool, attacker).initAdminRole())
+        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
+        .withArgs(attacker.address, OWNER_ROLE);
+    });
+  });
+
   describe("Function 'deposit()'", async () => {
     it("Executes as expected and emits the correct event", async () => {
       const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
@@ -589,26 +616,29 @@ describe("Contract 'LiquidityPool'", async () => {
       await expect(tx2).not.to.emit(token, EVENT_NAME_APPROVAL);
     });
 
-    it("Is reverted if the caller does not have the owner role", async () => {
+    it("Is reverted if the caller does not have the admin role", async () => {
       const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
 
+      await expect(connect(liquidityPool, owner).depositFromExternalTreasury(DEPOSIT_AMOUNT))
+        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
+        .withArgs(owner.address, ADMIN_ROLE);
       await expect(connect(liquidityPool, attacker).depositFromExternalTreasury(DEPOSIT_AMOUNT))
         .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
-        .withArgs(attacker.address, OWNER_ROLE);
+        .withArgs(attacker.address, ADMIN_ROLE);
     });
 
     it("Is reverted if the external treasury is not set", async () => {
       const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
       await proveTx(liquidityPool.setExternalTreasury(ZERO_ADDRESS));
 
-      await expect(liquidityPool.depositFromExternalTreasury(0))
+      await expect(connect(liquidityPool, admin).depositFromExternalTreasury(0))
         .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_EXTERNAL_TREASURY_ADDRESS_ZERO);
     });
 
     it("Is reverted if the deposit amount is zero", async () => {
       const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
 
-      await expect(liquidityPool.depositFromExternalTreasury(0))
+      await expect(connect(liquidityPool, admin).depositFromExternalTreasury(0))
         .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_INVALID_AMOUNT);
     });
 
@@ -616,7 +646,7 @@ describe("Contract 'LiquidityPool'", async () => {
       const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
       const amount = maxUintForBits(64) + 1n;
 
-      await expect(liquidityPool.depositFromExternalTreasury(amount))
+      await expect(connect(liquidityPool, admin).depositFromExternalTreasury(amount))
         .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST)
         .withArgs(64, amount);
     });
@@ -673,26 +703,30 @@ describe("Contract 'LiquidityPool'", async () => {
       await withdrawAndCheck(liquidityPool, FUNC_SIGNATURE_WITHDRAW_TO_EXTERNAL_TREASURY);
     });
 
-    it("Is reverted if the caller does not have the owner role", async () => {
+    it("Is reverted if the caller does not have the admin role", async () => {
       const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
+
+      await expect(connect(liquidityPool, owner).withdrawToExternalTreasury(0))
+        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
+        .withArgs(owner.address, ADMIN_ROLE);
 
       await expect(connect(liquidityPool, attacker).withdrawToExternalTreasury(0))
         .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
-        .withArgs(attacker.address, OWNER_ROLE);
+        .withArgs(attacker.address, ADMIN_ROLE);
     });
 
     it("Is reverted if the external treasury is not set", async () => {
       const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
       await proveTx(liquidityPool.setExternalTreasury(ZERO_ADDRESS));
 
-      await expect(liquidityPool.withdrawToExternalTreasury(0))
+      await expect(connect(liquidityPool, admin).withdrawToExternalTreasury(0))
         .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_EXTERNAL_TREASURY_ADDRESS_ZERO);
     });
 
     it("Is reverted if the amount is zero", async () => {
       const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
 
-      await expect(liquidityPool.withdrawToExternalTreasury(0))
+      await expect(connect(liquidityPool, admin).withdrawToExternalTreasury(0))
         .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_INVALID_AMOUNT);
     });
 
@@ -702,7 +736,7 @@ describe("Contract 'LiquidityPool'", async () => {
       await proveTx(token.mint(getAddress(liquidityPool), DEPOSIT_AMOUNT));
       await proveTx(liquidityPool.deposit(DEPOSIT_AMOUNT - 1n));
 
-      await expect(liquidityPool.withdrawToExternalTreasury(DEPOSIT_AMOUNT))
+      await expect(connect(liquidityPool, admin).withdrawToExternalTreasury(DEPOSIT_AMOUNT))
         .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_INSUFFICIENT_BALANCE);
     });
   });
