@@ -32,9 +32,9 @@ interface ILiquidityPoolPrimary {
     /// @param amount The amount of tokens to deposit.
     function deposit(uint256 amount) external;
 
-    /// @dev Deposits tokens to the liquidity pool from the external treasury.
+    /// @dev Deposits tokens to the liquidity pool from the operational treasury.
     /// @param amount The amount of tokens to deposit.
-    function depositFromExternalTreasury(uint256 amount) external;
+    function depositFromOperationalTreasury(uint256 amount) external;
 
     /// @dev Withdraws tokens from the liquidity pool to the caller account.
     /// @param borrowableAmount The amount of tokens to withdraw from the borrowable balance.
@@ -42,9 +42,9 @@ interface ILiquidityPoolPrimary {
     ///        See the {addonTreasury} function comments for more details.
     function withdraw(uint256 borrowableAmount, uint256 addonAmount) external;
 
-    /// @dev Withdraws tokens from the liquidity pool to the external treasury.
+    /// @dev Withdraws tokens from the liquidity pool to the operational treasury.
     /// @param amount The amount of tokens to withdraw from the borrowable balance.
-    function withdrawToExternalTreasury(uint256 amount) external;
+    function withdrawToOperationalTreasury(uint256 amount) external;
 
     /// @dev Rescues tokens from the liquidity pool.
     /// @param token The address of the token to rescue.
@@ -70,12 +70,12 @@ interface ILiquidityPoolPrimary {
     /// @return The current address of the addon treasury.
     function addonTreasury() external view returns (address);
 
-    /// @dev Returns the external treasury address.
+    /// @dev Returns the operational treasury address.
     ///
-    /// The external treasury is used to deposit and withdraw tokens through special functions.
+    /// The operational treasury is used to deposit and withdraw tokens through special functions.
     ///
-    /// @return The current address of the external treasury.
-    function externalTreasury() external view returns (address);
+    /// @return The current address of the operational treasury.
+    function operationalTreasury() external view returns (address);
 
     /// @dev Gets the borrowable and addons balances of the liquidity pool.
     ///
@@ -104,13 +104,13 @@ interface ILiquidityPoolConfiguration {
     /// @param oldTreasury The previous address of the addon treasury.
     event AddonTreasuryChanged(address newTreasury, address oldTreasury);
 
-    /// @dev Emitted when the external treasury address has been changed.
+    /// @dev Emitted when the operational treasury address has been changed.
     ///
-    /// See the {externalTreasury} function comments for more details.
+    /// See the {operationalTreasury} function comments for more details.
     ///
-    /// @param newTreasury The updated address of the external treasury.
-    /// @param oldTreasury The previous address of the external treasury.
-    event ExternalTreasuryChanged(address newTreasury, address oldTreasury);
+    /// @param newTreasury The updated address of the operational treasury.
+    /// @param oldTreasury The previous address of the operational treasury.
+    event OperationalTreasuryChanged(address newTreasury, address oldTreasury);
 
     // -------------------------------------------- //
     //  Transactional functions                     //
@@ -123,12 +123,12 @@ interface ILiquidityPoolConfiguration {
     /// @param newTreasury The new address of the addon treasury to set.
     function setAddonTreasury(address newTreasury) external;
 
-    /// @dev Sets the external treasury address.
+    /// @dev Sets the operational treasury address.
     ///
-    /// See the {externalTreasury} function comments for more details.
+    /// See the {operationalTreasury} function comments for more details.
     ///
-    /// @param newTreasury The new address of the external treasury to set.
-    function setExternalTreasury(address newTreasury) external;
+    /// @param newTreasury The new address of the operational treasury to set.
+    function setOperationalTreasury(address newTreasury) external;
 }
 
 /// @title ILiquidityPoolHooks interface
@@ -168,14 +168,14 @@ interface ILiquidityPoolErrors {
     /// @dev Thrown when the addon treasury has not provided an allowance for the lending market to transfer its tokens.
     error AddonTreasuryZeroAllowanceForMarket();
 
-    /// @dev Thrown when the external treasury address is zero.
-    error ExternalTreasuryAddressZero();
-
-    /// @dev Thrown when the external treasury has not provided an allowance for the pool to transfer its tokens.
-    error ExternalTreasuryZeroAllowanceForPool();
-
     /// @dev Thrown when the token source balance is insufficient.
     error InsufficientBalance();
+
+    /// @dev Thrown when the operational treasury address is zero.
+    error OperationalTreasuryAddressZero();
+
+    /// @dev Thrown when the operational treasury has not provided an allowance for the pool to transfer its tokens.
+    error OperationalTreasuryZeroAllowanceForPool();
 }
 
 /// @title ILiquidityPool interface

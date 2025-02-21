@@ -156,8 +156,8 @@ contract LiquidityPool is
     }
 
     /// @inheritdoc ILiquidityPoolConfiguration
-    function setExternalTreasury(address newTreasury) external onlyRole(OWNER_ROLE) {
-        _setExternalTreasury(newTreasury);
+    function setOperationalTreasury(address newTreasury) external onlyRole(OWNER_ROLE) {
+        _setOperationalTreasury(newTreasury);
     }
 
     /// @dev Initializes the admin role for already deployed contracts.
@@ -178,8 +178,8 @@ contract LiquidityPool is
     }
 
     /// @inheritdoc ILiquidityPoolPrimary
-    function depositFromExternalTreasury(uint256 amount) external onlyRole(ADMIN_ROLE) {
-        _deposit(amount, _getAndCheckExternalTreasury());
+    function depositFromOperationalTreasury(uint256 amount) external onlyRole(ADMIN_ROLE) {
+        _deposit(amount, _getAndCheckOperationalTreasury());
     }
 
     /// @inheritdoc ILiquidityPoolPrimary
@@ -188,8 +188,8 @@ contract LiquidityPool is
     }
 
     /// @inheritdoc ILiquidityPoolPrimary
-    function withdrawToExternalTreasury(uint256 amount) external onlyRole(ADMIN_ROLE) {
-        _withdraw(amount, 0, _getAndCheckExternalTreasury());
+    function withdrawToOperationalTreasury(uint256 amount) external onlyRole(ADMIN_ROLE) {
+        _withdraw(amount, 0, _getAndCheckOperationalTreasury());
     }
 
     /// @inheritdoc ILiquidityPoolPrimary
@@ -254,8 +254,8 @@ contract LiquidityPool is
     }
 
     /// @inheritdoc ILiquidityPoolPrimary
-    function externalTreasury() external view returns (address) {
-        return _externalTreasury;
+    function operationalTreasury() external view returns (address) {
+        return _operationalTreasury;
     }
 
     /// @inheritdoc ILiquidityPoolPrimary
@@ -343,29 +343,29 @@ contract LiquidityPool is
         _addonTreasury = newTreasury;
     }
 
-    /// @dev Sets the new address of the external treasury internally.
-    /// @param newTreasury The new address of the external treasury.
-    function _setExternalTreasury(address newTreasury) internal {
-        address oldTreasury = _externalTreasury;
+    /// @dev Sets the new address of the operational treasury internally.
+    /// @param newTreasury The new address of the operational treasury.
+    function _setOperationalTreasury(address newTreasury) internal {
+        address oldTreasury = _operationalTreasury;
         if (oldTreasury == newTreasury) {
             revert Error.AlreadyConfigured();
         }
         if (newTreasury != address(0)) {
             if (IERC20(_token).allowance(newTreasury, address(this)) == 0) {
-                revert ExternalTreasuryZeroAllowanceForPool();
+                revert OperationalTreasuryZeroAllowanceForPool();
             }
         }
-        emit ExternalTreasuryChanged(newTreasury, oldTreasury);
-        _externalTreasury = newTreasury;
+        emit OperationalTreasuryChanged(newTreasury, oldTreasury);
+        _operationalTreasury = newTreasury;
     }
 
-    /// @dev Returns the external treasury address and validates it.
-    function _getAndCheckExternalTreasury() internal view returns (address) {
-        address externalTreasury_ = _externalTreasury;
-        if (externalTreasury_ == address(0)) {
-            revert ExternalTreasuryAddressZero();
+    /// @dev Returns the operational treasury address and validates it.
+    function _getAndCheckOperationalTreasury() internal view returns (address) {
+        address operationalTreasury_ = _operationalTreasury;
+        if (operationalTreasury_ == address(0)) {
+            revert OperationalTreasuryAddressZero();
         }
-        return externalTreasury_;
+        return operationalTreasury_;
     }
 
     /// @dev The upgrade validation function for the UUPSExtUpgradeable contract.

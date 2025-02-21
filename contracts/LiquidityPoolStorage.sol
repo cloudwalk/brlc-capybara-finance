@@ -29,10 +29,10 @@ abstract contract LiquidityPoolStorage {
     /// Now the addon amount must always be output to an external wallet. The addon balance of the pool is always zero.
     address internal _addonTreasury;
 
-    /// @dev The address of the external treasury.
+    /// @dev The address of the operational treasury.
     ///
-    /// The external treasury is used to deposit and withdraw tokens through special functions.
-    address internal _externalTreasury;
+    /// The operational treasury is used to deposit and withdraw tokens through special functions.
+    address internal _operationalTreasury;
 
     /// @dev This empty reserved space is put in place to allow future versions
     /// to add new variables without shifting down storage in the inheritance chain.
