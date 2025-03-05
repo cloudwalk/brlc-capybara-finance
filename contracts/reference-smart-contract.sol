@@ -184,28 +184,13 @@ interface IReferenceContractConfiguration {
     /**
      * @dev Sets the operational treasury address.
      *
+     * This function can be called only by an account with a special role.
+     *
      * Emits an {OperationalTreasuryChanged} event.
      *
      * @param newTreasury The new address of the operational treasury to set.
      */
     function setOperationalTreasury(address newTreasury) external;
-
-    /**
-     * @dev Rescues tokens from this contract that accidentally were transferred to it bypassing the deposit function.
-     *
-     * This function can be called only by an account with a special role.
-     *
-     * Does not emit special events except ones related to the token transfer.
-     *
-     * @param token The address of the token smart contract to rescue its coins from this smart contract's account.
-     * @param account The account to transfer the rescued tokens to.
-     * @param amount The amount the tokens to rescue.
-     */
-    function rescue(
-        address token, // Tools: this comment prevents Prettier from formatting into a single line.
-        address account,
-        uint256 amount
-    ) external;
 
     // ------------------ View functions -------------------------- //
 
@@ -428,6 +413,71 @@ abstract contract PausableExtUpgradeable is AccessControlExtUpgradeable, Pausabl
 }
 
 /**
+ * @title RescuableUpgradeable base contract
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
+ * @dev Allows to rescue ERC20 tokens locked up in the contract using the {RESCUER_ROLE} role.
+ *
+ * The place in the project file structure: file `<main_smart_contracts_folder>/base/RescuableUpgradeable.sol`.
+ */
+abstract contract RescuableUpgradeable is AccessControlExtUpgradeable {
+    /// @dev The role of rescuer that is allowed to rescue tokens locked up in the contract.
+    bytes32 public constant RESCUER_ROLE = keccak256("RESCUER_ROLE");
+
+    // ------------------ Initializers ---------------------------- //
+
+    /**
+     * @dev Internal initializer of the upgradable contract.
+     *
+     * See details https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable.
+     *
+     * @param rescuerRoleAdmin The admin for the {RESCUER_ROLE} role.
+     */
+    function __Rescuable_init(bytes32 rescuerRoleAdmin) internal onlyInitializing {
+        __Context_init_unchained();
+        __ERC165_init_unchained();
+        __AccessControl_init_unchained();
+        __AccessControlExt_init_unchained();
+
+        __Rescuable_init_unchained(rescuerRoleAdmin);
+    }
+
+    /**
+     * @dev Unchained internal initializer of the upgradable contract.
+     *
+     * See details https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable.
+     *
+     * @param rescuerRoleAdmin The admin for the {RESCUER_ROLE} role.
+     */
+    function __Rescuable_init_unchained(bytes32 rescuerRoleAdmin) internal onlyInitializing {
+        _setRoleAdmin(RESCUER_ROLE, rescuerRoleAdmin);
+    }
+
+    // ------------------ Transactional functions ----------------- //
+
+    /**
+     * @dev Rescues tokens from this contract that accidentally were transferred to it.
+     *
+     * Does not emit special events except ones related to the token transfer.
+     *
+     * Requirements:
+     *
+     * - The caller must have the {RESCUER_ROLE} role.
+     * - The provided account address must not be zero.
+     *
+     * @param token The address of the token smart contract to rescue its coins from this smart contract's account.
+     * @param account The account to transfer the rescued tokens to.
+     * @param amount The amount the tokens to rescue.
+     */
+    function rescueERC20(
+        address token, // Tools: this comment prevents Prettier from formatting into a single line.
+        address account,
+        uint256 amount
+    ) public onlyRole(RESCUER_ROLE) {
+        IERC20(token).transfer(account, amount);
+    }
+}
+
+/**
  * @title UUPSExtUpgradeable base contract
  * @author CloudWalk Inc. (See https://www.cloudwalk.io)
  * @dev Extends the OpenZeppelin's {UUPSUpgradeable} contract with additional checks for the new implementation address.
@@ -490,6 +540,8 @@ abstract contract Versionable is IVersionable {
  * @author CloudWalk Inc. (See https://cloudwalk.io)
  * @dev Defines the storage layout for the reference smart-contract.
  *
+ * See details about the contract in the comments of the {IReferenceContract} interface.
+ *
  * The place in the project file structure: file `<main_smart_contracts_folder>/ReferenceContractStorage.sol`.
  */
 abstract contract ReferenceContractStorage is IReferenceContractTypes {
@@ -520,11 +572,14 @@ abstract contract ReferenceContractStorage is IReferenceContractTypes {
  * @title ReferenceContract contract
  * @author CloudWalk Inc. (See https://www.cloudwalk.io)
  * @dev The contract that responsible for freezing operations on the underlying token contract.
+ *
+ * See details about the contract in the comments of the {IReferenceContract} interface.
  */
 contract ReferenceContract is
     ReferenceContractStorage,
     AccessControlExtUpgradeable,
     PausableExtUpgradeable,
+    RescuableUpgradeable,
     UUPSExtUpgradeable,
     Versionable,
     IReferenceContract
@@ -542,6 +597,14 @@ contract ReferenceContract is
 
     /// @dev The kind of operation that is withdrawal.
     uint256 internal constant OPERATION_KIND_WITHDRAWAL = 1;
+
+    // ------------------ Constructor ----------------------------- //
+
+    /// @dev Constructor that prohibits the initialization of the implementation of the upgradable contract.
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
 
     // ------------------ Initializers ---------------------------- //
 
@@ -570,6 +633,7 @@ contract ReferenceContract is
         __AccessControlExt_init_unchained();
         __Pausable_init_unchained();
         __PausableExt_init_unchained(OWNER_ROLE);
+        __Rescuable_init_unchained(OWNER_ROLE);
         __UUPSUpgradeable_init_unchained();
 
         __ReferenceContract_init_unchained(token_);
@@ -620,22 +684,6 @@ contract ReferenceContract is
 
         emit OperationalTreasuryChanged(newTreasury, oldTreasury);
         _operationalTreasury = newTreasury;
-    }
-
-    /**
-     * @inheritdoc IReferenceContractConfiguration
-     *
-     * @dev Requirements:
-     *
-     * - The caller must have the {OWNER_ROLE} role.
-     * - The provided account address must not be zero.
-     */
-    function rescue(
-        address token, // Tools: this comment prevents Prettier from formatting into a single line.
-        address account,
-        uint256 amount
-    ) external onlyRole(OWNER_ROLE) {
-        IERC20(token).transfer(account, amount);
     }
 
     /**
