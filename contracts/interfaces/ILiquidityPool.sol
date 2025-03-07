@@ -28,15 +28,23 @@ interface ILiquidityPoolPrimary {
     //  Transactional functions                     //
     // -------------------------------------------- //
 
-    /// @dev Deposits tokens to the liquidity pool.
+    /// @dev Deposits tokens to the liquidity pool from the caller account.
     /// @param amount The amount of tokens to deposit.
     function deposit(uint256 amount) external;
 
-    /// @dev Withdraws tokens from the liquidity pool.
+    /// @dev Deposits tokens to the liquidity pool from the operational treasury.
+    /// @param amount The amount of tokens to deposit.
+    function depositFromOperationalTreasury(uint256 amount) external;
+
+    /// @dev Withdraws tokens from the liquidity pool to the caller account.
     /// @param borrowableAmount The amount of tokens to withdraw from the borrowable balance.
     /// @param addonAmount This parameter has been deprecated since version 1.8.0 and must be zero.
     ///        See the {addonTreasury} function comments for more details.
     function withdraw(uint256 borrowableAmount, uint256 addonAmount) external;
+
+    /// @dev Withdraws tokens from the liquidity pool to the operational treasury.
+    /// @param amount The amount of tokens to withdraw from the borrowable balance.
+    function withdrawToOperationalTreasury(uint256 amount) external;
 
     /// @dev Rescues tokens from the liquidity pool.
     /// @param token The address of the token to rescue.
@@ -62,6 +70,13 @@ interface ILiquidityPoolPrimary {
     /// @return The current address of the addon treasury.
     function addonTreasury() external view returns (address);
 
+    /// @dev Returns the operational treasury address.
+    ///
+    /// The operational treasury is used to deposit and withdraw tokens through special functions.
+    ///
+    /// @return The current address of the operational treasury.
+    function operationalTreasury() external view returns (address);
+
     /// @dev Gets the borrowable and addons balances of the liquidity pool.
     ///
     /// The addons part of the balance has been deprecated since version 1.8.0 and now it always equals zero.
@@ -81,13 +96,21 @@ interface ILiquidityPoolConfiguration {
     //  Events                                      //
     // -------------------------------------------- //
 
-    /// @dev Emitted when the the addon treasury address has been changed.
+    /// @dev Emitted when the addon treasury address has been changed.
     ///
     /// See the {addonTreasury} function comments for more details.
     ///
     /// @param newTreasury The updated address of the addon treasury.
     /// @param oldTreasury The previous address of the addon treasury.
     event AddonTreasuryChanged(address newTreasury, address oldTreasury);
+
+    /// @dev Emitted when the operational treasury address has been changed.
+    ///
+    /// See the {operationalTreasury} function comments for more details.
+    ///
+    /// @param newTreasury The updated address of the operational treasury.
+    /// @param oldTreasury The previous address of the operational treasury.
+    event OperationalTreasuryChanged(address newTreasury, address oldTreasury);
 
     // -------------------------------------------- //
     //  Transactional functions                     //
@@ -99,6 +122,13 @@ interface ILiquidityPoolConfiguration {
     ///
     /// @param newTreasury The new address of the addon treasury to set.
     function setAddonTreasury(address newTreasury) external;
+
+    /// @dev Sets the operational treasury address.
+    ///
+    /// See the {operationalTreasury} function comments for more details.
+    ///
+    /// @param newTreasury The new address of the operational treasury to set.
+    function setOperationalTreasury(address newTreasury) external;
 }
 
 /// @title ILiquidityPoolHooks interface
@@ -140,6 +170,12 @@ interface ILiquidityPoolErrors {
 
     /// @dev Thrown when the token source balance is insufficient.
     error InsufficientBalance();
+
+    /// @dev Thrown when the operational treasury address is zero.
+    error OperationalTreasuryAddressZero();
+
+    /// @dev Thrown when the operational treasury has not provided an allowance for the pool to transfer its tokens.
+    error OperationalTreasuryZeroAllowanceForPool();
 }
 
 /// @title ILiquidityPool interface

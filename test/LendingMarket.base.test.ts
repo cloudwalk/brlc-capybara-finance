@@ -14,6 +14,7 @@ import {
   proveTx
 } from "../test-utils/eth";
 import { checkEquality, maxUintForBits, roundMath, setUpFixture } from "../test-utils/common";
+import { EXPECTED_VERSION } from "../test-utils/specific";
 
 enum LoanType {
   Ordinary = 0,
@@ -117,14 +118,6 @@ interface Fixture {
   installmentLoanParts: Loan[];
 }
 
-interface Version {
-  major: number;
-  minor: number;
-  patch: number;
-
-  [key: string]: number; // Indexing signature to ensure that fields are iterated over in a key-value style
-}
-
 enum PayerKind {
   Borrower = 0,
   Stranger = 1
@@ -218,12 +211,6 @@ const INSTALLMENT_COUNT = 3;
 const BORROWED_AMOUNTS: number[] = [BORROWED_AMOUNT * 3 - 1, BORROWED_AMOUNT * 2 + 1, BORROWED_AMOUNT];
 const ADDON_AMOUNTS: number[] = [ADDON_AMOUNT * 3 - 1, ADDON_AMOUNT * 2 + 1, ADDON_AMOUNT];
 const DURATIONS_IN_PERIODS: number[] = [0, DURATION_IN_PERIODS / 2, DURATION_IN_PERIODS];
-
-const EXPECTED_VERSION: Version = {
-  major: 1,
-  minor: 12,
-  patch: 0
-};
 
 const defaultLoanState: LoanState = {
   programId: 0,
