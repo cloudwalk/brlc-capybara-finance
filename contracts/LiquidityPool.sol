@@ -15,6 +15,7 @@ import { Loan } from "./libraries/Loan.sol";
 import { SafeCast } from "./libraries/SafeCast.sol";
 
 import { ICreditLine } from "./interfaces/ICreditLine.sol";
+import { IERC20ReserveMintable } from "./interfaces/IERC20ReserveMintable.sol";
 import { ILendingMarket } from "./interfaces/ILendingMarket.sol";
 import { ILiquidityPool } from "./interfaces/ILiquidityPool.sol";
 import { ILiquidityPoolConfiguration } from "./interfaces/ILiquidityPool.sol";
@@ -183,6 +184,12 @@ contract LiquidityPool is
     }
 
     /// @inheritdoc ILiquidityPoolPrimary
+    function depositFromReserve(uint256 amount) external onlyRole(ADMIN_ROLE) {
+        IERC20ReserveMintable(_token).mintFromReserve(address(this), amount);
+        _deposit(amount, address(this));
+    }
+
+    /// @inheritdoc ILiquidityPoolPrimary
     function withdraw(uint256 borrowableAmount, uint256 addonAmount) external onlyRole(OWNER_ROLE) {
         _withdraw(borrowableAmount, addonAmount, msg.sender);
     }
@@ -190,6 +197,12 @@ contract LiquidityPool is
     /// @inheritdoc ILiquidityPoolPrimary
     function withdrawToOperationalTreasury(uint256 amount) external onlyRole(ADMIN_ROLE) {
         _withdraw(amount, 0, _getAndCheckOperationalTreasury());
+    }
+
+    /// @inheritdoc ILiquidityPoolPrimary
+    function withdrawToReserve(uint256 amount) external onlyRole(ADMIN_ROLE) {
+        _withdraw(amount, 0, address(this));
+        IERC20ReserveMintable(_token).burnToReserve(amount);
     }
 
     /// @inheritdoc ILiquidityPoolPrimary
@@ -299,7 +312,9 @@ contract LiquidityPool is
         }
 
         _borrowableBalance += amount.toUint64();
-        underlyingToken.safeTransferFrom(sender, address(this), amount);
+        if (sender != address(this)) {
+            underlyingToken.safeTransferFrom(sender, address(this), amount);
+        }
 
         emit Deposit(amount);
     }
@@ -322,7 +337,9 @@ contract LiquidityPool is
 
         _borrowableBalance -= borrowableAmount.toUint64();
 
-        IERC20(_token).safeTransfer(recipient, borrowableAmount);
+        if (recipient != address(this)) {
+            IERC20(_token).safeTransfer(recipient, borrowableAmount);
+        }
 
         emit Withdrawal(borrowableAmount, addonAmount);
     }
