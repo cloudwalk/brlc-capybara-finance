@@ -37,7 +37,10 @@ interface ILiquidityPoolPrimary {
     function depositFromOperationalTreasury(uint256 amount) external;
 
     /// @dev Deposits tokens to the liquidity pool by minting them from the reserve
-    ///      using a special function of the token smart-contract.
+    ///      using a special function of the underlying token smart-contract.
+    ///
+    /// To use this function this contract must be granted an appropriate role on the token contract.
+    ///
     /// @param amount The amount of tokens to mint and deposit.
     function depositFromReserve(uint256 amount) external;
 
@@ -52,7 +55,10 @@ interface ILiquidityPoolPrimary {
     function withdrawToOperationalTreasury(uint256 amount) external;
 
     /// @dev Withdraws tokens from the liquidity pool by burning them to the reserve
-    //       using a special function of the token smart-contract.
+    //       using a special function of the underlying token smart-contract.
+    ///
+    /// To use this function this contract must be granted an appropriate role on the token contract.
+    ///
     /// @param amount The amount of tokens to withdraw from the borrowable balance and burn.
     function withdrawToReserve(uint256 amount) external;
 
