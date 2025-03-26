@@ -36,6 +36,14 @@ interface ILiquidityPoolPrimary {
     /// @param amount The amount of tokens to deposit.
     function depositFromOperationalTreasury(uint256 amount) external;
 
+    /// @dev Deposits tokens to the liquidity pool by minting them from the reserve
+    ///      using a special function of the underlying token smart-contract.
+    ///
+    /// To use this function this contract must be granted an appropriate role on the token contract.
+    ///
+    /// @param amount The amount of tokens to mint and deposit.
+    function depositFromReserve(uint256 amount) external;
+
     /// @dev Withdraws tokens from the liquidity pool to the caller account.
     /// @param borrowableAmount The amount of tokens to withdraw from the borrowable balance.
     /// @param addonAmount This parameter has been deprecated since version 1.8.0 and must be zero.
@@ -45,6 +53,14 @@ interface ILiquidityPoolPrimary {
     /// @dev Withdraws tokens from the liquidity pool to the operational treasury.
     /// @param amount The amount of tokens to withdraw from the borrowable balance.
     function withdrawToOperationalTreasury(uint256 amount) external;
+
+    /// @dev Withdraws tokens from the liquidity pool by burning them to the reserve
+    //       using a special function of the underlying token smart-contract.
+    ///
+    /// To use this function this contract must be granted an appropriate role on the token contract.
+    ///
+    /// @param amount The amount of tokens to withdraw from the borrowable balance and burn.
+    function withdrawToReserve(uint256 amount) external;
 
     /// @dev Rescues tokens from the liquidity pool.
     /// @param token The address of the token to rescue.
