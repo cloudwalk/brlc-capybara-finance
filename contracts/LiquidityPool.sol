@@ -15,7 +15,7 @@ import { Loan } from "./libraries/Loan.sol";
 import { SafeCast } from "./libraries/SafeCast.sol";
 
 import { ICreditLine } from "./interfaces/ICreditLine.sol";
-import { IERC20ReserveMintable } from "./interfaces/IERC20ReserveMintable.sol";
+import {IERC20Mintable} from "./interfaces/IERC20Mintable.sol";
 import { ILendingMarket } from "./interfaces/ILendingMarket.sol";
 import { ILiquidityPool } from "./interfaces/ILiquidityPool.sol";
 import { ILiquidityPoolConfiguration } from "./interfaces/ILiquidityPool.sol";
@@ -185,7 +185,7 @@ contract LiquidityPool is
 
     /// @inheritdoc ILiquidityPoolPrimary
     function depositFromReserve(uint256 amount) external onlyRole(ADMIN_ROLE) {
-        IERC20ReserveMintable(_token).mintFromReserve(address(this), amount);
+        IERC20Mintable(_token).mintFromReserve(address(this), amount);
         _deposit(amount, address(this));
     }
 
@@ -202,7 +202,7 @@ contract LiquidityPool is
     /// @inheritdoc ILiquidityPoolPrimary
     function withdrawToReserve(uint256 amount) external onlyRole(ADMIN_ROLE) {
         _withdraw(amount, 0, address(this));
-        IERC20ReserveMintable(_token).burnToReserve(amount);
+        IERC20Mintable(_token).burnToReserve(amount);
     }
 
     /// @inheritdoc ILiquidityPoolPrimary

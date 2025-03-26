@@ -2,10 +2,10 @@
 
 pragma solidity ^0.8.0;
 
-/// @title IERC20ReserveMintable interface
+/// @title IERC20Mintable interface
 /// @author CloudWalk Inc. (See https://cloudwalk.io)
-/// @dev The interface of a special token smart contract that can mint and burn tokens using the reserve.
-interface IERC20ReserveMintable {
+/// @dev The interface of an ERC20 token smart contract that supports minting and burning tokens.
+interface IERC20Mintable {
     /// @dev Mints tokens from reserve.
     ///
     /// Tokens are minted in a regular way, but we also increase the total reserve supply by the minted amount.
