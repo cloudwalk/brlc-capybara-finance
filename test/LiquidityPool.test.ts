@@ -45,7 +45,6 @@ const ERROR_NAME_INSUFFICIENT_BALANCE = "InsufficientBalance";
 const ERROR_NAME_INVALID_AMOUNT = "InvalidAmount";
 const ERROR_NAME_IMPLEMENTATION_ADDRESS_INVALID = "ImplementationAddressInvalid";
 const ERROR_NAME_OPERATIONAL_TREASURY_ADDRESS_ZERO = "OperationalTreasuryAddressZero";
-const ERROR_NAME_OPERATIONAL_TREASURY_ZERO_ALLOWANCE_FOR_POOL = "OperationalTreasuryZeroAllowanceForPool";
 const ERROR_NAME_UNAUTHORIZED = "Unauthorized";
 const ERROR_NAME_ZERO_ADDRESS = "ZeroAddress";
 const ERROR_NAME_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST = "SafeCastOverflowedUintDowncast";
@@ -552,13 +551,6 @@ describe("Contract 'LiquidityPool'", async () => {
 
       await expect(liquidityPool.setOperationalTreasury(operationalTreasury.address))
         .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_ALREADY_CONFIGURED);
-    });
-
-    it("Is reverted if the operational treasury has not provided an allowance for the pool", async () => {
-      const { liquidityPool } = await setUpFixture(deployLiquidityPool);
-
-      await expect(liquidityPool.setOperationalTreasury(operationalTreasury.address))
-        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_OPERATIONAL_TREASURY_ZERO_ALLOWANCE_FOR_POOL);
     });
   });
 
