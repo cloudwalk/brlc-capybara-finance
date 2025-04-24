@@ -189,9 +189,6 @@ interface ILiquidityPoolErrors {
 
     /// @dev Thrown when the operational treasury address is zero.
     error OperationalTreasuryAddressZero();
-
-    /// @dev Thrown when the operational treasury has not provided an allowance for the pool to transfer its tokens.
-    error OperationalTreasuryZeroAllowanceForPool();
 }
 
 /// @title ILiquidityPool interface
