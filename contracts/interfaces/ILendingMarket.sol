@@ -73,6 +73,32 @@ interface ILendingMarketPrimary {
         uint256 trackedBalance
     );
 
+    /// @dev Emitted when an installment loan is repaid (fully or partially) along with the {LoanRepayment} event.
+    ///
+    /// The `addendum` field is provided for future extensions of the event without breaking the ABI.
+    /// The `addendum` field contains data encoded as the result of calling of the `abi.encodePacked()`
+    /// function as described in https://docs.soliditylang.org/en/latest/abi-spec.html#non-standard-packed-mode
+    /// with the following arguments (addendum fields):
+    ///
+    /// - uint8(version) -- the version of the addendum or zero (current version) if the addendum is empty.
+    ///
+    /// @param firstInstallmentId The unique identifier of the loan.
+    /// @param repayer The address of the token source for the repayment (borrower or third-party).
+    /// @param borrower The address of the borrower of the loan.
+    /// @param totalRepaidAmount The total amount repaid over all installments.
+    /// @param totalTrackedBalance The total tracked balance over all installments.
+    /// @param installmentCount The total number of installments.
+    /// @param addendum The addendum of the event.
+    event InstallmentLoanRepayment(
+        uint256 indexed firstInstallmentId,
+        address indexed repayer,
+        address indexed borrower,
+        uint256 totalRepaidAmount,
+        uint256 totalTrackedBalance,
+        uint256 installmentCount,
+        bytes addendum
+    );
+
     /// @dev Emitted when a loan is revoked.
     /// @param loanId The unique identifier of the loan.
     event LoanRevoked(uint256 indexed loanId);

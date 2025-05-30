@@ -666,6 +666,19 @@ contract LendingMarket is
         ICreditLine(creditLine).onAfterLoanPayment(loanId, repaymentAmount);
 
         emit LoanRepayment(loanId, repayer, loan.borrower, repaymentAmount, newTrackedBalance);
+
+        if (loan.installmentCount != 0) {
+            Loan.InstallmentLoanPreview memory installmentLoanPreview = _getInstallmentLoanPreview(loanId, 0);
+            emit InstallmentLoanRepayment(
+                installmentLoanPreview.firstInstallmentId,
+                repayer,
+                loan.borrower,
+                installmentLoanPreview.totalRepaidAmount,
+                installmentLoanPreview.totalTrackedBalance,
+                installmentLoanPreview.installmentCount,
+                hex"00" // addendum
+            );
+        }
     }
 
     /// @dev Updates the loan state and makes the necessary transfers when revoking a loan.
