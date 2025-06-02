@@ -15,7 +15,7 @@ import { Loan } from "./libraries/Loan.sol";
 import { SafeCast } from "./libraries/SafeCast.sol";
 
 import { ICreditLine } from "./interfaces/ICreditLine.sol";
-import {IERC20Mintable} from "./interfaces/IERC20Mintable.sol";
+import { IERC20Mintable } from "./interfaces/IERC20Mintable.sol";
 import { ILendingMarket } from "./interfaces/ILendingMarket.sol";
 import { ILiquidityPool } from "./interfaces/ILiquidityPool.sol";
 import { ILiquidityPoolConfiguration } from "./interfaces/ILiquidityPool.sol";
@@ -42,8 +42,6 @@ contract LiquidityPool is
     //  Constants                                   //
     // -------------------------------------------- //
 
-    /// @dev The role of this contract owner.
-    bytes32 public constant OWNER_ROLE = keccak256("OWNER_ROLE");
     /// @dev The role of this contract admin.
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
 
@@ -101,7 +99,7 @@ contract LiquidityPool is
         __AccessControl_init_unchained();
         __AccessControlExt_init_unchained();
         __Pausable_init_unchained();
-        __PausableExt_init_unchained(OWNER_ROLE);
+        __PausableExt_init_unchained();
         __LiquidityPool_init_unchained(owner_, market_, token_);
     }
 
@@ -139,8 +137,7 @@ contract LiquidityPool is
             revert Error.ContractAddressInvalid();
         }
 
-        _setRoleAdmin(OWNER_ROLE, OWNER_ROLE);
-        _setRoleAdmin(ADMIN_ROLE, OWNER_ROLE);
+        _setRoleAdmin(ADMIN_ROLE, GRANTOR_ROLE);
         _grantRole(OWNER_ROLE, owner_);
 
         _market = market_;

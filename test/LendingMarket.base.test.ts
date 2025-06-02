@@ -187,6 +187,7 @@ const EVENT_NAME_TRANSFER = "Transfer";
 const ERROR_NAME_REPAYMENT_UNDONE = "RepaymentUndone";
 
 const OWNER_ROLE = ethers.id("OWNER_ROLE");
+const GRANTOR_ROLE = ethers.id("GRANTOR_ROLE");
 const ADMIN_ROLE = ethers.id("ADMIN_ROLE");
 const PAUSER_ROLE = ethers.id("PAUSER_ROLE");
 
@@ -654,6 +655,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
     await proveTx(market.createProgram(creditLineAddress, liquidityPoolAddress));
 
     // Grant roles
+    await proveTx(market.grantRole(GRANTOR_ROLE, owner.address));
     await proveTx(market.grantRole(PAUSER_ROLE, owner.address));
     await proveTx(market.grantRole(ADMIN_ROLE, admin.address));
 
@@ -805,19 +807,25 @@ describe("Contract 'LendingMarket': base tests", async () => {
 
       // Role hashes
       expect(await market.OWNER_ROLE()).to.equal(OWNER_ROLE);
+      expect(await market.GRANTOR_ROLE()).to.equal(GRANTOR_ROLE);
       expect(await market.ADMIN_ROLE()).to.equal(ADMIN_ROLE);
       expect(await market.PAUSER_ROLE()).to.equal(PAUSER_ROLE);
 
       // The role admins
       expect(await market.getRoleAdmin(OWNER_ROLE)).to.equal(OWNER_ROLE);
-      expect(await market.getRoleAdmin(ADMIN_ROLE)).to.equal(OWNER_ROLE);
-      expect(await market.getRoleAdmin(PAUSER_ROLE)).to.equal(OWNER_ROLE);
+      expect(await market.getRoleAdmin(GRANTOR_ROLE)).to.equal(OWNER_ROLE);
+      expect(await market.getRoleAdmin(ADMIN_ROLE)).to.equal(GRANTOR_ROLE);
+      expect(await market.getRoleAdmin(PAUSER_ROLE)).to.equal(GRANTOR_ROLE);
 
       // Roles
       expect(await market.hasRole(OWNER_ROLE, deployer.address)).to.equal(false);
+      expect(await market.hasRole(GRANTOR_ROLE, deployer.address)).to.equal(false);
       expect(await market.hasRole(ADMIN_ROLE, deployer.address)).to.equal(false);
+      expect(await market.hasRole(PAUSER_ROLE, deployer.address)).to.equal(false);
       expect(await market.hasRole(OWNER_ROLE, owner.address)).to.equal(true); // !!!
+      expect(await market.hasRole(GRANTOR_ROLE, owner.address)).to.equal(false);
       expect(await market.hasRole(ADMIN_ROLE, owner.address)).to.equal(false);
+      expect(await market.hasRole(PAUSER_ROLE, owner.address)).to.equal(false);
 
       // The initial contract state is unpaused
       expect(await market.paused()).to.equal(false);
@@ -915,6 +923,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
 
     it("Is reverted if the contract is paused", async () => {
       const { market } = await setUpFixture(deployLendingMarket);
+      await proveTx(market.grantRole(GRANTOR_ROLE, owner.address));
       await proveTx(market.grantRole(PAUSER_ROLE, owner.address));
       await proveTx(market.pause());
 
@@ -1019,7 +1028,6 @@ describe("Contract 'LendingMarket': base tests", async () => {
 
     it("Is reverted if contract is paused", async () => {
       const { market } = await setUpFixture(deployLendingMarketAndConfigureItForLoan);
-      await proveTx(market.grantRole(PAUSER_ROLE, owner.address));
       await proveTx(market.pause());
 
       await expect(

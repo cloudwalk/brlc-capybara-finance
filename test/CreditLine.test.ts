@@ -216,6 +216,7 @@ const EVENT_NAME_BORROWER_CONFIGURED = "BorrowerConfigured";
 const EVENT_NAME_CREDIT_LINE_CONFIGURED = "CreditLineConfigured";
 
 const OWNER_ROLE = ethers.id("OWNER_ROLE");
+const GRANTOR_ROLE = ethers.id("GRANTOR_ROLE");
 const ADMIN_ROLE = ethers.id("ADMIN_ROLE");
 const PAUSER_ROLE = ethers.id("PAUSER_ROLE");
 
@@ -322,6 +323,7 @@ describe("Contract 'CreditLine'", async () => {
     const fixture: Fixture = await deployContracts();
     const { creditLine } = fixture;
 
+    await proveTx(creditLine.grantRole(GRANTOR_ROLE, owner.address));
     await proveTx(creditLine.grantRole(PAUSER_ROLE, owner.address));
     await proveTx(creditLine.grantRole(ADMIN_ROLE, admin.address));
 
@@ -492,19 +494,23 @@ describe("Contract 'CreditLine'", async () => {
       const { creditLine } = await setUpFixture(deployContracts);
       // Role hashes
       expect(await creditLine.OWNER_ROLE()).to.equal(OWNER_ROLE);
+      expect(await creditLine.GRANTOR_ROLE()).to.equal(GRANTOR_ROLE);
       expect(await creditLine.ADMIN_ROLE()).to.equal(ADMIN_ROLE);
       expect(await creditLine.PAUSER_ROLE()).to.equal(PAUSER_ROLE);
 
       // The role admins
       expect(await creditLine.getRoleAdmin(OWNER_ROLE)).to.equal(OWNER_ROLE);
-      expect(await creditLine.getRoleAdmin(ADMIN_ROLE)).to.equal(OWNER_ROLE);
-      expect(await creditLine.getRoleAdmin(PAUSER_ROLE)).to.equal(OWNER_ROLE);
+      expect(await creditLine.getRoleAdmin(GRANTOR_ROLE)).to.equal(OWNER_ROLE);
+      expect(await creditLine.getRoleAdmin(ADMIN_ROLE)).to.equal(GRANTOR_ROLE);
+      expect(await creditLine.getRoleAdmin(PAUSER_ROLE)).to.equal(GRANTOR_ROLE);
 
       // Roles
       expect(await creditLine.hasRole(OWNER_ROLE, deployer.address)).to.equal(false);
+      expect(await creditLine.hasRole(GRANTOR_ROLE, deployer.address)).to.equal(false);
       expect(await creditLine.hasRole(ADMIN_ROLE, deployer.address)).to.equal(false);
       expect(await creditLine.hasRole(PAUSER_ROLE, deployer.address)).to.equal(false);
       expect(await creditLine.hasRole(OWNER_ROLE, owner.address)).to.equal(true); // !!!
+      expect(await creditLine.hasRole(GRANTOR_ROLE, owner.address)).to.equal(false);
       expect(await creditLine.hasRole(ADMIN_ROLE, owner.address)).to.equal(false);
       expect(await creditLine.hasRole(PAUSER_ROLE, owner.address)).to.equal(false);
 
@@ -661,6 +667,7 @@ describe("Contract 'CreditLine'", async () => {
     it("Is reverted if the caller does not have the owner role", async () => {
       const { creditLine } = await setUpFixture(deployContracts);
       const config = createCreditLineConfiguration();
+      await proveTx(creditLine.grantRole(GRANTOR_ROLE, owner.address));
       await proveTx(creditLine.grantRole(ADMIN_ROLE, admin.address));
 
       await expect(connect(creditLine, admin).configureCreditLine(config))

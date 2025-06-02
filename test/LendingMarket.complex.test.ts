@@ -11,6 +11,7 @@ import {
   proveTx
 } from "../test-utils/eth";
 
+const GRANTOR_ROLE = ethers.id("GRANTOR_ROLE");
 const ADMIN_ROLE = ethers.id("ADMIN_ROLE");
 
 const MAX_ALLOWANCE = ethers.MaxUint256;
@@ -243,7 +244,9 @@ describe("Contract 'LendingMarket': complex tests", async () => {
     await proveTx(connect(token, borrower).approve(lendingMarketAddress, ethers.MaxUint256));
 
     // Configure contracts and create a lending program
+    await proveTx(creditLine.grantRole(GRANTOR_ROLE, owner.address));
     await proveTx(creditLine.grantRole(ADMIN_ROLE, owner.address));
+    await proveTx(lendingMarket.grantRole(GRANTOR_ROLE, owner.address));
     await proveTx(lendingMarket.grantRole(ADMIN_ROLE, owner.address));
     await proveTx(lendingMarket.createProgram(creditLineAddress, liquidityPoolAddress));
 

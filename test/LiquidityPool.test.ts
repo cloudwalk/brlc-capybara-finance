@@ -61,6 +61,7 @@ const EVENT_NAME_TRANSFER = "Transfer";
 const EVENT_NAME_WITHDRAWAL = "Withdrawal";
 
 const DEFAULT_ADMIN_ROLE = ethers.ZeroHash;
+const GRANTOR_ROLE = ethers.id("GRANTOR_ROLE");
 const OWNER_ROLE = ethers.id("OWNER_ROLE");
 const PAUSER_ROLE = ethers.id("PAUSER_ROLE");
 const ADMIN_ROLE = ethers.id("ADMIN_ROLE");
@@ -163,6 +164,7 @@ describe("Contract 'LiquidityPool'", async () => {
 
   async function deployAndConfigureLiquidityPool(): Promise<{ liquidityPool: Contract }> {
     const { liquidityPool } = await deployLiquidityPool();
+    await proveTx(liquidityPool.grantRole(GRANTOR_ROLE, owner.address));
     await proveTx(liquidityPool.grantRole(PAUSER_ROLE, owner.address));
     await proveTx(liquidityPool.grantRole(ADMIN_ROLE, admin.address));
     await proveTx(connect(token, addonTreasury).approve(getAddress(market), MAX_ALLOWANCE));
@@ -316,18 +318,23 @@ describe("Contract 'LiquidityPool'", async () => {
       const { liquidityPool } = await setUpFixture(deployLiquidityPool);
       // Role hashes
       expect(await liquidityPool.OWNER_ROLE()).to.equal(OWNER_ROLE);
+      expect(await liquidityPool.GRANTOR_ROLE()).to.equal(GRANTOR_ROLE);
+      expect(await liquidityPool.ADMIN_ROLE()).to.equal(ADMIN_ROLE);
       expect(await liquidityPool.PAUSER_ROLE()).to.equal(PAUSER_ROLE);
 
       // The role admins
       expect(await liquidityPool.getRoleAdmin(OWNER_ROLE)).to.equal(OWNER_ROLE);
-      expect(await liquidityPool.getRoleAdmin(ADMIN_ROLE)).to.equal(OWNER_ROLE);
-      expect(await liquidityPool.getRoleAdmin(PAUSER_ROLE)).to.equal(OWNER_ROLE);
+      expect(await liquidityPool.getRoleAdmin(GRANTOR_ROLE)).to.equal(OWNER_ROLE);
+      expect(await liquidityPool.getRoleAdmin(ADMIN_ROLE)).to.equal(GRANTOR_ROLE);
+      expect(await liquidityPool.getRoleAdmin(PAUSER_ROLE)).to.equal(GRANTOR_ROLE);
 
       // Roles
       expect(await liquidityPool.hasRole(OWNER_ROLE, deployer.address)).to.equal(false);
+      expect(await liquidityPool.hasRole(GRANTOR_ROLE, deployer.address)).to.equal(false);
       expect(await liquidityPool.hasRole(ADMIN_ROLE, deployer.address)).to.equal(false);
       expect(await liquidityPool.hasRole(PAUSER_ROLE, deployer.address)).to.equal(false);
       expect(await liquidityPool.hasRole(OWNER_ROLE, owner.address)).to.equal(true); // !!!
+      expect(await liquidityPool.hasRole(GRANTOR_ROLE, owner.address)).to.equal(false);
       expect(await liquidityPool.hasRole(ADMIN_ROLE, owner.address)).to.equal(false);
       expect(await liquidityPool.hasRole(PAUSER_ROLE, owner.address)).to.equal(false);
 
