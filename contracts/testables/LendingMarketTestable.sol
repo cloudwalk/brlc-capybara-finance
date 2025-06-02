@@ -7,6 +7,7 @@ import { LendingMarket } from "../LendingMarket.sol";
 /// @title LendingMarketTestable contract
 /// @author CloudWalk Inc. (See https://cloudwalk.io)
 /// @dev Version of the lending market contract with additions required for testing.
+/// @custom:oz-upgrades-unsafe-allow missing-initializer
 contract LendingMarketTestable is LendingMarket {
     // -------------------------------------------- //
     //  Storage variables                           //
@@ -21,20 +22,6 @@ contract LendingMarketTestable is LendingMarket {
     // -------------------------------------------- //
     //  Transactional functions                     //
     // -------------------------------------------- //
-
-    /// @dev Calls the internal initialize function of the parent contract to check
-    /// that the 'onlyInitializing' modifier is present.
-    /// @param owner_ The address of the owner.
-    function call_parent_initialize(address owner_) public {
-        __LendingMarket_init(owner_);
-    }
-
-    /// @dev Calls the internal initialize_unchained function of the parent contract
-    /// to check that the 'onlyInitializing' modifier is present.
-    /// @param owner_ The address of the owner.
-    function call_parent_initialize_unchained(address owner_) public {
-        __LendingMarket_init_unchained(owner_);
-    }
 
     /// @dev Sets a new loan ID counter for testing.
     /// @param newValue The new loan ID counter value.

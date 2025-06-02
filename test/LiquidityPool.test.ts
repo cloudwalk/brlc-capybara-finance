@@ -39,7 +39,6 @@ const ERROR_NAME_ADDON_TREASURY_ZERO_ALLOWANCE_FOR_MARKET = "AddonTreasuryZeroAl
 const ERROR_NAME_ALREADY_CONFIGURED = "AlreadyConfigured";
 const ERROR_NAME_ALREADY_INITIALIZED = "InvalidInitialization";
 const ERROR_NAME_CONTRACT_ADDRESS_INVALID = "ContractAddressInvalid";
-const ERROR_NAME_CONTRACT_IS_NOT_INITIALIZING = "NotInitializing";
 const ERROR_NAME_ENFORCED_PAUSED = "EnforcedPause";
 const ERROR_NAME_INSUFFICIENT_BALANCE = "InsufficientBalance";
 const ERROR_NAME_INVALID_AMOUNT = "InvalidAmount";
@@ -126,7 +125,7 @@ describe("Contract 'LiquidityPool'", async () => {
     [deployer, owner, admin, attacker, addonTreasury, operationalTreasury] = await ethers.getSigners();
 
     // Factories with an explicitly specified deployer account
-    liquidityPoolFactory = await ethers.getContractFactory("LiquidityPoolTestable");
+    liquidityPoolFactory = await ethers.getContractFactory("LiquidityPool");
     liquidityPoolFactory = liquidityPoolFactory.connect(deployer);
     tokenFactory = await ethers.getContractFactory("ERC20Mock");
     tokenFactory = tokenFactory.connect(deployer);
@@ -416,22 +415,6 @@ describe("Contract 'LiquidityPool'", async () => {
 
       await expect(liquidityPool.initialize(marketAddress, owner.address, tokenAddress))
         .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_ALREADY_INITIALIZED);
-    });
-
-    it("Is reverted if the internal initializer is called outside the init process", async () => {
-      const { liquidityPool } = await setUpFixture(deployLiquidityPool);
-      await expect(
-        // Call via the testable version
-        liquidityPool.call_parent_initialize(marketAddress, owner.address, tokenAddress)
-      ).to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_CONTRACT_IS_NOT_INITIALIZING);
-    });
-
-    it("Is reverted if the unchained internal initializer is called outside the init process", async () => {
-      const { liquidityPool } = await setUpFixture(deployLiquidityPool);
-      await expect(
-        // Call via the testable version
-        liquidityPool.call_parent_initialize_unchained(marketAddress, owner.address, tokenAddress)
-      ).to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_CONTRACT_IS_NOT_INITIALIZING);
     });
   });
 

@@ -141,7 +141,6 @@ const ERROR_NAME_ADDON_TREASURY_ADDRESS_ZERO = "AddonTreasuryAddressZero";
 const ERROR_NAME_ALREADY_CONFIGURED = "AlreadyConfigured";
 const ERROR_NAME_ALREADY_INITIALIZED = "InvalidInitialization";
 const ERROR_NAME_CONTRACT_ADDRESS_INVALID = "ContractAddressInvalid";
-const ERROR_NAME_CONTRACT_IS_NOT_INITIALIZING = "NotInitializing";
 const ERROR_NAME_ENFORCED_PAUSED = "EnforcedPause";
 const ERROR_NAME_LOAN_ALREADY_FROZEN = "LoanAlreadyFrozen";
 const ERROR_NAME_LOAN_ALREADY_REPAID = "LoanAlreadyRepaid";
@@ -852,20 +851,6 @@ describe("Contract 'LendingMarket': base tests", async () => {
 
       await expect(market.initialize(owner.address))
         .to.be.revertedWithCustomError(market, ERROR_NAME_ALREADY_INITIALIZED);
-    });
-
-    it("Is reverted if the internal initializer is called outside the init process", async () => {
-      const { market } = await setUpFixture(deployLendingMarket);
-      await expect(
-        market.call_parent_initialize(owner.address) // Call via the testable version
-      ).to.be.revertedWithCustomError(market, ERROR_NAME_CONTRACT_IS_NOT_INITIALIZING);
-    });
-
-    it("Is reverted if the unchained internal initializer is called outside the init process", async () => {
-      const { market } = await setUpFixture(deployLendingMarket);
-      await expect(
-        market.call_parent_initialize_unchained(owner.address) // Call via the testable version
-      ).to.be.revertedWithCustomError(market, ERROR_NAME_CONTRACT_IS_NOT_INITIALIZING);
     });
   });
 

@@ -200,7 +200,6 @@ const ERROR_NAME_ARRAYS_LENGTH_MISMATCH = "ArrayLengthMismatch";
 const ERROR_NAME_BORROWER_CONFIGURATION_EXPIRED = "BorrowerConfigurationExpired";
 const ERROR_NAME_BORROWER_STATE_OVERFLOW = "BorrowerStateOverflow";
 const ERROR_NAME_CONTRACT_ADDRESS_INVALID = "ContractAddressInvalid";
-const ERROR_NAME_CONTRACT_IS_NOT_INITIALIZING = "NotInitializing";
 const ERROR_NAME_ENFORCED_PAUSED = "EnforcedPause";
 const ERROR_NAME_INVALID_AMOUNT = "InvalidAmount";
 const ERROR_NAME_INVALID_BORROWER_CONFIGURATION = "InvalidBorrowerConfiguration";
@@ -595,22 +594,6 @@ describe("Contract 'CreditLine'", async () => {
 
       await expect(creditLine.initialize(owner.address, marketAddress, tokenAddress))
         .to.be.revertedWithCustomError(creditLine, ERROR_NAME_ALREADY_INITIALIZED);
-    });
-
-    it("Is reverted if the internal initializer is called outside the init process", async () => {
-      const { creditLine } = await setUpFixture(deployContracts);
-      await expect(
-        // Call via the testable version
-        creditLine.call_parent_initialize(owner.address, marketAddress, tokenAddress)
-      ).to.be.revertedWithCustomError(creditLine, ERROR_NAME_CONTRACT_IS_NOT_INITIALIZING);
-    });
-
-    it("Is reverted if the unchained internal initializer is called outside the init process", async () => {
-      const { creditLine } = await setUpFixture(deployContracts);
-      await expect(
-        // Call via the testable version
-        creditLine.call_parent_initialize_unchained(owner.address, marketAddress, tokenAddress)
-      ).to.be.revertedWithCustomError(creditLine, ERROR_NAME_CONTRACT_IS_NOT_INITIALIZING);
     });
   });
 

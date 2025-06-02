@@ -81,38 +81,6 @@ contract LiquidityPool is
         address market_,
         address token_
     ) external initializer {
-        __LiquidityPool_init(owner_, market_, token_);
-    }
-
-    /// @dev Internal initializer of the upgradable contract.
-    /// @param owner_ The address of the liquidity pool owner.
-    /// @param market_ The address of the lending market.
-    /// @param token_ The address of the token.
-    /// See details https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable.
-    function __LiquidityPool_init(
-        address owner_, // Tools: this comment prevents Prettier from formatting into a single line.
-        address market_,
-        address token_
-    ) internal onlyInitializing {
-        __Context_init_unchained();
-        __ERC165_init_unchained();
-        __AccessControl_init_unchained();
-        __AccessControlExt_init_unchained();
-        __Pausable_init_unchained();
-        __PausableExt_init_unchained();
-        __LiquidityPool_init_unchained(owner_, market_, token_);
-    }
-
-    /// @dev Unchained internal initializer of the upgradable contract.
-    /// @param owner_ The address of the liquidity pool owner.
-    /// @param market_ The address of the lending market.
-    /// @param token_ The address of the token.
-    /// See details https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable.
-    function __LiquidityPool_init_unchained(
-        address owner_, // Tools: this comment prevents Prettier from formatting into a single line.
-        address market_,
-        address token_
-    ) internal onlyInitializing {
         if (owner_ == address(0)) {
             revert Error.ZeroAddress();
         }
@@ -136,6 +104,10 @@ contract LiquidityPool is
         try IERC20(token_).balanceOf(address(0)) {} catch {
             revert Error.ContractAddressInvalid();
         }
+
+        __AccessControlExt_init_unchained();
+        __PausableExt_init_unchained();
+        __UUPSExt_init_unchained();
 
         _setRoleAdmin(ADMIN_ROLE, GRANTOR_ROLE);
         _grantRole(OWNER_ROLE, owner_);
