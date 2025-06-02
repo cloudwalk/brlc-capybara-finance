@@ -38,16 +38,12 @@ contract LiquidityPool is
     using SafeERC20 for IERC20;
     using SafeCast for uint256;
 
-    // -------------------------------------------- //
-    //  Constants                                   //
-    // -------------------------------------------- //
+    // ------------------ Constants ------------------------------- //
 
     /// @dev The role of this contract admin.
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
 
-    // -------------------------------------------- //
-    //  Modifiers                                   //
-    // -------------------------------------------- //
+    // ------------------ Modifiers ------------------------------- //
 
     /// @dev Throws if called by any account other than the lending market.
     modifier onlyMarket() {
@@ -57,9 +53,7 @@ contract LiquidityPool is
         _;
     }
 
-    // -------------------------------------------- //
-    //  Constructor                                 //
-    // -------------------------------------------- //
+    // ------------------ Constructor ----------------------------- //
 
     /// @dev Constructor that prohibits the initialization of the implementation of the upgradable contract.
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -67,9 +61,7 @@ contract LiquidityPool is
         _disableInitializers();
     }
 
-    // -------------------------------------------- //
-    //  Initializers                                //
-    // -------------------------------------------- //
+    // ------------------ Initializers ------------------------------- //
 
     /// @dev Initializer of the upgradable contract.
     /// @param owner_ The address of the liquidity pool owner.
@@ -116,9 +108,7 @@ contract LiquidityPool is
         _token = token_;
     }
 
-    // -------------------------------------------- //
-    //  Configuration transactional functions       //
-    // -------------------------------------------- //
+    // ----------- Configuration transactional functions ---------- //
 
     /// @inheritdoc ILiquidityPoolConfiguration
     function setAddonTreasury(address newTreasury) external onlyRole(OWNER_ROLE) {
@@ -138,9 +128,7 @@ contract LiquidityPool is
         _grantRole(ADMIN_ROLE, msg.sender);
     }
 
-    // -------------------------------------------- //
-    //  Primary transactional functions             //
-    // -------------------------------------------- //
+    // -------------- Primary transactional functions ------------- //
 
     /// @inheritdoc ILiquidityPoolPrimary
     function deposit(uint256 amount) external onlyRole(OWNER_ROLE) {
@@ -188,9 +176,7 @@ contract LiquidityPool is
         emit Rescue(token_, amount);
     }
 
-    // -------------------------------------------- //
-    //  Hook transactional functions                //
-    // -------------------------------------------- //
+    // ------------------ Hook transactional functions ------------ //
 
     /// @inheritdoc ILiquidityPoolHooks
     function onBeforeLoanTaken(uint256 loanId) external whenNotPaused onlyMarket {
@@ -226,9 +212,7 @@ contract LiquidityPool is
         }
     }
 
-    // -------------------------------------------- //
-    //  View functions                              //
-    // -------------------------------------------- //
+    // ------------------ View functions -------------------------- //
 
     /// @inheritdoc ILiquidityPoolPrimary
     function addonTreasury() external view returns (address) {
@@ -255,16 +239,12 @@ contract LiquidityPool is
         return _token;
     }
 
-    // -------------------------------------------- //
-    //  Pure functions                              //
-    // -------------------------------------------- //
+    // ------------------ Pure functions -------------------------- //
 
     /// @inheritdoc ILiquidityPoolPrimary
     function proveLiquidityPool() external pure {}
 
-    // -------------------------------------------- //
-    //  Internal functions                          //
-    // -------------------------------------------- //
+    // ------------------ Internal functions ---------------------- //
 
     /// @dev Deposits the tokens into the liquidity pool internally.
     /// @param amount The amount of tokens to deposit.

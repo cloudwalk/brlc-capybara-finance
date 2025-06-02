@@ -11,15 +11,11 @@ import { ILiquidityPool } from "../interfaces/ILiquidityPool.sol";
 /// @author CloudWalk Inc. (See https://cloudwalk.io)
 /// @dev Mock of the `LendingMarket` contract used for testing.
 contract LendingMarketMock {
-    // -------------------------------------------- //
-    //  Storage variables                           //
-    // -------------------------------------------- //
+    // ------------------ Storage variables ----------------------- //
 
     mapping(uint256 => Loan.State) private _loanStates;
 
-    // -------------------------------------------- //
-    //  Mock transactional functions                //
-    // -------------------------------------------- //
+    // ------------------ Mock transactional functions ------------ //
 
     function mockLoanState(uint256 loanId, Loan.State memory state) external {
         _loanStates[loanId] = state;
@@ -61,17 +57,13 @@ contract LendingMarketMock {
         ICreditLine(creditLine).onAfterLoanRevocation(loanId);
     }
 
-    // -------------------------------------------- //
-    //  View functions                              //
-    // -------------------------------------------- //
+    // ------------------ View functions -------------------------- //
 
     function getLoanState(uint256 loanId) external view returns (Loan.State memory) {
         return _loanStates[loanId];
     }
 
-    // -------------------------------------------- //
-    //  Pure functions                              //
-    // -------------------------------------------- //
+    // ------------------ Pure functions -------------------------- //
 
     function proveLendingMarket() external pure {}
 }

@@ -6,9 +6,7 @@ pragma solidity 0.8.24;
 /// @author CloudWalk Inc. (See https://cloudwalk.io)
 /// @dev The primary part of the liquidity pool contract interface.
 interface ILiquidityPoolPrimary {
-    // -------------------------------------------- //
-    //  Events                                      //
-    // -------------------------------------------- //
+    // ------------------ Events ---------------------------------- //
 
     /// @dev Emitted when tokens are deposited to the liquidity pool.
     /// @param amount The amount of tokens deposited.
@@ -24,9 +22,7 @@ interface ILiquidityPoolPrimary {
     /// @param amount The amount of tokens rescued.
     event Rescue(address indexed token, uint256 amount);
 
-    // -------------------------------------------- //
-    //  Transactional functions                     //
-    // -------------------------------------------- //
+    // ------------------ Transactional functions ----------------- //
 
     /// @dev Deposits tokens to the liquidity pool from the caller account.
     /// @param amount The amount of tokens to deposit.
@@ -67,9 +63,7 @@ interface ILiquidityPoolPrimary {
     /// @param amount The amount of tokens to rescue.
     function rescue(address token, uint256 amount) external;
 
-    // -------------------------------------------- //
-    //  View and pure functions                     //
-    // -------------------------------------------- //
+    // ------------------ View functions -------------------------- //
 
     /// @dev Returns the address of the associated lending market.
     function market() external view returns (address);
@@ -100,6 +94,8 @@ interface ILiquidityPoolPrimary {
     /// @return The borrowable and addons balances.
     function getBalances() external view returns (uint256, uint256);
 
+    // ------------------ Pure functions -------------------------- //
+
     /// @dev Proves the contract is the liquidity pool one. A marker function.
     function proveLiquidityPool() external pure;
 }
@@ -108,9 +104,7 @@ interface ILiquidityPoolPrimary {
 /// @author CloudWalk Inc. (See https://cloudwalk.io)
 /// @dev The configuration part of the liquidity pool contract interface.
 interface ILiquidityPoolConfiguration {
-    // -------------------------------------------- //
-    //  Events                                      //
-    // -------------------------------------------- //
+    // ------------------ Events ---------------------------------- //
 
     /// @dev Emitted when the addon treasury address has been changed.
     ///
@@ -128,9 +122,7 @@ interface ILiquidityPoolConfiguration {
     /// @param oldTreasury The previous address of the operational treasury.
     event OperationalTreasuryChanged(address newTreasury, address oldTreasury);
 
-    // -------------------------------------------- //
-    //  Transactional functions                     //
-    // -------------------------------------------- //
+    // ------------------ Transactional functions ----------------- //
 
     /// @dev Sets the addon treasury address.
     ///

@@ -27,9 +27,7 @@ import { Loan } from "../libraries/Loan.sol";
 /// are used interchangeably since they all represent the same underlying loan structure in the smart contract.
 /// Unless otherwise specified, a smart-contract function is applicable to both ordinary loans and sub-loans.
 interface ILendingMarketPrimary {
-    // -------------------------------------------- //
-    //  Events                                      //
-    // -------------------------------------------- //
+    // ------------------ Events ---------------------------------- //
 
     /// @dev Emitted when a loan is taken.
     /// @param loanId The unique identifier of the loan.
@@ -157,9 +155,7 @@ interface ILendingMarketPrimary {
         uint256 indexed oldInterestRate
     );
 
-    // -------------------------------------------- //
-    //  Transactional functions                     //
-    // -------------------------------------------- //
+    // ------------------ Transactional functions ----------------- //
 
     /// @dev Takes an ordinary loan for a provided account. Can be called only by an account with a special role.
     /// @param borrower The account for whom the loan is taken.
@@ -321,9 +317,7 @@ interface ILendingMarketPrimary {
     /// @param newInterestRate The new secondary interest rate of the loan.
     function updateLoanInterestRateSecondary(uint256 loanId, uint256 newInterestRate) external;
 
-    // -------------------------------------------- //
-    //  View and pure functions                     //
-    // -------------------------------------------- //
+    // ------------------ View functions -------------------------- //
 
     /// @dev Gets the credit line associated with a program.
     /// @param programId The unique identifier of the program to check.
@@ -384,6 +378,8 @@ interface ILendingMarketPrimary {
     /// @dev Returns the total number of lending programs.
     function programCounter() external view returns (uint256);
 
+    // ------------------ Pure functions -------------------------- //
+
     /// @dev Proves the contract is the lending market one. A marker function.
     function proveLendingMarket() external pure;
 }
@@ -392,9 +388,7 @@ interface ILendingMarketPrimary {
 /// @author CloudWalk Inc. (See https://cloudwalk.io)
 /// @dev The configuration part of the lending market contract interface.
 interface ILendingMarketConfiguration {
-    // -------------------------------------------- //
-    //  Events                                      //
-    // -------------------------------------------- //
+    // ------------------ Events ---------------------------------- //
 
     /// @dev Emitted when a new credit line is registered.
     ///
@@ -461,9 +455,7 @@ interface ILendingMarketConfiguration {
         bool isAlias
     );
 
-    // -------------------------------------------- //
-    //  Transactional functions                     //
-    // -------------------------------------------- //
+    // ------------------ Transactional functions ----------------- //
 
     /// @dev Creates a new program.
     /// @param creditLine The address of the credit line to associate with the program.

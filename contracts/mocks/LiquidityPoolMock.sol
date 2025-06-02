@@ -11,24 +11,18 @@ import { ILendingMarket } from "../interfaces/ILendingMarket.sol";
 /// @author CloudWalk Inc. (See https://cloudwalk.io)
 /// @dev Mock of the `LiquidityPool` contract used for testing.
 contract LiquidityPoolMock {
-    // -------------------------------------------- //
-    //  Storage variables                           //
-    // -------------------------------------------- //
+    // ------------------ Storage variables ----------------------- //
 
     address private _addonTreasury;
 
-    // -------------------------------------------- //
-    //  Events                                      //
-    // -------------------------------------------- //
+    // ------------------ Events ---------------------------------- //
 
     event OnBeforeLoanTakenCalled(uint256 indexed loanId);
     event OnAfterLoanPaymentCalled(uint256 indexed loanId, uint256 indexed repaymentAmount);
     event OnAfterLoanRepaymentUndoingCalled(uint256 indexed loanId, uint256 indexed repaymentAmount);
     event OnAfterLoanRevocationCalled(uint256 indexed loanId);
 
-    // -------------------------------------------- //
-    //  Hook transactional functions                //
-    // -------------------------------------------- //
+    // ------------------ Hook transactional functions ------------ //
 
     function onBeforeLoanTaken(uint256 loanId) external {
         emit OnBeforeLoanTakenCalled(loanId);
@@ -46,9 +40,7 @@ contract LiquidityPoolMock {
         emit OnAfterLoanRevocationCalled(loanId);
     }
 
-    // -------------------------------------------- //
-    //  Mock transactional functions                //
-    // -------------------------------------------- //
+    // ------------------ Mock transactional functions ------------ //
 
     function approveMarket(address _market, address token_) external {
         IERC20(token_).approve(_market, type(uint56).max);
@@ -58,13 +50,13 @@ contract LiquidityPoolMock {
         _addonTreasury = newTreasury;
     }
 
-    // -------------------------------------------- //
-    //  View and pure functions                     //
-    // -------------------------------------------- //
+    // ------------------ View functions -------------------------- //
 
     function addonTreasury() external view returns (address) {
         return _addonTreasury;
     }
+
+    // ------------------ Pure functions -------------------------- //
 
     function proveLiquidityPool() external pure {}
 }

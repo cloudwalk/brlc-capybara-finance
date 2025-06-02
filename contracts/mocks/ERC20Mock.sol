@@ -10,9 +10,7 @@ import { IERC20Mintable } from "../interfaces/IERC20Mintable.sol";
 /// @author CloudWalk Inc. (See https://cloudwalk.io)
 /// @dev Mock of the `ERC20` token contract used for testing.
 contract ERC20Mock is ERC20, IERC20Mintable {
-    // -------------------------------------------- //
-    //  Events                                      //
-    // -------------------------------------------- //
+    // ------------------ Events ---------------------------------- //
 
     /// @dev Emitted when the minting of tokens from the reserve is imitated.
     ///
@@ -34,16 +32,12 @@ contract ERC20Mock is ERC20, IERC20Mintable {
         uint256 amount
     );
 
-    // -------------------------------------------- //
-    //  Constructor                                 //
-    // -------------------------------------------- //
+    // ------------------ Constructor ----------------------------- //
 
     /// @dev Contract constructor.
     constructor() ERC20("NAME", "SYMBOL") {}
 
-    // -------------------------------------------- //
-    //  Transactional functions                     //
-    // -------------------------------------------- //
+    // ------------------ Transactional functions ----------------- //
 
     /// @dev Mints tokens.
     /// @param account The address to mint tokens to.

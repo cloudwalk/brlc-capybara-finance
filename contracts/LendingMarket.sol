@@ -43,16 +43,12 @@ contract LendingMarket is
     using SafeERC20 for IERC20;
     using SafeCast for uint256;
 
-    // -------------------------------------------- //
-    //  Constants                                   //
-    // -------------------------------------------- //
+    // ------------------ Constants ------------------------------- //
 
     /// @dev The role of this contract admin.
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
 
-    // -------------------------------------------- //
-    //  Modifiers                                   //
-    // -------------------------------------------- //
+    // ------------------ Modifiers ------------------------------- //
 
     /// @dev Throws if the loan does not exist or has already been repaid.
     /// @param loanId The unique identifier of the loan to check.
@@ -61,9 +57,7 @@ contract LendingMarket is
         _;
     }
 
-    // -------------------------------------------- //
-    //  Constructor                                 //
-    // -------------------------------------------- //
+    // ------------------ Constructor ----------------------------- //
 
     /// @dev Constructor that prohibits the initialization of the implementation of the upgradable contract.
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -71,9 +65,7 @@ contract LendingMarket is
         _disableInitializers();
     }
 
-    // -------------------------------------------- //
-    //  Initializers                                //
-    // -------------------------------------------- //
+    // ------------------ Initializers ------------------------------- //
 
     /// @dev Initializer of the upgradable contract.
     /// @param owner_ The owner of the contract.
@@ -87,9 +79,7 @@ contract LendingMarket is
         _grantRole(OWNER_ROLE, owner_);
     }
 
-    // -------------------------------------------- //
-    //  Configuration transactional functions       //
-    // -------------------------------------------- //
+    // ----------- Configuration transactional functions ---------- //
 
     /// @inheritdoc ILendingMarketConfiguration
     function createProgram(
@@ -133,9 +123,7 @@ contract LendingMarket is
         _programLiquidityPools[programId] = liquidityPool;
     }
 
-    // -------------------------------------------- //
-    //  Primary transactional functions             //
-    // -------------------------------------------- //
+    // -------------- Primary transactional functions ------------- //
 
     /// @inheritdoc ILendingMarketPrimary
     function takeLoanFor(
@@ -448,9 +436,7 @@ contract LendingMarket is
         loan.interestRateSecondary = newInterestRate.toUint32();
     }
 
-    // -------------------------------------------- //
-    //  View functions                              //
-    // -------------------------------------------- //
+    // ------------------ View functions -------------------------- //
 
     /// @inheritdoc ILendingMarketPrimary
     function getProgramCreditLine(uint32 programId) external view returns (address) {
@@ -527,9 +513,7 @@ contract LendingMarket is
         return _programIdCounter;
     }
 
-    // -------------------------------------------- //
-    //  Pure functions                              //
-    // -------------------------------------------- //
+    // ------------------ Pure functions -------------------------- //
 
     /// @dev Calculates the period index that corresponds the specified timestamp.
     /// @param timestamp The timestamp to calculate the period index.
@@ -561,9 +545,7 @@ contract LendingMarket is
     /// @inheritdoc ILendingMarketPrimary
     function proveLendingMarket() external pure {}
 
-    // -------------------------------------------- //
-    //  Internal functions                          //
-    // -------------------------------------------- //
+    // ------------------ Internal functions ---------------------- //
 
     /// @dev Takes a loan for a provided account internally.
     /// @param borrower The account for whom the loan is taken.

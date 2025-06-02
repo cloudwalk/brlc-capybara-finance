@@ -4,20 +4,24 @@ pragma solidity ^0.8.0;
 
 /// @title IVersionable interface
 /// @author CloudWalk Inc. (See https://cloudwalk.io)
-/// @dev Defines the function of getting the contract version.
+/// @dev Defines code entities to get the version of a contract.
 interface IVersionable {
-    /// @dev The struct for the contract version.
+    // ------------------ Types ---------------------------------- //
+
+    /// @dev Defines the version of a contract.
     ///
-    /// Fields:
+    /// The fields:
     ///
-    /// - major -- The major version of contract.
-    /// - minor -- The minor version of contract.
-    /// - patch -- The patch version of contract.
+    /// - major -- The major version of the contract.
+    /// - minor -- The minor version of the contract.
+    /// - patch -- The patch version of the contract.
     struct Version {
         uint16 major;
         uint16 minor;
         uint16 patch;
     }
+
+    // ------------------ Pure functions -------------------------- //
 
     /// @dev Returns the version of the contract.
     function $__VERSION() external pure returns (Version memory);

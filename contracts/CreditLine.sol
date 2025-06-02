@@ -35,16 +35,12 @@ contract CreditLine is
 {
     using SafeCast for uint256;
 
-    // -------------------------------------------- //
-    //  Constants                                   //
-    // -------------------------------------------- //
+    // ------------------ Constants ------------------------------- //
 
     /// @dev The role of this contract admin.
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
 
-    // -------------------------------------------- //
-    //  Modifiers                                   //
-    // -------------------------------------------- //
+    // ------------------ Modifiers ------------------------------- //
 
     /// @dev Throws if called by any account other than the lending market.
     modifier onlyMarket() {
@@ -54,9 +50,7 @@ contract CreditLine is
         _;
     }
 
-    // -------------------------------------------- //
-    //  Constructor                                 //
-    // -------------------------------------------- //
+    // ------------------ Constructor ----------------------------- //
 
     /// @dev Constructor that prohibits the initialization of the implementation of the upgradable contract.
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -64,9 +58,7 @@ contract CreditLine is
         _disableInitializers();
     }
 
-    // -------------------------------------------- //
-    //  Initializers                                //
-    // -------------------------------------------- //
+    // ------------------ Initializers ------------------------------- //
 
     /// @dev Initializer of the upgradable contract.
     /// @param owner_ The address of the credit line owner.
@@ -113,9 +105,7 @@ contract CreditLine is
         _token = token_;
     }
 
-    // -------------------------------------------- //
-    //  Configuration transactional functions       //
-    // -------------------------------------------- //
+    // ----------- Configuration transactional functions ---------- //
 
     /// @inheritdoc ICreditLineConfiguration
     function configureCreditLine(CreditLineConfig memory config) external onlyRole(OWNER_ROLE) {
@@ -152,9 +142,7 @@ contract CreditLine is
         emit CreditLineConfigured(address(this));
     }
 
-    // -------------------------------------------- //
-    //  Primary transactional functions             //
-    // -------------------------------------------- //
+    // -------------- Primary transactional functions ------------- //
 
     /// @inheritdoc ICreditLinePrimary
     function configureBorrower(
@@ -200,9 +188,7 @@ contract CreditLine is
         }
     }
 
-    // -------------------------------------------- //
-    //  Hook transactional functions                //
-    // -------------------------------------------- //
+    // ------------------ Hook transactional functions ------------ //
 
     /// @inheritdoc ICreditLineHooks
     function onBeforeLoanTaken(uint256 loanId) external whenNotPaused onlyMarket {
@@ -232,9 +218,7 @@ contract CreditLine is
         _closeLoan(loan);
     }
 
-    // -------------------------------------------- //
-    //  View functions                              //
-    // -------------------------------------------- //
+    // ------------------ View functions -------------------------- //
 
     /// @inheritdoc ICreditLineConfiguration
     function creditLineConfiguration() external view override returns (CreditLineConfig memory) {
@@ -316,16 +300,12 @@ contract CreditLine is
         return _determineLateFeeAmount(loanTrackedBalance, _config.lateFeeRate);
     }
 
-    // -------------------------------------------- //
-    //  Pure functions                              //
-    // -------------------------------------------- //
+    // ------------------ Pure functions -------------------------- //
 
     /// @inheritdoc ICreditLinePrimary
     function proveCreditLine() external pure {}
 
-    // -------------------------------------------- //
-    //  Internal functions                          //
-    // -------------------------------------------- //
+    // ------------------ Internal functions ---------------------- //
 
     /// @dev Updates the configuration of a borrower.
     /// @param borrower The address of the borrower to configure.
