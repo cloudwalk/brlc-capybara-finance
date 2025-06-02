@@ -34,7 +34,6 @@ contract ERC20Mock is ERC20, IERC20Mintable {
 
     // ------------------ Constructor ----------------------------- //
 
-    /// @dev Contract constructor.
     constructor() ERC20("NAME", "SYMBOL") {}
 
     // ------------------ Transactional functions ----------------- //
