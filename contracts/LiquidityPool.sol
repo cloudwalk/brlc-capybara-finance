@@ -245,7 +245,7 @@ contract LiquidityPool is
 
     // ------------------ Pure functions -------------------------- //
 
-    /// @inheritdoc ILiquidityPoolPrimary
+    /// @inheritdoc ILiquidityPool
     function proveLiquidityPool() external pure {}
 
     // ------------------ Internal functions ---------------------- //

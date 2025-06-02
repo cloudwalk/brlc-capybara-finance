@@ -377,11 +377,6 @@ interface ILendingMarketPrimary {
 
     /// @dev Returns the total number of lending programs.
     function programCounter() external view returns (uint256);
-
-    // ------------------ Pure functions -------------------------- //
-
-    /// @dev Proves the contract is the lending market one. A marker function.
-    function proveLendingMarket() external pure;
 }
 
 /// @title ILendingMarketConfiguration interface
@@ -527,4 +522,7 @@ interface ILendingMarketErrors {
 /// @title ILendingMarket interface
 /// @author CloudWalk Inc. (See https://cloudwalk.io)
 /// @dev The full interface of the lending market contract.
-interface ILendingMarket is ILendingMarketPrimary, ILendingMarketConfiguration, ILendingMarketErrors {}
+interface ILendingMarket is ILendingMarketPrimary, ILendingMarketConfiguration, ILendingMarketErrors {
+    /// @dev Proves the contract is the lending market one. A marker function.
+    function proveLendingMarket() external pure;
+}

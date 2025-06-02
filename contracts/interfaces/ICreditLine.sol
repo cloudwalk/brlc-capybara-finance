@@ -77,11 +77,6 @@ interface ICreditLinePrimary is ICreditLineTypes {
     /// @param borrower The address of the borrower to check.
     /// @return The structure containing the borrower state.
     function getBorrowerState(address borrower) external view returns (BorrowerState memory);
-
-    // ------------------ Pure functions -------------------------- //
-
-    /// @dev Proves the contract is the credit line one. A marker function.
-    function proveCreditLine() external pure;
 }
 
 /// @title ICreditLineConfiguration interface
@@ -158,4 +153,7 @@ interface ICreditLineErrors {
 /// @title ICreditLine interface
 /// @author CloudWalk Inc. (See https://cloudwalk.io)
 /// @dev Defines the full interface of the credit line contract.
-interface ICreditLine is ICreditLinePrimary, ICreditLineConfiguration, ICreditLineHooks, ICreditLineErrors {}
+interface ICreditLine is ICreditLinePrimary, ICreditLineConfiguration, ICreditLineHooks, ICreditLineErrors {
+    /// @dev Proves the contract is the credit line one. A marker function.
+    function proveCreditLine() external pure;
+}

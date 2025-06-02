@@ -546,7 +546,7 @@ contract LendingMarket is
             );
     }
 
-    /// @inheritdoc ILendingMarketPrimary
+    /// @inheritdoc ILendingMarket
     function proveLendingMarket() external pure {}
 
     // ------------------ Internal functions ---------------------- //

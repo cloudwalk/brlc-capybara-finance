@@ -306,7 +306,7 @@ contract CreditLine is
 
     // ------------------ Pure functions -------------------------- //
 
-    /// @inheritdoc ICreditLinePrimary
+    /// @inheritdoc ICreditLine
     function proveCreditLine() external pure {}
 
     // ------------------ Internal functions ---------------------- //

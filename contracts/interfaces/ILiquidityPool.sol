@@ -93,11 +93,6 @@ interface ILiquidityPoolPrimary {
     ///
     /// @return The borrowable and addons balances.
     function getBalances() external view returns (uint256, uint256);
-
-    // ------------------ Pure functions -------------------------- //
-
-    /// @dev Proves the contract is the liquidity pool one. A marker function.
-    function proveLiquidityPool() external pure;
 }
 
 /// @title ILiquidityPoolConfiguration interface
@@ -194,4 +189,7 @@ interface ILiquidityPool is
     ILiquidityPoolConfiguration,
     ILiquidityPoolHooks,
     ILiquidityPoolErrors
-{}
+{
+    /// @dev Proves the contract is the liquidity pool one. A marker function.
+    function proveLiquidityPool() external pure;
+}
