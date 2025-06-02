@@ -26,7 +26,7 @@ import { LiquidityPoolStorage } from "./LiquidityPoolStorage.sol";
 
 /// @title LiquidityPool contract
 /// @author CloudWalk Inc. (See https://cloudwalk.io)
-/// @dev The upgradable liquidity pool contract.
+/// @dev The upgradeable liquidity pool contract.
 contract LiquidityPool is
     LiquidityPoolStorage,
     AccessControlExtUpgradeable,
@@ -55,7 +55,7 @@ contract LiquidityPool is
 
     // ------------------ Constructor ----------------------------- //
 
-    /// @dev Constructor that prohibits the initialization of the implementation of the upgradable contract.
+    /// @dev Constructor that prohibits the initialization of the implementation of the upgradeable contract.
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
@@ -63,7 +63,7 @@ contract LiquidityPool is
 
     // ------------------ Initializers ------------------------------- //
 
-    /// @dev Initializer of the upgradable contract.
+    /// @dev Initializer of the upgradeable contract.
     /// @param owner_ The address of the liquidity pool owner.
     /// @param market_ The address of the lending market.
     /// @param token_ The address of the token.

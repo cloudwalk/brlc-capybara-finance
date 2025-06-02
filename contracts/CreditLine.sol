@@ -24,7 +24,7 @@ import { CreditLineStorage } from "./CreditLineStorage.sol";
 
 /// @title CreditLine contract
 /// @author CloudWalk Inc. (See https://cloudwalk.io)
-/// @dev The upgradable credit line contract.
+/// @dev The upgradeable credit line contract.
 contract CreditLine is
     CreditLineStorage,
     AccessControlExtUpgradeable,
@@ -52,7 +52,7 @@ contract CreditLine is
 
     // ------------------ Constructor ----------------------------- //
 
-    /// @dev Constructor that prohibits the initialization of the implementation of the upgradable contract.
+    /// @dev Constructor that prohibits the initialization of the implementation of the upgradeable contract.
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
@@ -60,7 +60,7 @@ contract CreditLine is
 
     // ------------------ Initializers ------------------------------- //
 
-    /// @dev Initializer of the upgradable contract.
+    /// @dev Initializer of the upgradeable contract.
     /// @param owner_ The address of the credit line owner.
     /// @param market_ The address of the lending market.
     /// @param token_ The address of the token.
