@@ -631,7 +631,11 @@ describe("Contract 'LendingMarket': base tests", async () => {
   }
 
   async function deployLendingMarket(): Promise<Fixture> {
-    let market = await upgrades.deployProxy(lendingMarketFactory, [owner.address], { kind: "uups" });
+    let market = await upgrades.deployProxy(
+      lendingMarketFactory,
+      [owner.address],
+      { kind: "uups" }
+    ) as Contract;
 
     market = connect(market, owner); // Explicitly specifying the initial account
     const marketUnderAdmin = connect(market, admin);

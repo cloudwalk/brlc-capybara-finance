@@ -303,7 +303,7 @@ describe("Contract 'CreditLine'", async () => {
         tokenAddress
       ],
       { kind: "uups" }
-    );
+    ) as Contract;
     await creditLine.waitForDeployment();
     creditLine = connect(creditLine, owner); // Explicitly specifying the initial account
     const creditLineUnderAdmin = creditLine.connect(admin) as Contract;

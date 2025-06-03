@@ -152,7 +152,7 @@ describe("Contract 'LiquidityPool'", async () => {
         tokenAddress
       ],
       { kind: "uups" }
-    );
+    ) as Contract;
 
     await liquidityPool.waitForDeployment();
     liquidityPool = connect(liquidityPool, owner); // Explicitly specifying the initial account
