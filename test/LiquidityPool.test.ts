@@ -416,6 +416,14 @@ describe("Contract 'LiquidityPool'", async () => {
       await expect(liquidityPool.initialize(marketAddress, owner.address, tokenAddress))
         .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_ALREADY_INITIALIZED);
     });
+
+    it("Is reverted for the contract implementation if it is called even for the first time", async () => {
+      const liquidityPoolImplementation = await liquidityPoolFactory.deploy() as Contract;
+      await liquidityPoolImplementation.waitForDeployment();
+
+      await expect(liquidityPoolImplementation.initialize(marketAddress, owner.address, tokenAddress))
+        .to.be.revertedWithCustomError(liquidityPoolImplementation, ERROR_NAME_ALREADY_INITIALIZED);
+    });
   });
 
   describe("Function '$__VERSION()'", async () => {

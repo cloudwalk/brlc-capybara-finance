@@ -856,6 +856,14 @@ describe("Contract 'LendingMarket': base tests", async () => {
       await expect(market.initialize(owner.address))
         .to.be.revertedWithCustomError(market, ERROR_NAME_ALREADY_INITIALIZED);
     });
+
+    it("Is reverted for the contract implementation if it is called even for the first time", async () => {
+      const marketImplementation = await lendingMarketFactory.deploy() as Contract;
+      await marketImplementation.waitForDeployment();
+
+      await expect(marketImplementation.initialize(owner.address))
+        .to.be.revertedWithCustomError(marketImplementation, ERROR_NAME_ALREADY_INITIALIZED);
+    });
   });
 
   describe("Function '$__VERSION()'", async () => {

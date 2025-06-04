@@ -595,6 +595,14 @@ describe("Contract 'CreditLine'", async () => {
       await expect(creditLine.initialize(owner.address, marketAddress, tokenAddress))
         .to.be.revertedWithCustomError(creditLine, ERROR_NAME_ALREADY_INITIALIZED);
     });
+
+    it("Is reverted for the contract implementation if it is called even for the first time", async () => {
+      const creditLineImplementation = await creditLineFactory.deploy() as Contract;
+      await creditLineImplementation.waitForDeployment();
+
+      await expect(creditLineImplementation.initialize(owner.address, marketAddress, tokenAddress))
+        .to.be.revertedWithCustomError(creditLineImplementation, ERROR_NAME_ALREADY_INITIALIZED);
+    });
   });
 
   describe("Function '$__VERSION()'", async () => {
