@@ -214,12 +214,15 @@ describe("Contract 'LendingMarket': complex tests", async () => {
     const creditLineAddress = getAddress(creditLine);
 
     // Deploy the liquidity pool contract
-    let liquidityPool = await upgrades.deployProxy(liquidityPoolFactory, [
-      owner.address,
-      lendingMarketAddress,
-      tokenAddress,
+    let liquidityPool = await upgrades.deployProxy(
+      liquidityPoolFactory,
+      [
+        owner.address,
+        lendingMarketAddress,
+        tokenAddress
+      ],
       { kind: "uups" }
-    ]) as Contract;
+    ) as Contract;
     await liquidityPool.waitForDeployment();
     liquidityPool = connect(liquidityPool, owner); // Explicitly specifying the initial account
     const liquidityPoolAddress = getAddress(liquidityPool);
