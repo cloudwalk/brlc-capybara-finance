@@ -9,9 +9,9 @@ describe("Contract 'PausableExtUpgradeable'", async () => {
   const EVENT_NAME_PAUSED = "Paused";
   const EVENT_NAME_UNPAUSED = "Unpaused";
 
-  const REVERT_ERROR_IF_CONTRACT_INITIALIZATION_IS_INVALID = "InvalidInitialization";
-  const REVERT_ERROR_IF_CONTRACT_IS_NOT_INITIALIZING = "NotInitializing";
-  const REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT = "AccessControlUnauthorizedAccount";
+  const ERROR_NAME_IF_CONTRACT_INITIALIZATION_IS_INVALID = "InvalidInitialization";
+  const ERROR_NAME_IF_CONTRACT_IS_NOT_INITIALIZING = "NotInitializing";
+  const ERROR_NAME_IF_UNAUTHORIZED_ACCOUNT = "AccessControlUnauthorizedAccount";
 
   const OWNER_ROLE: string = ethers.id("OWNER_ROLE");
   const GRANTOR_ROLE: string = ethers.id("GRANTOR_ROLE");
@@ -72,7 +72,7 @@ describe("Contract 'PausableExtUpgradeable'", async () => {
       const { pausableExtMock } = await setUpFixture(deployPausableExtMock);
       await expect(pausableExtMock.initialize()).to.be.revertedWithCustomError(
         pausableExtMock,
-        REVERT_ERROR_IF_CONTRACT_INITIALIZATION_IS_INVALID
+        ERROR_NAME_IF_CONTRACT_INITIALIZATION_IS_INVALID
       );
     });
 
@@ -80,7 +80,7 @@ describe("Contract 'PausableExtUpgradeable'", async () => {
       const { pausableExtMock } = await setUpFixture(deployPausableExtMock);
       await expect(pausableExtMock.callParentInitializerUnchained()).to.be.revertedWithCustomError(
         pausableExtMock,
-        REVERT_ERROR_IF_CONTRACT_IS_NOT_INITIALIZING
+        ERROR_NAME_IF_CONTRACT_IS_NOT_INITIALIZING
       );
     });
   });
@@ -99,7 +99,7 @@ describe("Contract 'PausableExtUpgradeable'", async () => {
     it("Is reverted if it is called by an account without the pauser role", async () => {
       const { pausableExtMock } = await setUpFixture(deployAndConfigurePausableExtMock);
       await expect(pausableExtMock.pause())
-        .to.be.revertedWithCustomError(pausableExtMock, REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT)
+        .to.be.revertedWithCustomError(pausableExtMock, ERROR_NAME_IF_UNAUTHORIZED_ACCOUNT)
         .withArgs(deployer.address, PAUSER_ROLE);
     });
   });
@@ -119,7 +119,7 @@ describe("Contract 'PausableExtUpgradeable'", async () => {
     it("Is reverted if it is called by an account without the pauser role", async () => {
       const { pausableExtMock } = await setUpFixture(deployAndConfigurePausableExtMock);
       await expect(pausableExtMock.unpause())
-        .to.be.revertedWithCustomError(pausableExtMock, REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT)
+        .to.be.revertedWithCustomError(pausableExtMock, ERROR_NAME_IF_UNAUTHORIZED_ACCOUNT)
         .withArgs(deployer.address, PAUSER_ROLE);
     });
   });
