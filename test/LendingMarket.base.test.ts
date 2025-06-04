@@ -137,35 +137,10 @@ interface LoanOperation {
   subjectToUndo: boolean;
 }
 
-const ERROR_NAME_ADDON_TREASURY_ADDRESS_ZERO = "AddonTreasuryAddressZero";
-const ERROR_NAME_ALREADY_CONFIGURED = "AlreadyConfigured";
-const ERROR_NAME_ALREADY_INITIALIZED = "InvalidInitialization";
-const ERROR_NAME_CONTRACT_ADDRESS_INVALID = "ContractAddressInvalid";
-const ERROR_NAME_ENFORCED_PAUSED = "EnforcedPause";
-const ERROR_NAME_LOAN_ALREADY_FROZEN = "LoanAlreadyFrozen";
-const ERROR_NAME_LOAN_ALREADY_REPAID = "LoanAlreadyRepaid";
-const ERROR_NAME_LOAN_NOT_EXIST = "LoanNotExist";
-const ERROR_NAME_LOAN_NOT_FROZEN = "LoanNotFrozen";
-const ERROR_NAME_INAPPROPRIATE_DURATION_IN_PERIODS = "InappropriateLoanDuration";
-const ERROR_NAME_INAPPROPRIATE_INTEREST_RATE = "InappropriateInterestRate";
-const ERROR_NAME_INVALID_AMOUNT = "InvalidAmount";
-const ERROR_NAME_IMPLEMENTATION_ADDRESS_INVALID = "ImplementationAddressInvalid";
-const ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED = "AccessControlUnauthorizedAccount";
-const ERROR_NAME_ZERO_ADDRESS = "ZeroAddress";
-const ERROR_NAME_PROGRAM_CREDIT_LINE_NOT_CONFIGURED = "ProgramCreditLineNotConfigured";
-const ERROR_NAME_PROGRAM_LIQUIDITY_POOL_NOT_CONFIGURED = "ProgramLiquidityPoolNotConfigured";
-const ERROR_NAME_PROGRAM_NOT_EXIST = "ProgramNotExist";
-const ERROR_NAME_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST = "SafeCastOverflowedUintDowncast";
-const ERROR_NAME_DURATION_ARRAY_INVALID = "DurationArrayInvalid";
-const ERROR_NAME_INSTALLMENT_COUNT_EXCESS = "InstallmentCountExcess";
-const ERROR_NAME_ARRAY_LENGTH_MISMATCH = "ArrayLengthMismatch";
-const ERROR_NAME_LOAN_TYPE_UNEXPECTED = "LoanTypeUnexpected";
-const ERROR_NAME_LOAN_ID_EXCESS = "LoanIdExcess";
-const ERROR_NAME_PROGRAM_ID_EXCESS = "ProgramIdExcess";
-const ERROR_NAME_REPAYMENT_TIMESTAMP_INVALID = "RepaymentTimestampInvalid";
+// Events of the lib contracts
+const EVENT_NAME_TRANSFER = "Transfer";
 
-const EVENT_NAME_PROGRAM_CREATED = "ProgramCreated";
-const EVENT_NAME_PROGRAM_UPDATED = "ProgramUpdated";
+// Events of the contracts under test
 const EVENT_NAME_LOAN_INTEREST_RATE_PRIMARY_UPDATED = "LoanInterestRatePrimaryUpdated";
 const EVENT_NAME_LOAN_INTEREST_RATE_SECONDARY_UPDATED = "LoanInterestRateSecondaryUpdated";
 const EVENT_NAME_LOAN_DURATION_UPDATED = "LoanDurationUpdated";
@@ -173,17 +148,48 @@ const EVENT_NAME_LOAN_FROZEN = "LoanFrozen";
 const EVENT_NAME_LOAN_REPAYMENT = "LoanRepayment";
 const EVENT_NAME_LOAN_DISCOUNTED = "LoanDiscounted";
 const EVENT_NAME_LOAN_TAKEN = "LoanTaken";
+const EVENT_NAME_PROGRAM_CREATED = "ProgramCreated";
+const EVENT_NAME_PROGRAM_UPDATED = "ProgramUpdated";
 const EVENT_NAME_INSTALLMENT_LOAN_TAKEN = "InstallmentLoanTaken";
 const EVENT_NAME_LOAN_UNFROZEN = "LoanUnfrozen";
 const EVENT_NAME_ON_BEFORE_LOAN_REOPENED_CALLED = "OnBeforeLoanReopenedCalled";
-const EVENT_NAME_ON_BEFORE_LOAN_TAKEN = "OnBeforeLoanTakenCalled";
-const EVENT_NAME_ON_AFTER_LOAN_PAYMENT = "OnAfterLoanPaymentCalled";
+const EVENT_NAME_ON_BEFORE_LOAN_TAKEN_CALLED = "OnBeforeLoanTakenCalled";
+const EVENT_NAME_ON_AFTER_LOAN_PAYMENT_CALLED = "OnAfterLoanPaymentCalled";
 const EVENT_NAME_ON_AFTER_LOAN_REPAYMENT_UNDOING_CALLED = "OnAfterLoanRepaymentUndoingCalled";
 const EVENT_NAME_LOAN_REVOKED = "LoanRevoked";
 const EVENT_NAME_INSTALLMENT_LOAN_REVOKED = "InstallmentLoanRevoked";
-const EVENT_NAME_ON_AFTER_LOAN_REVOCATION = "OnAfterLoanRevocationCalled";
-const EVENT_NAME_TRANSFER = "Transfer";
+const EVENT_NAME_ON_AFTER_LOAN_REVOCATION_CALLED = "OnAfterLoanRevocationCalled";
 const ERROR_NAME_REPAYMENT_UNDONE = "RepaymentUndone";
+
+// Errors of the lib contracts
+const ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT = "AccessControlUnauthorizedAccount";
+const ERROR_NAME_ENFORCED_PAUSED = "EnforcedPause";
+const ERROR_NAME_INVALID_INITIALIZATION = "InvalidInitialization";
+
+// Errors of the contracts under test
+const ERROR_NAME_ADDON_TREASURY_ADDRESS_ZERO = "AddonTreasuryAddressZero";
+const ERROR_NAME_ALREADY_CONFIGURED = "AlreadyConfigured";
+const ERROR_NAME_ARRAY_LENGTH_MISMATCH = "ArrayLengthMismatch";
+const ERROR_NAME_CONTRACT_ADDRESS_INVALID = "ContractAddressInvalid";
+const ERROR_NAME_DURATION_ARRAY_INVALID = "DurationArrayInvalid";
+const ERROR_NAME_LOAN_ALREADY_FROZEN = "LoanAlreadyFrozen";
+const ERROR_NAME_LOAN_ALREADY_REPAID = "LoanAlreadyRepaid";
+const ERROR_NAME_LOAN_ID_EXCESS = "LoanIdExcess";
+const ERROR_NAME_LOAN_NOT_EXIST = "LoanNotExist";
+const ERROR_NAME_LOAN_NOT_FROZEN = "LoanNotFrozen";
+const ERROR_NAME_LOAN_TYPE_UNEXPECTED = "LoanTypeUnexpected";
+const ERROR_NAME_INAPPROPRIATE_DURATION_IN_PERIODS = "InappropriateLoanDuration";
+const ERROR_NAME_INAPPROPRIATE_INTEREST_RATE = "InappropriateInterestRate";
+const ERROR_NAME_INSTALLMENT_COUNT_EXCESS = "InstallmentCountExcess";
+const ERROR_NAME_INVALID_AMOUNT = "InvalidAmount";
+const ERROR_NAME_IMPLEMENTATION_ADDRESS_INVALID = "ImplementationAddressInvalid";
+const ERROR_NAME_PROGRAM_CREDIT_LINE_NOT_CONFIGURED = "ProgramCreditLineNotConfigured";
+const ERROR_NAME_PROGRAM_LIQUIDITY_POOL_NOT_CONFIGURED = "ProgramLiquidityPoolNotConfigured";
+const ERROR_NAME_PROGRAM_ID_EXCESS = "ProgramIdExcess";
+const ERROR_NAME_PROGRAM_NOT_EXIST = "ProgramNotExist";
+const ERROR_NAME_REPAYMENT_TIMESTAMP_INVALID = "RepaymentTimestampInvalid";
+const ERROR_NAME_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST = "SafeCastOverflowedUintDowncast";
+const ERROR_NAME_ZERO_ADDRESS = "ZeroAddress";
 
 const OWNER_ROLE = ethers.id("OWNER_ROLE");
 const GRANTOR_ROLE = ethers.id("GRANTOR_ROLE");
@@ -854,7 +860,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       const { market } = await setUpFixture(deployLendingMarket);
 
       await expect(market.initialize(owner.address))
-        .to.be.revertedWithCustomError(market, ERROR_NAME_ALREADY_INITIALIZED);
+        .to.be.revertedWithCustomError(market, ERROR_NAME_INVALID_INITIALIZATION);
     });
 
     it("Is reverted for the contract implementation if it is called even for the first time", async () => {
@@ -862,7 +868,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       await marketImplementation.waitForDeployment();
 
       await expect(marketImplementation.initialize(owner.address))
-        .to.be.revertedWithCustomError(marketImplementation, ERROR_NAME_ALREADY_INITIALIZED);
+        .to.be.revertedWithCustomError(marketImplementation, ERROR_NAME_INVALID_INITIALIZATION);
     });
   });
 
@@ -884,10 +890,10 @@ describe("Contract 'LendingMarket': base tests", async () => {
       const { market } = await setUpFixture(deployLendingMarket);
 
       await expect(connect(market, admin).upgradeToAndCall(market, "0x"))
-        .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
+        .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
         .withArgs(admin.address, OWNER_ROLE);
       await expect(connect(market, stranger).upgradeToAndCall(market, "0x"))
-        .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
+        .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
         .withArgs(stranger.address, OWNER_ROLE);
     });
 
@@ -932,10 +938,10 @@ describe("Contract 'LendingMarket': base tests", async () => {
       const { market } = await setUpFixture(deployLendingMarket);
 
       await expect(connect(market, admin).createProgram(creditLineAddress, liquidityPoolAddress))
-        .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
+        .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
         .withArgs(admin.address, OWNER_ROLE);
       await expect(connect(market, stranger).createProgram(creditLineAddress, liquidityPoolAddress))
-        .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
+        .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
         .withArgs(stranger.address, OWNER_ROLE);
     });
 
@@ -1036,10 +1042,10 @@ describe("Contract 'LendingMarket': base tests", async () => {
       const { market } = await setUpFixture(deployLendingMarket);
 
       await expect(connect(market, admin).updateProgram(PROGRAM_ID, creditLineAddress, liquidityPoolAddress))
-        .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
+        .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
         .withArgs(admin.address, OWNER_ROLE);
       await expect(connect(market, stranger).updateProgram(PROGRAM_ID, creditLineAddress, liquidityPoolAddress))
-        .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
+        .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
         .withArgs(stranger.address, OWNER_ROLE);
     });
 
@@ -1168,8 +1174,8 @@ describe("Contract 'LendingMarket': base tests", async () => {
         .withArgs(expectedLoanId, borrower.address, principalAmount, DURATION_IN_PERIODS);
 
       // Check that the appropriate market hook functions are called
-      await expect(tx).to.emit(liquidityPool, EVENT_NAME_ON_BEFORE_LOAN_TAKEN).withArgs(expectedLoanId);
-      await expect(tx).to.emit(creditLine, EVENT_NAME_ON_BEFORE_LOAN_TAKEN).withArgs(expectedLoanId);
+      await expect(tx).to.emit(liquidityPool, EVENT_NAME_ON_BEFORE_LOAN_TAKEN_CALLED).withArgs(expectedLoanId);
+      await expect(tx).to.emit(creditLine, EVENT_NAME_ON_BEFORE_LOAN_TAKEN_CALLED).withArgs(expectedLoanId);
 
       // Check the returned value of the function for the second loan
       const nextActualLoanId: bigint = await marketUnderAdmin.takeLoanFor.staticCall(
@@ -1221,7 +1227,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
           )
         ).to.be.revertedWithCustomError(
           market,
-          ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED
+          ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT
         ).withArgs(owner.address, ADMIN_ROLE);
 
         await expect(
@@ -1234,7 +1240,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
           )
         ).to.be.revertedWithCustomError(
           market,
-          ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED
+          ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT
         ).withArgs(borrower.address, ADMIN_ROLE);
       });
 
@@ -1465,8 +1471,8 @@ describe("Contract 'LendingMarket': base tests", async () => {
           .withArgs(expectedLoanIds[i], borrower.address, principalAmounts[i], durationsInPeriods[i]);
 
         // Check that the appropriate market hook functions are called
-        await expect(tx).to.emit(liquidityPool, EVENT_NAME_ON_BEFORE_LOAN_TAKEN).withArgs(expectedLoanIds[i]);
-        await expect(tx).to.emit(creditLine, EVENT_NAME_ON_BEFORE_LOAN_TAKEN).withArgs(expectedLoanIds[i]);
+        await expect(tx).to.emit(liquidityPool, EVENT_NAME_ON_BEFORE_LOAN_TAKEN_CALLED).withArgs(expectedLoanIds[i]);
+        await expect(tx).to.emit(creditLine, EVENT_NAME_ON_BEFORE_LOAN_TAKEN_CALLED).withArgs(expectedLoanIds[i]);
       }
       await expect(tx)
         .to.emit(marketUnderAdmin, EVENT_NAME_INSTALLMENT_LOAN_TAKEN)
@@ -1545,7 +1551,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
           )
         ).to.be.revertedWithCustomError(
           market,
-          ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED
+          ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT
         ).withArgs(owner.address, ADMIN_ROLE);
 
         await expect(
@@ -1558,7 +1564,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
           )
         ).to.be.revertedWithCustomError(
           market,
-          ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED
+          ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT
         ).withArgs(borrower.address, ADMIN_ROLE);
       });
 
@@ -1821,10 +1827,10 @@ describe("Contract 'LendingMarket': base tests", async () => {
 
       // Check that the appropriate market hook functions are called
       await expect(tx)
-        .to.emit(liquidityPool, EVENT_NAME_ON_AFTER_LOAN_PAYMENT)
+        .to.emit(liquidityPool, EVENT_NAME_ON_AFTER_LOAN_PAYMENT_CALLED)
         .withArgs(expectedLoan.id, repaymentAmount);
       await expect(tx)
-        .to.emit(creditLine, EVENT_NAME_ON_AFTER_LOAN_PAYMENT)
+        .to.emit(creditLine, EVENT_NAME_ON_AFTER_LOAN_PAYMENT_CALLED)
         .withArgs(expectedLoan.id, repaymentAmount);
 
       return expectedLoan;
@@ -1980,10 +1986,10 @@ describe("Contract 'LendingMarket': base tests", async () => {
 
         // Check that the appropriate market hook functions are called
         await expect(tx)
-          .to.emit(liquidityPool, EVENT_NAME_ON_AFTER_LOAN_PAYMENT)
+          .to.emit(liquidityPool, EVENT_NAME_ON_AFTER_LOAN_PAYMENT_CALLED)
           .withArgs(expectedLoan.id, expectedRepaymentAmount);
         await expect(tx)
-          .to.emit(creditLine, EVENT_NAME_ON_AFTER_LOAN_PAYMENT)
+          .to.emit(creditLine, EVENT_NAME_ON_AFTER_LOAN_PAYMENT_CALLED)
           .withArgs(expectedLoan.id, expectedRepaymentAmount);
 
         expectedRepaymentAmounts.push(expectedRepaymentAmount);
@@ -2101,13 +2107,13 @@ describe("Contract 'LendingMarket': base tests", async () => {
         const repaymentAmounts: number[] = Array(loans.length).fill(REPAYMENT_AMOUNT);
 
         await expect(connect(market, owner).repayLoanForBatch(loanIds, repaymentAmounts, borrower.address))
-          .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
+          .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
           .withArgs(owner.address, ADMIN_ROLE);
         await expect(connect(market, borrower).repayLoanForBatch(loanIds, repaymentAmounts, borrower.address))
-          .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
+          .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
           .withArgs(borrower.address, ADMIN_ROLE);
         await expect(connect(market, stranger).repayLoanForBatch(loanIds, repaymentAmounts, borrower.address))
-          .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
+          .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
           .withArgs(stranger.address, ADMIN_ROLE);
       });
 
@@ -2323,13 +2329,13 @@ describe("Contract 'LendingMarket': base tests", async () => {
         const discountAmounts: number[] = Array(loans.length).fill(DISCOUNT_AMOUNT);
 
         await expect(connect(market, owner).discountLoanForBatch(loanIds, discountAmounts))
-          .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
+          .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
           .withArgs(owner.address, ADMIN_ROLE);
         await expect(connect(market, borrower).discountLoanForBatch(loanIds, discountAmounts))
-          .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
+          .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
           .withArgs(borrower.address, ADMIN_ROLE);
         await expect(connect(market, stranger).discountLoanForBatch(loanIds, discountAmounts))
-          .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
+          .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
           .withArgs(stranger.address, ADMIN_ROLE);
       });
 
@@ -3163,21 +3169,21 @@ describe("Contract 'LendingMarket': base tests", async () => {
           connect(market, owner).undoRepaymentFor(loan.id, repaymentAmount, repaymentTimestamp, receiver.address)
         ).to.be.revertedWithCustomError(
           market,
-          ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED
+          ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT
         ).withArgs(owner.address, ADMIN_ROLE);
 
         await expect(
           connect(market, borrower).undoRepaymentFor(loan.id, repaymentAmount, repaymentTimestamp, receiver.address)
         ).to.be.revertedWithCustomError(
           market,
-          ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED
+          ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT
         ).withArgs(borrower.address, ADMIN_ROLE);
 
         await expect(
           connect(market, stranger).undoRepaymentFor(loan.id, repaymentAmount, repaymentTimestamp, receiver.address)
         ).to.be.revertedWithCustomError(
           market,
-          ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED
+          ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT
         ).withArgs(stranger.address, ADMIN_ROLE);
       });
 
@@ -3256,13 +3262,13 @@ describe("Contract 'LendingMarket': base tests", async () => {
       const { market, ordinaryLoan: loan } = await setUpFixture(deployLendingMarketAndTakeLoans);
 
       await expect(connect(market, owner).freeze(loan.id))
-        .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
+        .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
         .withArgs(owner.address, ADMIN_ROLE);
       await expect(connect(market, borrower).freeze(loan.id))
-        .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
+        .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
         .withArgs(borrower.address, ADMIN_ROLE);
       await expect(connect(market, stranger).freeze(loan.id))
-        .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
+        .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
         .withArgs(stranger.address, ADMIN_ROLE);
     });
 
@@ -3409,13 +3415,13 @@ describe("Contract 'LendingMarket': base tests", async () => {
         const { market, ordinaryLoan: loan } = await setUpFixture(deployLendingMarketAndTakeLoans);
 
         await expect(connect(market, owner).unfreeze(loan.id))
-          .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
+          .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
           .withArgs(owner.address, ADMIN_ROLE);
         await expect(connect(market, borrower).unfreeze(loan.id))
-          .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
+          .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
           .withArgs(borrower.address, ADMIN_ROLE);
         await expect(connect(market, stranger).unfreeze(loan.id))
-          .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
+          .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
           .withArgs(stranger.address, ADMIN_ROLE);
       });
 
@@ -3470,13 +3476,13 @@ describe("Contract 'LendingMarket': base tests", async () => {
       const { market, ordinaryLoan: loan } = await setUpFixture(deployLendingMarketAndTakeLoans);
 
       await expect(connect(market, owner).updateLoanDuration(loan.id, DURATION_IN_PERIODS))
-        .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
+        .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
         .withArgs(owner.address, ADMIN_ROLE);
       await expect(connect(market, borrower).updateLoanDuration(loan.id, DURATION_IN_PERIODS))
-        .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
+        .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
         .withArgs(borrower.address, ADMIN_ROLE);
       await expect(connect(market, stranger).updateLoanDuration(loan.id, DURATION_IN_PERIODS))
-        .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
+        .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
         .withArgs(stranger.address, ADMIN_ROLE);
     });
 
@@ -3552,13 +3558,13 @@ describe("Contract 'LendingMarket': base tests", async () => {
       const { market, ordinaryLoan: loan } = await setUpFixture(deployLendingMarketAndTakeLoans);
 
       await expect(connect(market, owner).updateLoanInterestRatePrimary(loan.id, INTEREST_RATE_PRIMARY))
-        .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
+        .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
         .withArgs(owner.address, ADMIN_ROLE);
       await expect(connect(market, borrower).updateLoanInterestRatePrimary(loan.id, INTEREST_RATE_PRIMARY))
-        .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
+        .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
         .withArgs(borrower.address, ADMIN_ROLE);
       await expect(connect(market, stranger).updateLoanInterestRatePrimary(loan.id, INTEREST_RATE_PRIMARY))
-        .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
+        .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
         .withArgs(stranger.address, ADMIN_ROLE);
     });
 
@@ -3621,13 +3627,13 @@ describe("Contract 'LendingMarket': base tests", async () => {
       const { market, ordinaryLoan: loan } = await setUpFixture(deployLendingMarketAndTakeLoans);
 
       await expect(connect(market, owner).updateLoanInterestRateSecondary(loan.id, INTEREST_RATE_SECONDARY))
-        .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
+        .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
         .withArgs(owner.address, ADMIN_ROLE);
       await expect(connect(market, borrower).updateLoanInterestRateSecondary(loan.id, INTEREST_RATE_SECONDARY))
-        .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
+        .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
         .withArgs(borrower.address, ADMIN_ROLE);
       await expect(connect(market, stranger).updateLoanInterestRateSecondary(loan.id, INTEREST_RATE_SECONDARY))
-        .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
+        .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
         .withArgs(stranger.address, ADMIN_ROLE);
     });
 
@@ -3682,8 +3688,8 @@ describe("Contract 'LendingMarket': base tests", async () => {
       checkEquality(actualLoanState, expectedLoan.state);
 
       // Check hook calls
-      await expect(tx).to.emit(creditLine, EVENT_NAME_ON_AFTER_LOAN_REVOCATION).withArgs(expectedLoan.id);
-      await expect(tx).and.to.emit(liquidityPool, EVENT_NAME_ON_AFTER_LOAN_REVOCATION).withArgs(expectedLoan.id);
+      await expect(tx).to.emit(creditLine, EVENT_NAME_ON_AFTER_LOAN_REVOCATION_CALLED).withArgs(expectedLoan.id);
+      await expect(tx).and.to.emit(liquidityPool, EVENT_NAME_ON_AFTER_LOAN_REVOCATION_CALLED).withArgs(expectedLoan.id);
     }
 
     describe("Executes as expected and emits correct event if", async () => {
@@ -3791,13 +3797,13 @@ describe("Contract 'LendingMarket': base tests", async () => {
         const { market, ordinaryLoan: loan } = await setUpFixture(deployLendingMarketAndTakeLoans);
 
         await expect(connect(market, owner).revokeLoan(loan.id))
-          .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
+          .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
           .withArgs(owner.address, ADMIN_ROLE);
         await expect(connect(market, borrower).revokeLoan(loan.id))
-          .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
+          .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
           .withArgs(borrower.address, ADMIN_ROLE);
         await expect(connect(market, stranger).revokeLoan(loan.id))
-          .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
+          .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
           .withArgs(stranger.address, ADMIN_ROLE);
       });
 
@@ -3855,8 +3861,8 @@ describe("Contract 'LendingMarket': base tests", async () => {
         await expect(tx).to.emit(market, EVENT_NAME_LOAN_REVOKED).withArgs(loanId);
         checkEquality(actualLoanStates[i], expectedLoans[i].state, i);
         // Check hook calls
-        await expect(tx).to.emit(creditLine, EVENT_NAME_ON_AFTER_LOAN_REVOCATION).withArgs(loanId);
-        await expect(tx).and.to.emit(liquidityPool, EVENT_NAME_ON_AFTER_LOAN_REVOCATION).withArgs(loanId);
+        await expect(tx).to.emit(creditLine, EVENT_NAME_ON_AFTER_LOAN_REVOCATION_CALLED).withArgs(loanId);
+        await expect(tx).and.to.emit(liquidityPool, EVENT_NAME_ON_AFTER_LOAN_REVOCATION_CALLED).withArgs(loanId);
       }
       await expect(tx).to.emit(market, EVENT_NAME_INSTALLMENT_LOAN_REVOKED).withArgs(loanIds[0], loanIds.length);
 
@@ -4052,13 +4058,13 @@ describe("Contract 'LendingMarket': base tests", async () => {
         const { market, installmentLoanParts: [loan] } = await setUpFixture(deployLendingMarketAndTakeLoans);
 
         await expect(connect(market, owner).revokeInstallmentLoan(loan.id))
-          .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
+          .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
           .withArgs(owner.address, ADMIN_ROLE);
         await expect(connect(market, borrower).revokeInstallmentLoan(loan.id))
-          .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
+          .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
           .withArgs(borrower.address, ADMIN_ROLE);
         await expect(connect(market, stranger).revokeInstallmentLoan(loan.id))
-          .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
+          .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
           .withArgs(stranger.address, ADMIN_ROLE);
       });
 

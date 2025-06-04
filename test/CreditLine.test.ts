@@ -194,13 +194,20 @@ const defaultLoanState: LoanState = {
   discountAmount: 0n
 };
 
-const ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED = "AccessControlUnauthorizedAccount";
-const ERROR_NAME_ALREADY_INITIALIZED = "InvalidInitialization";
+// Events of the contracts under test
+const EVENT_NAME_BORROWER_CONFIGURED = "BorrowerConfigured";
+const EVENT_NAME_CREDIT_LINE_CONFIGURED = "CreditLineConfigured";
+
+// Errors of the lib contracts
+const ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT = "AccessControlUnauthorizedAccount";
+const ERROR_NAME_INVALID_INITIALIZATION = "InvalidInitialization";
+const ERROR_NAME_ENFORCED_PAUSE = "EnforcedPause";
+
+// Errors of the contracts under test
 const ERROR_NAME_ARRAYS_LENGTH_MISMATCH = "ArrayLengthMismatch";
 const ERROR_NAME_BORROWER_CONFIGURATION_EXPIRED = "BorrowerConfigurationExpired";
 const ERROR_NAME_BORROWER_STATE_OVERFLOW = "BorrowerStateOverflow";
 const ERROR_NAME_CONTRACT_ADDRESS_INVALID = "ContractAddressInvalid";
-const ERROR_NAME_ENFORCED_PAUSED = "EnforcedPause";
 const ERROR_NAME_INVALID_AMOUNT = "InvalidAmount";
 const ERROR_NAME_INVALID_BORROWER_CONFIGURATION = "InvalidBorrowerConfiguration";
 const ERROR_NAME_INVALID_CREDIT_LINE_CONFIGURATION = "InvalidCreditLineConfiguration";
@@ -210,9 +217,6 @@ const ERROR_NAME_LIMIT_VIOLATION_ON_SINGLE_ACTIVE_LOAN = "LimitViolationOnSingle
 const ERROR_NAME_LIMIT_VIOLATION_ON_TOTAL_ACTIVE_LOAN_AMOUNT = "LimitViolationOnTotalActiveLoanAmount";
 const ERROR_NAME_UNAUTHORIZED = "Unauthorized";
 const ERROR_NAME_ZERO_ADDRESS = "ZeroAddress";
-
-const EVENT_NAME_BORROWER_CONFIGURED = "BorrowerConfigured";
-const EVENT_NAME_CREDIT_LINE_CONFIGURED = "CreditLineConfigured";
 
 const OWNER_ROLE = ethers.id("OWNER_ROLE");
 const GRANTOR_ROLE = ethers.id("GRANTOR_ROLE");
@@ -593,7 +597,7 @@ describe("Contract 'CreditLine'", async () => {
       const { creditLine } = await setUpFixture(deployContracts);
 
       await expect(creditLine.initialize(owner.address, marketAddress, tokenAddress))
-        .to.be.revertedWithCustomError(creditLine, ERROR_NAME_ALREADY_INITIALIZED);
+        .to.be.revertedWithCustomError(creditLine, ERROR_NAME_INVALID_INITIALIZATION);
     });
 
     it("Is reverted for the contract implementation if it is called even for the first time", async () => {
@@ -601,7 +605,7 @@ describe("Contract 'CreditLine'", async () => {
       await creditLineImplementation.waitForDeployment();
 
       await expect(creditLineImplementation.initialize(owner.address, marketAddress, tokenAddress))
-        .to.be.revertedWithCustomError(creditLineImplementation, ERROR_NAME_ALREADY_INITIALIZED);
+        .to.be.revertedWithCustomError(creditLineImplementation, ERROR_NAME_INVALID_INITIALIZATION);
     });
   });
 
@@ -623,10 +627,10 @@ describe("Contract 'CreditLine'", async () => {
       const { creditLine } = await setUpFixture(deployContracts);
 
       await expect(connect(creditLine, admin).upgradeToAndCall(creditLine, "0x"))
-        .to.be.revertedWithCustomError(creditLine, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
+        .to.be.revertedWithCustomError(creditLine, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
         .withArgs(admin.address, OWNER_ROLE);
       await expect(connect(creditLine, attacker).upgradeToAndCall(creditLine, "0x"))
-        .to.be.revertedWithCustomError(creditLine, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
+        .to.be.revertedWithCustomError(creditLine, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
         .withArgs(attacker.address, OWNER_ROLE);
     });
 
@@ -662,7 +666,7 @@ describe("Contract 'CreditLine'", async () => {
       await proveTx(creditLine.grantRole(ADMIN_ROLE, admin.address));
 
       await expect(connect(creditLine, admin).configureCreditLine(config))
-        .to.be.revertedWithCustomError(creditLine, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
+        .to.be.revertedWithCustomError(creditLine, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
         .withArgs(admin.address, OWNER_ROLE);
     });
 
@@ -758,10 +762,10 @@ describe("Contract 'CreditLine'", async () => {
 
       // Even the owner cannot configure a borrower
       await expect(connect(creditLine, owner)[FUNC_CONFIGURE_BORROWER_NEW](attacker.address, config))
-        .to.be.revertedWithCustomError(creditLine, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
+        .to.be.revertedWithCustomError(creditLine, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
         .withArgs(owner.address, ADMIN_ROLE);
       await expect(connect(creditLine, attacker)[FUNC_CONFIGURE_BORROWER_NEW](attacker.address, config))
-        .to.be.revertedWithCustomError(creditLine, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
+        .to.be.revertedWithCustomError(creditLine, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
         .withArgs(attacker.address, ADMIN_ROLE);
     });
 
@@ -771,7 +775,7 @@ describe("Contract 'CreditLine'", async () => {
       await proveTx(creditLine.pause());
 
       await expect(creditLineUnderAdmin[FUNC_CONFIGURE_BORROWER_NEW](borrower.address, config))
-        .to.be.revertedWithCustomError(creditLineUnderAdmin, ERROR_NAME_ENFORCED_PAUSED);
+        .to.be.revertedWithCustomError(creditLineUnderAdmin, ERROR_NAME_ENFORCED_PAUSE);
     });
 
     it("Is reverted if the borrower address is zero", async () => {
@@ -916,10 +920,10 @@ describe("Contract 'CreditLine'", async () => {
       const { borrowers, configs } = await prepareDataForBatchBorrowerConfig();
 
       await expect(connect(creditLine, owner)[FUNC_CONFIGURE_BORROWERS_NEW](borrowers, configs))
-        .to.be.revertedWithCustomError(creditLine, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
+        .to.be.revertedWithCustomError(creditLine, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
         .withArgs(owner.address, ADMIN_ROLE);
       await expect(connect(creditLine, attacker)[FUNC_CONFIGURE_BORROWERS_NEW](borrowers, configs))
-        .to.be.revertedWithCustomError(creditLine, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
+        .to.be.revertedWithCustomError(creditLine, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
         .withArgs(attacker.address, ADMIN_ROLE);
     });
 
@@ -929,7 +933,7 @@ describe("Contract 'CreditLine'", async () => {
       await proveTx(creditLine.pause());
 
       await expect(creditLineUnderAdmin[FUNC_CONFIGURE_BORROWERS_NEW](borrowers, configs))
-        .to.be.revertedWithCustomError(creditLine, ERROR_NAME_ENFORCED_PAUSED);
+        .to.be.revertedWithCustomError(creditLine, ERROR_NAME_ENFORCED_PAUSE);
     });
 
     it("Is reverted if the length of arrays is different", async () => {
@@ -969,10 +973,10 @@ describe("Contract 'CreditLine'", async () => {
 
       // Even the owner cannot configure a borrower
       await expect(connect(creditLine, owner)[FUNC_CONFIGURE_BORROWER_LEGACY](attacker.address, config))
-        .to.be.revertedWithCustomError(creditLine, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
+        .to.be.revertedWithCustomError(creditLine, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
         .withArgs(owner.address, ADMIN_ROLE);
       await expect(connect(creditLine, attacker)[FUNC_CONFIGURE_BORROWER_LEGACY](attacker.address, config))
-        .to.be.revertedWithCustomError(creditLine, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
+        .to.be.revertedWithCustomError(creditLine, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
         .withArgs(attacker.address, ADMIN_ROLE);
     });
 
@@ -982,7 +986,7 @@ describe("Contract 'CreditLine'", async () => {
       await proveTx(creditLine.pause());
 
       await expect(creditLineUnderAdmin[FUNC_CONFIGURE_BORROWER_LEGACY](borrower.address, config))
-        .to.be.revertedWithCustomError(creditLineUnderAdmin, ERROR_NAME_ENFORCED_PAUSED);
+        .to.be.revertedWithCustomError(creditLineUnderAdmin, ERROR_NAME_ENFORCED_PAUSE);
     });
 
     it("Is reverted if the borrower address is zero", async () => {
@@ -1135,10 +1139,10 @@ describe("Contract 'CreditLine'", async () => {
       const legacyConfigs = configs.map(config => convertToLegacy(config));
 
       await expect(connect(creditLine, owner)[FUNC_CONFIGURE_BORROWERS_LEGACY](borrowers, legacyConfigs))
-        .to.be.revertedWithCustomError(creditLine, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
+        .to.be.revertedWithCustomError(creditLine, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
         .withArgs(owner.address, ADMIN_ROLE);
       await expect(connect(creditLine, attacker)[FUNC_CONFIGURE_BORROWERS_LEGACY](borrowers, legacyConfigs))
-        .to.be.revertedWithCustomError(creditLine, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED)
+        .to.be.revertedWithCustomError(creditLine, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
         .withArgs(attacker.address, ADMIN_ROLE);
     });
 
@@ -1149,7 +1153,7 @@ describe("Contract 'CreditLine'", async () => {
       await proveTx(creditLine.pause());
 
       await expect(creditLineUnderAdmin[FUNC_CONFIGURE_BORROWERS_LEGACY](borrowers, legacyConfigs))
-        .to.be.revertedWithCustomError(creditLine, ERROR_NAME_ENFORCED_PAUSED);
+        .to.be.revertedWithCustomError(creditLine, ERROR_NAME_ENFORCED_PAUSE);
     });
 
     it("Is reverted if the length of arrays is different", async () => {
@@ -1199,7 +1203,7 @@ describe("Contract 'CreditLine'", async () => {
       await proveTx(creditLine.pause());
 
       await expect(market.callOnBeforeLoanTakenCreditLine(getAddress(creditLine), LOAN_ID))
-        .to.be.revertedWithCustomError(creditLine, ERROR_NAME_ENFORCED_PAUSED);
+        .to.be.revertedWithCustomError(creditLine, ERROR_NAME_ENFORCED_PAUSE);
     });
 
     it("Is reverted if the borrowing policy is 'SingleActiveLoan' but there is another active loan", async () => {
@@ -1298,7 +1302,7 @@ describe("Contract 'CreditLine'", async () => {
       await proveTx(creditLine.pause());
 
       await expect(market.callOnBeforeLoanReopenedCreditLine(getAddress(creditLine), LOAN_ID))
-        .to.be.revertedWithCustomError(creditLine, ERROR_NAME_ENFORCED_PAUSED);
+        .to.be.revertedWithCustomError(creditLine, ERROR_NAME_ENFORCED_PAUSE);
     });
 
     it("Is reverted if the borrowing policy is 'SingleActiveLoan' but there is another active loan", async () => {
@@ -1409,7 +1413,7 @@ describe("Contract 'CreditLine'", async () => {
         getAddress(creditLine),
         LOAN_ID,
         REPAYMENT_AMOUNT
-      )).to.be.revertedWithCustomError(creditLine, ERROR_NAME_ENFORCED_PAUSED);
+      )).to.be.revertedWithCustomError(creditLine, ERROR_NAME_ENFORCED_PAUSE);
     });
   });
 
@@ -1446,7 +1450,7 @@ describe("Contract 'CreditLine'", async () => {
       await proveTx(creditLine.pause());
 
       await expect(market.callOnAfterLoanRevocationCreditLine(getAddress(creditLine), LOAN_ID))
-        .to.be.revertedWithCustomError(creditLine, ERROR_NAME_ENFORCED_PAUSED);
+        .to.be.revertedWithCustomError(creditLine, ERROR_NAME_ENFORCED_PAUSE);
     });
   });
 
