@@ -1148,9 +1148,8 @@ describe("Contract 'LiquidityPool'", async () => {
         const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
         await proveTx(liquidityPool.pause());
 
-        await expect(
-          market.callOnAfterLoanRevocationLiquidityPool(getAddress(liquidityPool), LOAN_ID)
-        ).to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_ENFORCED_PAUSED);
+        await expect(market.callOnAfterLoanRevocationLiquidityPool(getAddress(liquidityPool), LOAN_ID))
+          .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_ENFORCED_PAUSED);
       });
 
       it("The caller is not the market", async () => {
