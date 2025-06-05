@@ -3793,7 +3793,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
           .to.be.revertedWithCustomError(marketUnderAdmin, ERROR_NAME_LOAN_ALREADY_REPAID);
       });
 
-      it("The caller is not an admin", async () => {
+      it("The caller does not have the admin role", async () => {
         const { market, ordinaryLoan: loan } = await setUpFixture(deployLendingMarketAndTakeLoans);
 
         await expect(connect(market, owner).revokeLoan(loan.id))
@@ -4054,7 +4054,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
           .to.be.revertedWithCustomError(marketUnderAdmin, ERROR_NAME_LOAN_ALREADY_REPAID);
       });
 
-      it("The caller is not an admin", async () => {
+      it("The caller does not have the admin role", async () => {
         const { market, installmentLoanParts: [loan] } = await setUpFixture(deployLendingMarketAndTakeLoans);
 
         await expect(connect(market, owner).revokeInstallmentLoan(loan.id))

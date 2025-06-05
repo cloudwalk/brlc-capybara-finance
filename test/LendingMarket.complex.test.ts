@@ -188,7 +188,7 @@ describe("Contract 'LendingMarket': complex tests", async () => {
     liquidityPoolFactory = liquidityPoolFactory.connect(owner);
 
     // Deploy the token contract
-    let token: Contract = (await tokenFactory.deploy()) as Contract;
+    let token = (await tokenFactory.deploy()) as Contract;
     await token.waitForDeployment();
     token = connect(token, owner); // Explicitly specifying the initial account
     const tokenAddress = getAddress(token);
