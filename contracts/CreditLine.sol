@@ -23,7 +23,7 @@ import { ILendingMarket } from "./interfaces/ILendingMarket.sol";
 import { CreditLineStorage } from "./CreditLineStorage.sol";
 
 /// @title CreditLine contract
-/// @author CloudWalk Inc. (See https://cloudwalk.io)
+/// @author CloudWalk Inc. (See https://www.cloudwalk.io)
 /// @dev The upgradeable credit line contract.
 contract CreditLine is
     CreditLineStorage,
@@ -37,7 +37,7 @@ contract CreditLine is
 
     // ------------------ Constants ------------------------------- //
 
-    /// @dev The role of this contract admin.
+    /// @dev The role of an admin that is allowed to configure borrowers.
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
 
     // ------------------ Modifiers ------------------------------- //
@@ -52,17 +52,17 @@ contract CreditLine is
 
     // ------------------ Constructor ----------------------------- //
 
-     /// @dev Constructor that prohibits the initialization of the implementation of the upgradeable contract.
-     ///
-     /// See details
-     /// https://docs.openzeppelin.com/upgrades-plugins/writing-upgradeable#initializing_the_implementation_contract
-     ///
-     /// @custom:oz-upgrades-unsafe-allow constructor
+    /// @dev Constructor that prohibits the initialization of the implementation of the upgradeable contract.
+    ///
+    /// See details
+    /// https://docs.openzeppelin.com/upgrades-plugins/writing-upgradeable#initializing_the_implementation_contract
+    ///
+    /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
 
-    // ------------------ Initializers ------------------------------- //
+    // ------------------ Initializers ---------------------------- //
 
     /// @dev Initializer of the upgradeable contract.
     /// @param owner_ The address of the credit line owner.
@@ -377,9 +377,9 @@ contract CreditLine is
         // Where division operator `/` takes into account the fractional part and
         // the `round()` function returns an integer rounded according to standard mathematical rules.
         uint256 product = loanTrackedBalance * lateFeeRate;
-        uint256 reminder = product % Constants.INTEREST_RATE_FACTOR;
+        uint256 remainder = product % Constants.INTEREST_RATE_FACTOR;
         uint256 result = product / Constants.INTEREST_RATE_FACTOR;
-        if (reminder >= (Constants.INTEREST_RATE_FACTOR / 2)) {
+        if (remainder >= (Constants.INTEREST_RATE_FACTOR / 2)) {
             ++result;
         }
         return result;
@@ -445,7 +445,7 @@ contract CreditLine is
     }
 
     /// @dev Updates the borrower structures when a loan is closed.
-    /// @param loan The state of the loan thai is being closed.
+    /// @param loan The state of the loan that is being closed.
     function _closeLoan(Loan.State memory loan) internal {
         BorrowerState storage borrowerState = _borrowerStates[loan.borrower];
         borrowerState.activeLoanCount -= 1;

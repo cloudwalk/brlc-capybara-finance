@@ -5,7 +5,7 @@ pragma solidity 0.8.24;
 import { CreditLine } from "../CreditLine.sol";
 
 /// @title CreditLineTestable contract
-/// @author CloudWalk Inc. (See https://cloudwalk.io)
+/// @author CloudWalk Inc. (See https://www.cloudwalk.io)
 /// @dev Version of the credit line contract with additions required for testing.
 /// @custom:oz-upgrades-unsafe-allow missing-initializer
 contract CreditLineTestable is CreditLine {

@@ -5,7 +5,7 @@ pragma solidity 0.8.24;
 import { ABDKMath64x64 } from "../libraries/ABDKMath64x64.sol";
 
 /// @title ABDKMath64x64Mock contract
-/// @author CloudWalk Inc. (See https://cloudwalk.io)
+/// @author CloudWalk Inc. (See https://www.cloudwalk.io)
 /// @dev A mock contract to test the ABDKMath64x64 lib functions
 contract ABDKMath64x64Mock {
     /// @dev Convert unsigned 256-bit integer number into signed 64.64-bit fixed point number. Revert on overflow.

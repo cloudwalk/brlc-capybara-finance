@@ -27,7 +27,7 @@ import { ILiquidityPool } from "./interfaces/ILiquidityPool.sol";
 import { LendingMarketStorage } from "./LendingMarketStorage.sol";
 
 /// @title LendingMarket contract
-/// @author CloudWalk Inc. (See https://cloudwalk.io)
+/// @author CloudWalk Inc. (See https://www.cloudwalk.io)
 /// @dev Implementation of the lending market contract.
 ///
 /// See additional notes in the comments of the interface `ILendingMarket.sol`.
@@ -45,7 +45,7 @@ contract LendingMarket is
 
     // ------------------ Constants ------------------------------- //
 
-    /// @dev The role of this contract admin.
+    /// @dev The role of an admin that is allowed to execute loan-related functions.
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
 
     // ------------------ Modifiers ------------------------------- //
@@ -69,7 +69,7 @@ contract LendingMarket is
         _disableInitializers();
     }
 
-    // ------------------ Initializers ------------------------------- //
+    // ------------------ Initializers ---------------------------- //
 
     /// @dev Initializer of the upgradeable contract.
     /// @param owner_ The owner of the contract.

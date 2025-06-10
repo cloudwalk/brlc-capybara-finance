@@ -3,7 +3,7 @@
 pragma solidity ^0.8.0;
 
 /// @title IVersionable interface
-/// @author CloudWalk Inc. (See https://cloudwalk.io)
+/// @author CloudWalk Inc. (See https://www.cloudwalk.io)
 /// @dev Defines code entities to get the version of a contract.
 interface IVersionable {
     // ------------------ Types ---------------------------------- //

@@ -5,7 +5,7 @@ pragma solidity 0.8.24;
 import { LendingMarket } from "../LendingMarket.sol";
 
 /// @title LendingMarketTestable contract
-/// @author CloudWalk Inc. (See https://cloudwalk.io)
+/// @author CloudWalk Inc. (See https://www.cloudwalk.io)
 /// @dev Version of the lending market contract with additions required for testing.
 /// @custom:oz-upgrades-unsafe-allow missing-initializer
 contract LendingMarketTestable is LendingMarket {

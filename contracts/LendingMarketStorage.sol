@@ -5,7 +5,7 @@ pragma solidity 0.8.24;
 import { Loan } from "./libraries/Loan.sol";
 
 /// @title LendingMarketStorage contract
-/// @author CloudWalk Inc. (See https://cloudwalk.io)
+/// @author CloudWalk Inc. (See https://www.cloudwalk.io)
 /// @dev Defines the storage layout for the lending market contract.
 abstract contract LendingMarketStorage {
     /// @dev The loan identifier counter.
@@ -43,7 +43,7 @@ abstract contract LendingMarketStorage {
     /// @dev The mapping of lender to its aliases (True if alias exists).
     ///
     /// NOTE: This map has been deprecated since version 1.9.0.
-    //        Lender aliases have been replaced by admins: accounts with the `ADMIN_ROLE` role.
+    ///       Lender aliases have been replaced by admins: accounts with the `ADMIN_ROLE` role.
     mapping(address => mapping(address => bool)) internal _hasAlias;
 
     /// @dev This empty reserved space is put in place to allow future versions

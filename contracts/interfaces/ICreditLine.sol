@@ -6,7 +6,7 @@ import { ICreditLineTypes } from "./ICreditLineTypes.sol";
 import { Loan } from "../libraries/Loan.sol";
 
 /// @title ICreditLinePrimary interface
-/// @author CloudWalk Inc. (See https://cloudwalk.io)
+/// @author CloudWalk Inc. (See https://www.cloudwalk.io)
 /// @dev The primary part of the credit line contract interface.
 interface ICreditLinePrimary is ICreditLineTypes {
     // ------------------ Events ---------------------------------- //
@@ -80,7 +80,7 @@ interface ICreditLinePrimary is ICreditLineTypes {
 }
 
 /// @title ICreditLineConfiguration interface
-/// @author CloudWalk Inc. (See https://cloudwalk.io)
+/// @author CloudWalk Inc. (See https://www.cloudwalk.io)
 /// @dev The configuration part of the credit line contract interface.
 interface ICreditLineConfiguration is ICreditLineTypes {
     // ------------------ Events ---------------------------------- //
@@ -103,7 +103,7 @@ interface ICreditLineConfiguration is ICreditLineTypes {
 }
 
 /// @title ICreditLineHooks interface
-/// @author CloudWalk Inc. (See https://cloudwalk.io)
+/// @author CloudWalk Inc. (See https://www.cloudwalk.io)
 /// @dev The hooks part of the credit line contract interface.
 interface ICreditLineHooks {
     /// @dev A hook that is triggered by the associated market before a loan is taken.
@@ -125,7 +125,7 @@ interface ICreditLineHooks {
 }
 
 /// @title ICreditLineErrors interface
-/// @author CloudWalk Inc. (See https://cloudwalk.io)
+/// @author CloudWalk Inc. (See https://www.cloudwalk.io)
 /// @dev Defines the custom errors used in the credit line contract.
 interface ICreditLineErrors {
     /// @dev Thrown when the credit line configuration is invalid.
@@ -151,7 +151,7 @@ interface ICreditLineErrors {
 }
 
 /// @title ICreditLine interface
-/// @author CloudWalk Inc. (See https://cloudwalk.io)
+/// @author CloudWalk Inc. (See https://www.cloudwalk.io)
 /// @dev Defines the full interface of the credit line contract.
 interface ICreditLine is ICreditLinePrimary, ICreditLineConfiguration, ICreditLineHooks, ICreditLineErrors {
     /// @dev Proves the contract is the credit line one. A marker function.

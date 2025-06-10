@@ -5,7 +5,7 @@ pragma solidity 0.8.24;
 import { ABDKMath64x64 } from "./ABDKMath64x64.sol";
 
 /// @title InterestMath library
-/// @author CloudWalk Inc. (See https://cloudwalk.io)
+/// @author CloudWalk Inc. (See https://www.cloudwalk.io)
 /// @dev Defines interest calculation functions.
 library InterestMath {
     /// @dev Calculates the tracked balance of a loan using the compound interest formula.

@@ -3,7 +3,7 @@
 pragma solidity 0.8.24;
 
 /// @title Loan library
-/// @author CloudWalk Inc. (See https://cloudwalk.io)
+/// @author CloudWalk Inc. (See https://www.cloudwalk.io)
 /// @dev Defines the common types used for loan management.
 library Loan {
     /// @dev The type of a loan.

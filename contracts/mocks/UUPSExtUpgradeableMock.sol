@@ -10,7 +10,7 @@ import { UUPSExtUpgradeable } from "../base/UUPSExtUpgradeable.sol";
 contract UUPSExtUpgradeableMock is UUPSExtUpgradeable {
     // ------------------ Events ---------------------------------- //
 
-    /// @dev Emitted when the internal `_validateUpgrade()` function is called with the parameters of the function.
+    /// @dev Emitted when the internal `_validateUpgrade()` function is called with the function's parameters.
     event MockValidateUpgradeCall(address newImplementation);
 
     // ------------------ Initializers ---------------------------- //
@@ -24,7 +24,7 @@ contract UUPSExtUpgradeableMock is UUPSExtUpgradeable {
 
     // ------------------ Transactional functions ----------------- //
 
-    /// @dev Calls the parent internal unchained initializing function to verify the 'onlyInitializing' modifier.
+    /// @dev Calls the parent internal unchained initialization function to verify the 'onlyInitializing' modifier.
     function callParentInitializerUnchained() external {
         __UUPSExt_init_unchained();
     }
@@ -33,7 +33,7 @@ contract UUPSExtUpgradeableMock is UUPSExtUpgradeable {
 
     /// @dev An implementation of the validateUpgrade function of the UUPSExtUpgradeable contract.
     ///
-    /// Does not execute any validation steps, just emits an event with the parameter of the function.
+    /// Does not execute any validation steps, just emits an event with the function parameter.
     ///
     /// @param newImplementation The address of the new implementation.
     function _validateUpgrade(address newImplementation) internal override {

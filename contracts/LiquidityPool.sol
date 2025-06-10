@@ -25,7 +25,7 @@ import { ILiquidityPoolPrimary } from "./interfaces/ILiquidityPool.sol";
 import { LiquidityPoolStorage } from "./LiquidityPoolStorage.sol";
 
 /// @title LiquidityPool contract
-/// @author CloudWalk Inc. (See https://cloudwalk.io)
+/// @author CloudWalk Inc. (See https://www.cloudwalk.io)
 /// @dev The upgradeable liquidity pool contract.
 contract LiquidityPool is
     LiquidityPoolStorage,
@@ -40,7 +40,7 @@ contract LiquidityPool is
 
     // ------------------ Constants ------------------------------- //
 
-    /// @dev The role of this contract admin.
+    /// @dev The role of an admin that is allowed to execute pool-related functions.
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
 
     // ------------------ Modifiers ------------------------------- //
@@ -65,7 +65,7 @@ contract LiquidityPool is
         _disableInitializers();
     }
 
-    // ------------------ Initializers ------------------------------- //
+    // ------------------ Initializers ---------------------------- //
 
     /// @dev Initializer of the upgradeable contract.
     /// @param owner_ The address of the liquidity pool owner.

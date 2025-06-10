@@ -3,7 +3,7 @@
 pragma solidity 0.8.24;
 
 /// @title ILiquidityPoolPrimary interface
-/// @author CloudWalk Inc. (See https://cloudwalk.io)
+/// @author CloudWalk Inc. (See https://www.cloudwalk.io)
 /// @dev The primary part of the liquidity pool contract interface.
 interface ILiquidityPoolPrimary {
     // ------------------ Events ---------------------------------- //
@@ -96,7 +96,7 @@ interface ILiquidityPoolPrimary {
 }
 
 /// @title ILiquidityPoolConfiguration interface
-/// @author CloudWalk Inc. (See https://cloudwalk.io)
+/// @author CloudWalk Inc. (See https://www.cloudwalk.io)
 /// @dev The configuration part of the liquidity pool contract interface.
 interface ILiquidityPoolConfiguration {
     // ------------------ Events ---------------------------------- //
@@ -135,7 +135,7 @@ interface ILiquidityPoolConfiguration {
 }
 
 /// @title ILiquidityPoolHooks interface
-/// @author CloudWalk Inc. (See https://cloudwalk.io)
+/// @author CloudWalk Inc. (See https://www.cloudwalk.io)
 /// @dev The hooks part of the liquidity pool contract interface.
 interface ILiquidityPoolHooks {
     /// @dev A hook that is triggered by the associated market before a loan is taken.
@@ -158,8 +158,8 @@ interface ILiquidityPoolHooks {
 }
 
 /// @title ILiquidityPoolErrors interface
-/// @author CloudWalk Inc. (See https://cloudwalk.io)
-/// @dev Defines the custom errors used in the liquidity poool contract.
+/// @author CloudWalk Inc. (See https://www.cloudwalk.io)
+/// @dev Defines the custom errors used in the liquidity pool contract.
 interface ILiquidityPoolErrors {
     /// @dev Thrown when attempting to zero the addon treasury address.
     ///
@@ -182,7 +182,7 @@ interface ILiquidityPoolErrors {
 }
 
 /// @title ILiquidityPool interface
-/// @author CloudWalk Inc. (See https://cloudwalk.io)
+/// @author CloudWalk Inc. (See https://www.cloudwalk.io)
 /// @dev Defines the liquidity pool contract functions and events.
 interface ILiquidityPool is
     ILiquidityPoolPrimary,

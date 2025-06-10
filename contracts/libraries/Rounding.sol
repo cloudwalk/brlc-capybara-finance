@@ -3,7 +3,7 @@
 pragma solidity 0.8.24;
 
 /// @title Rounding library
-/// @author CloudWalk Inc. (See https://cloudwalk.io)
+/// @author CloudWalk Inc. (See https://www.cloudwalk.io)
 /// @dev Defines upward and downward rounding functions.
 library Rounding {
     /// @dev Rounds a value to the nearest multiple of an accuracy according to mathematical rules.

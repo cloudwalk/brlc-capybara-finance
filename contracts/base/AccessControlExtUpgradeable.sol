@@ -7,14 +7,14 @@ import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/ac
 /// @title AccessControlExtUpgradeable base contract
 /// @author CloudWalk Inc. (See https://www.cloudwalk.io)
 /// @dev Extends the OpenZeppelin's {AccessControlUpgradeable} contract by introducing new roles and
-///      adding the functions for granting and revoking roles in batch.
+///      adding functions for granting and revoking roles in batch.
 abstract contract AccessControlExtUpgradeable is AccessControlUpgradeable {
     // ------------------ Constants ------------------------------- //
 
     /// @dev The role of this contract owner.
     bytes32 public constant OWNER_ROLE = keccak256("OWNER_ROLE");
 
-    /// @dev The role of grantor that is allowed to grant and revoke other roles, except itself and the owner one.
+    /// @dev The role of a grantor that is allowed to grant and revoke other roles, except itself and the owner role.
     bytes32 public constant GRANTOR_ROLE = keccak256("GRANTOR_ROLE");
 
     // ------------------ Initializers ---------------------------- //
@@ -24,7 +24,6 @@ abstract contract AccessControlExtUpgradeable is AccessControlUpgradeable {
     /// See details: https://docs.openzeppelin.com/contracts/5.x/upgradeable#multiple-inheritance
     ///
     /// Note: The `..._init()` initializer has not been provided as redundant.
-    ////
     function __AccessControlExt_init_unchained() internal onlyInitializing {
         _setRoleAdmin(OWNER_ROLE, OWNER_ROLE);
         _setRoleAdmin(GRANTOR_ROLE, OWNER_ROLE);
@@ -40,7 +39,6 @@ abstract contract AccessControlExtUpgradeable is AccessControlUpgradeable {
     ///
     /// @param role The role to grant.
     /// @param accounts The accounts to grant the role to.
-    ////
     function grantRoleBatch(bytes32 role, address[] memory accounts) public virtual onlyRole(getRoleAdmin(role)) {
         uint256 count = accounts.length;
         for (uint256 i = 0; i < count; ) {

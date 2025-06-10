@@ -3,7 +3,7 @@
 pragma solidity ^0.8.24;
 
 /// @title SafeCast library
-/// @author CloudWalk Inc. (See https://cloudwalk.io)
+/// @author CloudWalk Inc. (See https://www.cloudwalk.io)
 /// @dev Defines safe casting functions from uint256 to other sizes.
 library SafeCast {
     // ------------------ Errors ---------------------------------- //

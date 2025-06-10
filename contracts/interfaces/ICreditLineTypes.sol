@@ -3,7 +3,7 @@
 pragma solidity 0.8.24;
 
 /// @title ICreditLineTypes interface
-/// @author CloudWalk Inc. (See https://cloudwalk.io)
+/// @author CloudWalk Inc. (See https://www.cloudwalk.io)
 /// @dev Defines types that are used in the credit line contract.
 interface ICreditLineTypes {
     /// @dev Defines the available borrowing policies.

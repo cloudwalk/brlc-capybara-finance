@@ -5,7 +5,7 @@ pragma solidity 0.8.24;
 import { Loan } from "../libraries/Loan.sol";
 
 /// @title ILendingMarketPrimary interface
-/// @author CloudWalk Inc. (See https://cloudwalk.io)
+/// @author CloudWalk Inc. (See https://www.cloudwalk.io)
 /// @dev The primary part of the lending market contract interface.
 ///
 /// The lending market supports two types of loans:
@@ -380,7 +380,7 @@ interface ILendingMarketPrimary {
 }
 
 /// @title ILendingMarketConfiguration interface
-/// @author CloudWalk Inc. (See https://cloudwalk.io)
+/// @author CloudWalk Inc. (See https://www.cloudwalk.io)
 /// @dev The configuration part of the lending market contract interface.
 interface ILendingMarketConfiguration {
     // ------------------ Events ---------------------------------- //
@@ -465,7 +465,7 @@ interface ILendingMarketConfiguration {
 }
 
 /// @title ILendingMarketErrors interface
-/// @author CloudWalk Inc. (See https://cloudwalk.io)
+/// @author CloudWalk Inc. (See https://www.cloudwalk.io)
 /// @dev Defines the custom errors used in the lending market contract.
 interface ILendingMarketErrors {
     /// @dev Thrown when the addon treasury address is zero.
@@ -520,7 +520,7 @@ interface ILendingMarketErrors {
 }
 
 /// @title ILendingMarket interface
-/// @author CloudWalk Inc. (See https://cloudwalk.io)
+/// @author CloudWalk Inc. (See https://www.cloudwalk.io)
 /// @dev The full interface of the lending market contract.
 interface ILendingMarket is ILendingMarketPrimary, ILendingMarketConfiguration, ILendingMarketErrors {
     /// @dev Proves the contract is the lending market one. A marker function.
