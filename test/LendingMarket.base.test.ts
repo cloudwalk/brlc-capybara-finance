@@ -137,7 +137,7 @@ interface LoanOperation {
   subjectToUndo: boolean;
 }
 
-// Events of the lib contracts
+// Events of the library contracts
 const EVENT_NAME_TRANSFER = "Transfer";
 
 // Events of the contracts under test
@@ -161,7 +161,7 @@ const EVENT_NAME_INSTALLMENT_LOAN_REVOKED = "InstallmentLoanRevoked";
 const EVENT_NAME_ON_AFTER_LOAN_REVOCATION_CALLED = "OnAfterLoanRevocationCalled";
 const ERROR_NAME_REPAYMENT_UNDONE = "RepaymentUndone";
 
-// Errors of the lib contracts
+// Errors of the library contracts
 const ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT = "AccessControlUnauthorizedAccount";
 const ERROR_NAME_ENFORCED_PAUSED = "EnforcedPause";
 const ERROR_NAME_INVALID_INITIALIZATION = "InvalidInitialization";
@@ -1926,7 +1926,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
           .to.be.revertedWithCustomError(market, ERROR_NAME_INVALID_AMOUNT);
       });
 
-      it("The repayment amount is bigger than outstanding balance", async () => {
+      it("The repayment amount is greater than outstanding balance", async () => {
         const { market, ordinaryLoan: loan } = await setUpFixture(deployLendingMarketAndTakeLoans);
         const wrongRepaymentAmount = BORROWED_AMOUNT + ADDON_AMOUNT + ACCURACY_FACTOR;
 
@@ -2193,7 +2193,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
           .to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_INVALID_AMOUNT);
       });
 
-      it("One of the repayment amounts is bigger than outstanding balance", async () => {
+      it("One of the repayment amounts is greater than outstanding balance", async () => {
         const { marketViaAdmin, installmentLoanParts: loans } = await setUpFixture(deployLendingMarketAndTakeLoans);
         const loanIds = loans.map(loan => loan.id);
         const repaymentAmounts: number[] = Array(loans.length).fill(REPAYMENT_AMOUNT);
@@ -2395,7 +2395,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
           .to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_INVALID_AMOUNT);
       });
 
-      it("One of the discount amounts is bigger than the outstanding balance", async () => {
+      it("One of the discount amounts is greater than the outstanding balance", async () => {
         const { marketViaAdmin, installmentLoanParts: loans } = await setUpFixture(deployLendingMarketAndTakeLoans);
         const loanIds = loans.map(loan => loan.id);
         const discountAmounts: number[] = Array(loans.length).fill(DISCOUNT_AMOUNT);

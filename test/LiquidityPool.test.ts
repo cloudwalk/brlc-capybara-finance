@@ -33,7 +33,7 @@ interface LoanState {
   discountAmount: bigint;
 }
 
-// Events of the lib contracts
+// Events of the library contracts
 const EVENT_NAME_APPROVAL = "Approval";
 const EVENT_NAME_TRANSFER = "Transfer";
 
@@ -46,7 +46,7 @@ const EVENT_NAME_OPERATIONAL_TREASURY_CHANGED = "OperationalTreasuryChanged";
 const EVENT_NAME_RESCUE = "Rescue";
 const EVENT_NAME_WITHDRAWAL = "Withdrawal";
 
-// Errors of the lib contracts
+// Errors of the library contracts
 const ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT = "AccessControlUnauthorizedAccount";
 const ERROR_NAME_ENFORCED_PAUSED = "EnforcedPause";
 const ERROR_NAME_INVALID_INITIALIZATION = "InvalidInitialization";
@@ -371,7 +371,7 @@ describe("Contract 'LiquidityPool'", async () => {
       ])).to.be.revertedWithCustomError(liquidityPoolFactory, ERROR_NAME_ZERO_ADDRESS);
     });
 
-    it("Is reverted if the market address does not belong to a contract", async () => {
+    it("Is reverted if the market address is not a contract address", async () => {
       const wrongMarketAddress = deployer.address;
       await expect(upgrades.deployProxy(liquidityPoolFactory, [
         owner.address,
@@ -398,7 +398,7 @@ describe("Contract 'LiquidityPool'", async () => {
       ])).to.be.revertedWithCustomError(liquidityPoolFactory, ERROR_NAME_ZERO_ADDRESS);
     });
 
-    it("Is reverted if the token address does not belong to a contract", async () => {
+    it("Is reverted if the token address is not a contract address", async () => {
       const wrongTokenAddress = deployer.address;
       await expect(upgrades.deployProxy(liquidityPoolFactory, [
         owner.address,

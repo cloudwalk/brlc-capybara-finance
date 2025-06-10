@@ -198,7 +198,7 @@ const defaultLoanState: LoanState = {
 const EVENT_NAME_BORROWER_CONFIGURED = "BorrowerConfigured";
 const EVENT_NAME_CREDIT_LINE_CONFIGURED = "CreditLineConfigured";
 
-// Errors of the lib contracts
+// Errors of the library contracts
 const ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT = "AccessControlUnauthorizedAccount";
 const ERROR_NAME_INVALID_INITIALIZATION = "InvalidInitialization";
 const ERROR_NAME_ENFORCED_PAUSE = "EnforcedPause";
@@ -548,7 +548,7 @@ describe("Contract 'CreditLine'", async () => {
       ])).to.be.revertedWithCustomError(creditLineFactory, ERROR_NAME_ZERO_ADDRESS);
     });
 
-    it("Is reverted if the market address does not belong to a contract", async () => {
+    it("Is reverted if the market address is not a contract address", async () => {
       const wrongMarketAddress = deployer.address;
       await expect(upgrades.deployProxy(creditLineFactory, [
         owner.address,
@@ -575,7 +575,7 @@ describe("Contract 'CreditLine'", async () => {
       ])).to.be.revertedWithCustomError(creditLineFactory, ERROR_NAME_ZERO_ADDRESS);
     });
 
-    it("Is reverted if the token address does not belong to a contract", async () => {
+    it("Is reverted if the token address is not a contract address", async () => {
       const wrongTokenAddress = deployer.address;
       await expect(upgrades.deployProxy(creditLineFactory, [
         owner.address,
@@ -670,7 +670,7 @@ describe("Contract 'CreditLine'", async () => {
         .withArgs(admin.address, OWNER_ROLE);
     });
 
-    it("Is reverted if the min borrowed amount is bigger than the max one", async () => {
+    it("Is reverted if the min borrowed amount is greater than the max one", async () => {
       const { creditLine } = await setUpFixture(deployContracts);
       const config = createCreditLineConfiguration();
       config.minBorrowedAmount = config.maxBorrowedAmount + 1n;
@@ -679,7 +679,7 @@ describe("Contract 'CreditLine'", async () => {
         .to.be.revertedWithCustomError(creditLine, ERROR_NAME_INVALID_CREDIT_LINE_CONFIGURATION);
     });
 
-    it("Is reverted if the min loan duration is bigger than the max one", async () => {
+    it("Is reverted if the min loan duration is greater than the max one", async () => {
       const { creditLine } = await setUpFixture(deployContracts);
       const config = createCreditLineConfiguration();
       config.minDurationInPeriods = config.maxDurationInPeriods + 1n;
@@ -688,7 +688,7 @@ describe("Contract 'CreditLine'", async () => {
         .to.be.revertedWithCustomError(creditLine, ERROR_NAME_INVALID_CREDIT_LINE_CONFIGURATION);
     });
 
-    it("Is reverted if the min primary interest rate is bigger than the max one", async () => {
+    it("Is reverted if the min primary interest rate is greater than the max one", async () => {
       const { creditLine } = await setUpFixture(deployContracts);
       const config = createCreditLineConfiguration();
       config.minInterestRatePrimary = config.maxInterestRatePrimary + 1n;
@@ -697,7 +697,7 @@ describe("Contract 'CreditLine'", async () => {
         .to.be.revertedWithCustomError(creditLine, ERROR_NAME_INVALID_CREDIT_LINE_CONFIGURATION);
     });
 
-    it("Is reverted if the min secondary interest rate is bigger than the max one", async () => {
+    it("Is reverted if the min secondary interest rate is greater than the max one", async () => {
       const { creditLine } = await setUpFixture(deployContracts);
       const config = createCreditLineConfiguration();
       config.minInterestRateSecondary = config.maxInterestRateSecondary + 1n;
@@ -797,7 +797,7 @@ describe("Contract 'CreditLine'", async () => {
         .to.be.revertedWithCustomError(creditLineViaAdmin, ERROR_NAME_INVALID_BORROWER_CONFIGURATION);
     });
 
-    it("Is reverted if the min borrowed amount is less than credit line`s one", async () => {
+    it("Is reverted if the min borrowed amount is less than credit line's one", async () => {
       const { creditLineViaAdmin, creditLineConfig } = await setUpFixture(deployAndConfigureContracts);
       const borrowerConfig = createBorrowerConfiguration();
       borrowerConfig.minBorrowedAmount = creditLineConfig.minBorrowedAmount - 1n;
@@ -806,7 +806,7 @@ describe("Contract 'CreditLine'", async () => {
         .to.be.revertedWithCustomError(creditLineViaAdmin, ERROR_NAME_INVALID_BORROWER_CONFIGURATION);
     });
 
-    it("Is reverted if the max borrowed amount is greater than credit line`s one", async () => {
+    it("Is reverted if the max borrowed amount is greater than credit line's one", async () => {
       const { creditLineViaAdmin, creditLineConfig } = await setUpFixture(deployAndConfigureContracts);
       const borrowerConfig = createBorrowerConfiguration();
       borrowerConfig.maxBorrowedAmount = creditLineConfig.maxBorrowedAmount + 1n;
@@ -824,7 +824,7 @@ describe("Contract 'CreditLine'", async () => {
         .to.be.revertedWithCustomError(creditLineViaAdmin, ERROR_NAME_INVALID_BORROWER_CONFIGURATION);
     });
 
-    it("Is reverted if the min loan duration is less than credit line`s one", async () => {
+    it("Is reverted if the min loan duration is less than credit line's one", async () => {
       const { creditLineViaAdmin, creditLineConfig } = await setUpFixture(deployAndConfigureContracts);
       const borrowerConfig = createBorrowerConfiguration();
       borrowerConfig.minDurationInPeriods = creditLineConfig.minDurationInPeriods - 1n;
@@ -833,7 +833,7 @@ describe("Contract 'CreditLine'", async () => {
         .to.be.revertedWithCustomError(creditLineViaAdmin, ERROR_NAME_INVALID_BORROWER_CONFIGURATION);
     });
 
-    it("Is reverted if the max loan duration is greater than credit line`s one", async () => {
+    it("Is reverted if the max loan duration is greater than credit line's one", async () => {
       const { creditLineViaAdmin, creditLineConfig } = await setUpFixture(deployAndConfigureContracts);
       const borrowerConfig = createBorrowerConfiguration();
       borrowerConfig.maxDurationInPeriods = creditLineConfig.maxDurationInPeriods + 1n;
@@ -842,7 +842,7 @@ describe("Contract 'CreditLine'", async () => {
         .to.be.revertedWithCustomError(creditLineViaAdmin, ERROR_NAME_INVALID_BORROWER_CONFIGURATION);
     });
 
-    it("Is reverted if the primary interest rate is less than credit line`s minimum one", async () => {
+    it("Is reverted if the primary interest rate is less than credit line's minimum one", async () => {
       const { creditLineViaAdmin, creditLineConfig } = await setUpFixture(deployAndConfigureContracts);
       const borrowerConfig = createBorrowerConfiguration();
       borrowerConfig.interestRatePrimary = creditLineConfig.minInterestRatePrimary - 1n;
@@ -851,7 +851,7 @@ describe("Contract 'CreditLine'", async () => {
         .to.be.revertedWithCustomError(creditLineViaAdmin, ERROR_NAME_INVALID_BORROWER_CONFIGURATION);
     });
 
-    it("Is reverted if the primary interest rate is greater than credit line`s maximum one", async () => {
+    it("Is reverted if the primary interest rate is greater than credit line's maximum one", async () => {
       const { creditLineViaAdmin, creditLineConfig } = await setUpFixture(deployAndConfigureContracts);
       const borrowerConfig = createBorrowerConfiguration();
       borrowerConfig.interestRatePrimary = creditLineConfig.maxInterestRatePrimary + 1n;
@@ -860,7 +860,7 @@ describe("Contract 'CreditLine'", async () => {
         .to.be.revertedWithCustomError(creditLineViaAdmin, ERROR_NAME_INVALID_BORROWER_CONFIGURATION);
     });
 
-    it("Is reverted if the secondary interest rate is less than credit line`s minimum one", async () => {
+    it("Is reverted if the secondary interest rate is less than credit line's minimum one", async () => {
       const { creditLineViaAdmin, creditLineConfig } = await setUpFixture(deployAndConfigureContracts);
       const borrowerConfig = createBorrowerConfiguration();
       borrowerConfig.interestRateSecondary = creditLineConfig.minInterestRateSecondary - 1n;
@@ -869,7 +869,7 @@ describe("Contract 'CreditLine'", async () => {
         .to.be.revertedWithCustomError(creditLineViaAdmin, ERROR_NAME_INVALID_BORROWER_CONFIGURATION);
     });
 
-    it("Is reverted if the secondary interest rate is greater than credit line`s maximum one", async () => {
+    it("Is reverted if the secondary interest rate is greater than credit line's maximum one", async () => {
       const { creditLineViaAdmin, creditLineConfig } = await setUpFixture(deployAndConfigureContracts);
       const borrowerConfig = createBorrowerConfiguration();
       borrowerConfig.interestRateSecondary = creditLineConfig.maxInterestRateSecondary + 1n;
@@ -1008,7 +1008,7 @@ describe("Contract 'CreditLine'", async () => {
         .to.be.revertedWithCustomError(creditLineViaAdmin, ERROR_NAME_INVALID_BORROWER_CONFIGURATION);
     });
 
-    it("Is reverted if the min borrowed amount is less than credit line`s one", async () => {
+    it("Is reverted if the min borrowed amount is less than credit line's one", async () => {
       const { creditLineViaAdmin, creditLineConfig } = await setUpFixture(deployAndConfigureContracts);
       const borrowerConfig = convertToLegacy(createBorrowerConfiguration());
       borrowerConfig.minBorrowedAmount = creditLineConfig.minBorrowedAmount - 1n;
@@ -1017,7 +1017,7 @@ describe("Contract 'CreditLine'", async () => {
         .to.be.revertedWithCustomError(creditLineViaAdmin, ERROR_NAME_INVALID_BORROWER_CONFIGURATION);
     });
 
-    it("Is reverted if the max borrowed amount is greater than credit line`s one", async () => {
+    it("Is reverted if the max borrowed amount is greater than credit line's one", async () => {
       const { creditLineViaAdmin, creditLineConfig } = await setUpFixture(deployAndConfigureContracts);
       const borrowerConfig = convertToLegacy(createBorrowerConfiguration());
       borrowerConfig.maxBorrowedAmount = creditLineConfig.maxBorrowedAmount + 1n;
@@ -1035,7 +1035,7 @@ describe("Contract 'CreditLine'", async () => {
         .to.be.revertedWithCustomError(creditLineViaAdmin, ERROR_NAME_INVALID_BORROWER_CONFIGURATION);
     });
 
-    it("Is reverted if the min loan duration is less than credit line`s one", async () => {
+    it("Is reverted if the min loan duration is less than credit line's one", async () => {
       const { creditLineViaAdmin, creditLineConfig } = await setUpFixture(deployAndConfigureContracts);
       const borrowerConfig = convertToLegacy(createBorrowerConfiguration());
       borrowerConfig.minDurationInPeriods = creditLineConfig.minDurationInPeriods - 1n;
@@ -1044,7 +1044,7 @@ describe("Contract 'CreditLine'", async () => {
         .to.be.revertedWithCustomError(creditLineViaAdmin, ERROR_NAME_INVALID_BORROWER_CONFIGURATION);
     });
 
-    it("Is reverted if the max loan duration is greater than credit line`s one", async () => {
+    it("Is reverted if the max loan duration is greater than credit line's one", async () => {
       const { creditLineViaAdmin, creditLineConfig } = await setUpFixture(deployAndConfigureContracts);
       const borrowerConfig = convertToLegacy(createBorrowerConfiguration());
       borrowerConfig.maxDurationInPeriods = creditLineConfig.maxDurationInPeriods + 1n;
@@ -1053,7 +1053,7 @@ describe("Contract 'CreditLine'", async () => {
         .to.be.revertedWithCustomError(creditLineViaAdmin, ERROR_NAME_INVALID_BORROWER_CONFIGURATION);
     });
 
-    it("Is reverted if the primary interest rate is less than credit line`s minimum one", async () => {
+    it("Is reverted if the primary interest rate is less than credit line's minimum one", async () => {
       const { creditLineViaAdmin, creditLineConfig } = await setUpFixture(deployAndConfigureContracts);
       const borrowerConfig = convertToLegacy(createBorrowerConfiguration());
       borrowerConfig.interestRatePrimary = creditLineConfig.minInterestRatePrimary - 1n;
@@ -1062,7 +1062,7 @@ describe("Contract 'CreditLine'", async () => {
         .to.be.revertedWithCustomError(creditLineViaAdmin, ERROR_NAME_INVALID_BORROWER_CONFIGURATION);
     });
 
-    it("Is reverted if the primary interest rate is greater than credit line`s maximum one", async () => {
+    it("Is reverted if the primary interest rate is greater than credit line's maximum one", async () => {
       const { creditLineViaAdmin, creditLineConfig } = await setUpFixture(deployAndConfigureContracts);
       const borrowerConfig = convertToLegacy(createBorrowerConfiguration());
       borrowerConfig.interestRatePrimary = creditLineConfig.maxInterestRatePrimary + 1n;
@@ -1071,7 +1071,7 @@ describe("Contract 'CreditLine'", async () => {
         .to.be.revertedWithCustomError(creditLineViaAdmin, ERROR_NAME_INVALID_BORROWER_CONFIGURATION);
     });
 
-    it("Is reverted if the secondary interest rate is less than credit line`s minimum one", async () => {
+    it("Is reverted if the secondary interest rate is less than credit line's minimum one", async () => {
       const { creditLineViaAdmin, creditLineConfig } = await setUpFixture(deployAndConfigureContracts);
       const borrowerConfig = convertToLegacy(createBorrowerConfiguration());
       borrowerConfig.interestRateSecondary = creditLineConfig.minInterestRateSecondary - 1n;
@@ -1080,7 +1080,7 @@ describe("Contract 'CreditLine'", async () => {
         .to.be.revertedWithCustomError(creditLineViaAdmin, ERROR_NAME_INVALID_BORROWER_CONFIGURATION);
     });
 
-    it("Is reverted if the secondary interest rate is greater than credit line`s maximum one", async () => {
+    it("Is reverted if the secondary interest rate is greater than credit line's maximum one", async () => {
       const { creditLineViaAdmin, creditLineConfig } = await setUpFixture(deployAndConfigureContracts);
       const borrowerConfig = convertToLegacy(createBorrowerConfiguration());
       borrowerConfig.interestRateSecondary = creditLineConfig.maxInterestRateSecondary + 1n;
