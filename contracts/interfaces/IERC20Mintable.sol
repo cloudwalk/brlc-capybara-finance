@@ -3,7 +3,7 @@
 pragma solidity ^0.8.0;
 
 /// @title IERC20Mintable interface
-/// @author CloudWalk Inc. (See https://cloudwalk.io)
+/// @author CloudWalk Inc. (See https://www.cloudwalk.io)
 /// @dev The interface of an ERC20 token smart contract that supports minting and burning tokens.
 interface IERC20Mintable {
     /// @dev Mints tokens from reserve.

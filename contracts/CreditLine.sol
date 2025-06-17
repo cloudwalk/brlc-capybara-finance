@@ -23,8 +23,8 @@ import { ILendingMarket } from "./interfaces/ILendingMarket.sol";
 import { CreditLineStorage } from "./CreditLineStorage.sol";
 
 /// @title CreditLine contract
-/// @author CloudWalk Inc. (See https://cloudwalk.io)
-/// @dev The upgradable credit line contract.
+/// @author CloudWalk Inc. (See https://www.cloudwalk.io)
+/// @dev The upgradeable credit line contract.
 contract CreditLine is
     CreditLineStorage,
     AccessControlExtUpgradeable,
@@ -35,19 +35,12 @@ contract CreditLine is
 {
     using SafeCast for uint256;
 
-    // -------------------------------------------- //
-    //  Constants                                   //
-    // -------------------------------------------- //
+    // ------------------ Constants ------------------------------- //
 
-    /// @dev The role of this contract owner.
-    bytes32 public constant OWNER_ROLE = keccak256("OWNER_ROLE");
-
-    /// @dev The role of this contract admin.
+    /// @dev The role of an admin that is allowed to configure borrowers.
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
 
-    // -------------------------------------------- //
-    //  Modifiers                                   //
-    // -------------------------------------------- //
+    // ------------------ Modifiers ------------------------------- //
 
     /// @dev Throws if called by any account other than the lending market.
     modifier onlyMarket() {
@@ -57,21 +50,21 @@ contract CreditLine is
         _;
     }
 
-    // -------------------------------------------- //
-    //  Constructor                                 //
-    // -------------------------------------------- //
+    // ------------------ Constructor ----------------------------- //
 
-    /// @dev Constructor that prohibits the initialization of the implementation of the upgradable contract.
+    /// @dev Constructor that prohibits the initialization of the implementation of the upgradeable contract.
+    ///
+    /// See details
+    /// https://docs.openzeppelin.com/upgrades-plugins/writing-upgradeable#initializing_the_implementation_contract
+    ///
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
 
-    // -------------------------------------------- //
-    //  Initializers                                //
-    // -------------------------------------------- //
+    // ------------------ Initializers ---------------------------- //
 
-    /// @dev Initializer of the upgradable contract.
+    /// @dev Initializer of the upgradeable contract.
     /// @param owner_ The address of the credit line owner.
     /// @param market_ The address of the lending market.
     /// @param token_ The address of the token.
@@ -81,38 +74,6 @@ contract CreditLine is
         address market_,
         address token_
     ) external initializer {
-        __CreditLineConfigurable_init(owner_, market_, token_);
-    }
-
-    /// @dev Internal initializer of the upgradable contract.
-    /// @param owner_ The address of the credit line owner.
-    /// @param market_ The address of the lending market.
-    /// @param token_ The address of the token.
-    /// See details https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable.
-    function __CreditLineConfigurable_init(
-        address owner_, // Tools: this comment prevents Prettier from formatting into a single line.
-        address market_,
-        address token_
-    ) internal onlyInitializing {
-        __Context_init_unchained();
-        __ERC165_init_unchained();
-        __AccessControl_init_unchained();
-        __AccessControlExt_init_unchained();
-        __Pausable_init_unchained();
-        __PausableExt_init_unchained(OWNER_ROLE);
-        __CreditLineConfigurable_init_unchained(owner_, market_, token_);
-    }
-
-    /// @dev Unchained internal initializer of the upgradable contract.
-    /// @param owner_ The address of the credit line owner.
-    /// @param market_ The address of the lending market.
-    /// @param token_ The address of the token.
-    /// See details https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable.
-    function __CreditLineConfigurable_init_unchained(
-        address owner_,
-        address market_,
-        address token_
-    ) internal onlyInitializing {
         if (owner_ == address(0)) {
             revert Error.ZeroAddress();
         }
@@ -137,17 +98,18 @@ contract CreditLine is
             revert Error.ContractAddressInvalid();
         }
 
-        _setRoleAdmin(OWNER_ROLE, OWNER_ROLE);
-        _setRoleAdmin(ADMIN_ROLE, OWNER_ROLE);
+        __AccessControlExt_init_unchained();
+        __PausableExt_init_unchained();
+        __UUPSExt_init_unchained();
+
+        _setRoleAdmin(ADMIN_ROLE, GRANTOR_ROLE);
         _grantRole(OWNER_ROLE, owner_);
 
         _market = market_;
         _token = token_;
     }
 
-    // -------------------------------------------- //
-    //  Configuration transactional functions       //
-    // -------------------------------------------- //
+    // ----------- Configuration transactional functions ---------- //
 
     /// @inheritdoc ICreditLineConfiguration
     function configureCreditLine(CreditLineConfig memory config) external onlyRole(OWNER_ROLE) {
@@ -184,9 +146,7 @@ contract CreditLine is
         emit CreditLineConfigured(address(this));
     }
 
-    // -------------------------------------------- //
-    //  Primary transactional functions             //
-    // -------------------------------------------- //
+    // -------------- Primary transactional functions ------------- //
 
     /// @inheritdoc ICreditLinePrimary
     function configureBorrower(
@@ -232,9 +192,7 @@ contract CreditLine is
         }
     }
 
-    // -------------------------------------------- //
-    //  Hook transactional functions                //
-    // -------------------------------------------- //
+    // ------------------ Hook transactional functions ------------ //
 
     /// @inheritdoc ICreditLineHooks
     function onBeforeLoanTaken(uint256 loanId) external whenNotPaused onlyMarket {
@@ -264,9 +222,7 @@ contract CreditLine is
         _closeLoan(loan);
     }
 
-    // -------------------------------------------- //
-    //  View functions                              //
-    // -------------------------------------------- //
+    // ------------------ View functions -------------------------- //
 
     /// @inheritdoc ICreditLineConfiguration
     function creditLineConfiguration() external view override returns (CreditLineConfig memory) {
@@ -348,16 +304,12 @@ contract CreditLine is
         return _determineLateFeeAmount(loanTrackedBalance, _config.lateFeeRate);
     }
 
-    // -------------------------------------------- //
-    //  Pure functions                              //
-    // -------------------------------------------- //
+    // ------------------ Pure functions -------------------------- //
 
-    /// @inheritdoc ICreditLinePrimary
+    /// @inheritdoc ICreditLine
     function proveCreditLine() external pure {}
 
-    // -------------------------------------------- //
-    //  Internal functions                          //
-    // -------------------------------------------- //
+    // ------------------ Internal functions ---------------------- //
 
     /// @dev Updates the configuration of a borrower.
     /// @param borrower The address of the borrower to configure.
@@ -425,9 +377,9 @@ contract CreditLine is
         // Where division operator `/` takes into account the fractional part and
         // the `round()` function returns an integer rounded according to standard mathematical rules.
         uint256 product = loanTrackedBalance * lateFeeRate;
-        uint256 reminder = product % Constants.INTEREST_RATE_FACTOR;
+        uint256 remainder = product % Constants.INTEREST_RATE_FACTOR;
         uint256 result = product / Constants.INTEREST_RATE_FACTOR;
-        if (reminder >= (Constants.INTEREST_RATE_FACTOR / 2)) {
+        if (remainder >= (Constants.INTEREST_RATE_FACTOR / 2)) {
             ++result;
         }
         return result;
@@ -493,7 +445,7 @@ contract CreditLine is
     }
 
     /// @dev Updates the borrower structures when a loan is closed.
-    /// @param loan The state of the loan thai is being closed.
+    /// @param loan The state of the loan that is being closed.
     function _closeLoan(Loan.State memory loan) internal {
         BorrowerState storage borrowerState = _borrowerStates[loan.borrower];
         borrowerState.activeLoanCount -= 1;

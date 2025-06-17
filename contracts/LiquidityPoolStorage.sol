@@ -3,8 +3,8 @@
 pragma solidity 0.8.24;
 
 /// @title LiquidityPoolStorage contract
-/// @author CloudWalk Inc. (See https://cloudwalk.io)
-/// @dev Defines the storage layout for the credit line contract.
+/// @author CloudWalk Inc. (See https://www.cloudwalk.io)
+/// @dev Defines the storage layout for the liquidity pool contract.
 abstract contract LiquidityPoolStorage {
     /// @dev The address of the underlying token.
     address internal _token;

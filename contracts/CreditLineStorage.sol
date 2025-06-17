@@ -5,7 +5,7 @@ pragma solidity 0.8.24;
 import { ICreditLineTypes } from "./interfaces/ICreditLineTypes.sol";
 
 /// @title CreditLineStorage contract
-/// @author CloudWalk Inc. (See https://cloudwalk.io)
+/// @author CloudWalk Inc. (See https://www.cloudwalk.io)
 /// @dev Defines the storage layout for the credit line contract.
 abstract contract CreditLineStorage is ICreditLineTypes {
     /// @dev The address of the underlying token.

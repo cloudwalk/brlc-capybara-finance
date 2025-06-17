@@ -11,6 +11,7 @@ import {
   proveTx
 } from "../test-utils/eth";
 
+const GRANTOR_ROLE = ethers.id("GRANTOR_ROLE");
 const ADMIN_ROLE = ethers.id("ADMIN_ROLE");
 
 const MAX_ALLOWANCE = ethers.MaxUint256;
@@ -187,32 +188,41 @@ describe("Contract 'LendingMarket': complex tests", async () => {
     liquidityPoolFactory = liquidityPoolFactory.connect(owner);
 
     // Deploy the token contract
-    let token: Contract = (await tokenFactory.deploy()) as Contract;
+    let token = (await tokenFactory.deploy()) as Contract;
     await token.waitForDeployment();
     token = connect(token, owner); // Explicitly specifying the initial account
     const tokenAddress = getAddress(token);
 
     // Deploy the lending market contract
-    let lendingMarket: Contract = await upgrades.deployProxy(lendingMarketFactory, [owner.address]);
+    let lendingMarket = await upgrades.deployProxy(
+      lendingMarketFactory,
+      [owner.address],
+      { kind: "uups" }
+    ) as Contract;
     await lendingMarket.waitForDeployment();
     lendingMarket = connect(lendingMarket, owner); // Explicitly specifying the initial account
     const lendingMarketAddress = getAddress(lendingMarket);
 
     // Deploy the credit line contract
-    let creditLine: Contract = await upgrades.deployProxy(
+    let creditLine = await upgrades.deployProxy(
       creditLineFactory,
-      [owner.address, lendingMarketAddress, tokenAddress]
-    );
+      [owner.address, lendingMarketAddress, tokenAddress],
+      { kind: "uups" }
+    ) as Contract;
     await creditLine.waitForDeployment();
     creditLine = connect(creditLine, owner); // Explicitly specifying the initial account
     const creditLineAddress = getAddress(creditLine);
 
     // Deploy the liquidity pool contract
-    let liquidityPool: Contract = await upgrades.deployProxy(liquidityPoolFactory, [
-      owner.address,
-      lendingMarketAddress,
-      tokenAddress
-    ]);
+    let liquidityPool = await upgrades.deployProxy(
+      liquidityPoolFactory,
+      [
+        owner.address,
+        lendingMarketAddress,
+        tokenAddress
+      ],
+      { kind: "uups" }
+    ) as Contract;
     await liquidityPool.waitForDeployment();
     liquidityPool = connect(liquidityPool, owner); // Explicitly specifying the initial account
     const liquidityPoolAddress = getAddress(liquidityPool);
@@ -243,7 +253,9 @@ describe("Contract 'LendingMarket': complex tests", async () => {
     await proveTx(connect(token, borrower).approve(lendingMarketAddress, ethers.MaxUint256));
 
     // Configure contracts and create a lending program
+    await proveTx(creditLine.grantRole(GRANTOR_ROLE, owner.address));
     await proveTx(creditLine.grantRole(ADMIN_ROLE, owner.address));
+    await proveTx(lendingMarket.grantRole(GRANTOR_ROLE, owner.address));
     await proveTx(lendingMarket.grantRole(ADMIN_ROLE, owner.address));
     await proveTx(lendingMarket.createProgram(creditLineAddress, liquidityPoolAddress));
 

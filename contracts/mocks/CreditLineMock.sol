@@ -8,28 +8,22 @@ import { Loan } from "../libraries/Loan.sol";
 import { ICreditLine } from "../interfaces/ICreditLine.sol";
 
 /// @title CreditLineMock contract
-/// @author CloudWalk Inc. (See https://cloudwalk.io)
+/// @author CloudWalk Inc. (See https://www.cloudwalk.io)
 /// @dev Mock of the `CreditLine` contract used for testing.
 contract CreditLineMock {
-    // -------------------------------------------- //
-    //  Storage variables                           //
-    // -------------------------------------------- //
+    // ------------------ Storage variables ----------------------- //
 
     mapping(address => Loan.Terms) private _loanTerms;
     uint256 private _lateFeeRate;
 
-    // -------------------------------------------- //
-    //  Events                                      //
-    // -------------------------------------------- //
+    // ------------------ Events ---------------------------------- //
 
     event OnBeforeLoanTakenCalled(uint256 indexed loanId);
     event OnBeforeLoanReopenedCalled(uint256 indexed loanId);
     event OnAfterLoanPaymentCalled(uint256 indexed loanId, uint256 indexed repaymentAmount);
     event OnAfterLoanRevocationCalled(uint256 indexed loanId);
 
-    // -------------------------------------------- //
-    //  Hook transactional functions                //
-    // -------------------------------------------- //
+    // ------------------ Hook transactional functions ------------ //
 
     function onBeforeLoanTaken(uint256 loanId) external {
         emit OnBeforeLoanTakenCalled(loanId);
@@ -47,9 +41,7 @@ contract CreditLineMock {
         emit OnAfterLoanRevocationCalled(loanId);
     }
 
-    // -------------------------------------------- //
-    //  Mock transactional functions                //
-    // -------------------------------------------- //
+    // ------------------ Mock transactional functions ------------ //
 
     function mockLoanTerms(address borrower, uint256 amount, Loan.Terms memory terms) external {
         amount; // To prevent compiler warning about unused variable
@@ -60,9 +52,7 @@ contract CreditLineMock {
         _lateFeeRate = newRate;
     }
 
-    // -------------------------------------------- //
-    //  View and pure functions                     //
-    // -------------------------------------------- //
+    // ------------------ View functions -------------------------- //
 
     function determineLoanTerms(
         address borrower,
@@ -88,6 +78,8 @@ contract CreditLineMock {
         }
         return result;
     }
+
+    // ------------------ Pure functions -------------------------- //
 
     function proveCreditLine() external pure {}
 }

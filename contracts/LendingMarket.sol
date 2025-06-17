@@ -27,7 +27,7 @@ import { ILiquidityPool } from "./interfaces/ILiquidityPool.sol";
 import { LendingMarketStorage } from "./LendingMarketStorage.sol";
 
 /// @title LendingMarket contract
-/// @author CloudWalk Inc. (See https://cloudwalk.io)
+/// @author CloudWalk Inc. (See https://www.cloudwalk.io)
 /// @dev Implementation of the lending market contract.
 ///
 /// See additional notes in the comments of the interface `ILendingMarket.sol`.
@@ -43,19 +43,12 @@ contract LendingMarket is
     using SafeERC20 for IERC20;
     using SafeCast for uint256;
 
-    // -------------------------------------------- //
-    //  Constants                                   //
-    // -------------------------------------------- //
+    // ------------------ Constants ------------------------------- //
 
-    /// @dev The role of this contract owner.
-    bytes32 public constant OWNER_ROLE = keccak256("OWNER_ROLE");
-
-    /// @dev The role of this contract admin.
+    /// @dev The role of an admin that is allowed to execute loan-related functions.
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
 
-    // -------------------------------------------- //
-    //  Modifiers                                   //
-    // -------------------------------------------- //
+    // ------------------ Modifiers ------------------------------- //
 
     /// @dev Throws if the loan does not exist or has already been repaid.
     /// @param loanId The unique identifier of the loan to check.
@@ -64,52 +57,33 @@ contract LendingMarket is
         _;
     }
 
-    // -------------------------------------------- //
-    //  Constructor                                 //
-    // -------------------------------------------- //
+    // ------------------ Constructor ----------------------------- //
 
-    /// @dev Constructor that prohibits the initialization of the implementation of the upgradable contract.
+    /// @dev Constructor that prohibits the initialization of the implementation of the upgradeable contract.
+    ///
+    /// See details
+    /// https://docs.openzeppelin.com/upgrades-plugins/writing-upgradeable#initializing_the_implementation_contract
+    ///
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
 
-    // -------------------------------------------- //
-    //  Initializers                                //
-    // -------------------------------------------- //
+    // ------------------ Initializers ---------------------------- //
 
-    /// @dev Initializer of the upgradable contract.
+    /// @dev Initializer of the upgradeable contract.
     /// @param owner_ The owner of the contract.
     /// See details https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable.
     function initialize(address owner_) external initializer {
-        __LendingMarket_init(owner_);
-    }
-
-    /// @dev Internal initializer of the upgradable contract.
-    /// @param owner_ The owner of the contract.
-    /// See details https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable.
-    function __LendingMarket_init(address owner_) internal onlyInitializing {
-        __Context_init_unchained();
-        __ERC165_init_unchained();
-        __AccessControl_init_unchained();
         __AccessControlExt_init_unchained();
-        __Pausable_init_unchained();
-        __PausableExt_init_unchained(OWNER_ROLE);
-        __LendingMarket_init_unchained(owner_);
-    }
+        __PausableExt_init_unchained();
+        __UUPSExt_init_unchained();
 
-    /// @dev Unchained internal initializer of the upgradable contract.
-    /// @param owner_ The owner of the contract.
-    /// See details https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable.
-    function __LendingMarket_init_unchained(address owner_) internal onlyInitializing {
-        _setRoleAdmin(OWNER_ROLE, OWNER_ROLE);
-        _setRoleAdmin(ADMIN_ROLE, OWNER_ROLE);
+        _setRoleAdmin(ADMIN_ROLE, GRANTOR_ROLE);
         _grantRole(OWNER_ROLE, owner_);
     }
 
-    // -------------------------------------------- //
-    //  Configuration transactional functions       //
-    // -------------------------------------------- //
+    // ----------- Configuration transactional functions ---------- //
 
     /// @inheritdoc ILendingMarketConfiguration
     function createProgram(
@@ -153,9 +127,7 @@ contract LendingMarket is
         _programLiquidityPools[programId] = liquidityPool;
     }
 
-    // -------------------------------------------- //
-    //  Primary transactional functions             //
-    // -------------------------------------------- //
+    // -------------- Primary transactional functions ------------- //
 
     /// @inheritdoc ILendingMarketPrimary
     function takeLoanFor(
@@ -468,9 +440,7 @@ contract LendingMarket is
         loan.interestRateSecondary = newInterestRate.toUint32();
     }
 
-    // -------------------------------------------- //
-    //  View functions                              //
-    // -------------------------------------------- //
+    // ------------------ View functions -------------------------- //
 
     /// @inheritdoc ILendingMarketPrimary
     function getProgramCreditLine(uint32 programId) external view returns (address) {
@@ -547,9 +517,7 @@ contract LendingMarket is
         return _programIdCounter;
     }
 
-    // -------------------------------------------- //
-    //  Pure functions                              //
-    // -------------------------------------------- //
+    // ------------------ Pure functions -------------------------- //
 
     /// @dev Calculates the period index that corresponds the specified timestamp.
     /// @param timestamp The timestamp to calculate the period index.
@@ -578,12 +546,10 @@ contract LendingMarket is
             );
     }
 
-    /// @inheritdoc ILendingMarketPrimary
+    /// @inheritdoc ILendingMarket
     function proveLendingMarket() external pure {}
 
-    // -------------------------------------------- //
-    //  Internal functions                          //
-    // -------------------------------------------- //
+    // ------------------ Internal functions ---------------------- //
 
     /// @dev Takes a loan for a provided account internally.
     /// @param borrower The account for whom the loan is taken.

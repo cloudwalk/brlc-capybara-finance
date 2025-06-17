@@ -6,21 +6,17 @@ import { ICreditLineTypes } from "./ICreditLineTypes.sol";
 import { Loan } from "../libraries/Loan.sol";
 
 /// @title ICreditLinePrimary interface
-/// @author CloudWalk Inc. (See https://cloudwalk.io)
+/// @author CloudWalk Inc. (See https://www.cloudwalk.io)
 /// @dev The primary part of the credit line contract interface.
 interface ICreditLinePrimary is ICreditLineTypes {
-    // -------------------------------------------- //
-    //  Events                                      //
-    // -------------------------------------------- //
+    // ------------------ Events ---------------------------------- //
 
     /// @dev Emitted when a borrower is configured.
     /// @param creditLine The address of the current credit line.
     /// @param borrower The address of the borrower being configured.
     event BorrowerConfigured(address indexed creditLine, address indexed borrower);
 
-    // -------------------------------------------- //
-    //  Transactional functions                     //
-    // -------------------------------------------- //
+    // ------------------ Transactional functions ----------------- //
 
     /// @dev Configures a specific borrower.
     /// @param borrower The address of the borrower to configure.
@@ -42,9 +38,7 @@ interface ICreditLinePrimary is ICreditLineTypes {
     /// @param configs The array containing the legacy borrower configurations.
     function configureBorrowers(address[] memory borrowers, BorrowerConfigLegacy[] memory configs) external;
 
-    // -------------------------------------------- //
-    //  View and pure functions                     //
-    // -------------------------------------------- //
+    // ------------------ View functions -------------------------- //
 
     /// @dev Retrieves the loan terms for the provided borrower, amount, and loan duration.
     /// @param borrower The address of the borrower.
@@ -83,34 +77,25 @@ interface ICreditLinePrimary is ICreditLineTypes {
     /// @param borrower The address of the borrower to check.
     /// @return The structure containing the borrower state.
     function getBorrowerState(address borrower) external view returns (BorrowerState memory);
-
-    /// @dev Proves the contract is the credit line one. A marker function.
-    function proveCreditLine() external pure;
 }
 
 /// @title ICreditLineConfiguration interface
-/// @author CloudWalk Inc. (See https://cloudwalk.io)
+/// @author CloudWalk Inc. (See https://www.cloudwalk.io)
 /// @dev The configuration part of the credit line contract interface.
 interface ICreditLineConfiguration is ICreditLineTypes {
-    // -------------------------------------------- //
-    //  Events                                      //
-    // -------------------------------------------- //
+    // ------------------ Events ---------------------------------- //
 
     /// @dev Emitted when the credit line is configured.
     /// @param creditLine The address of the current credit line.
     event CreditLineConfigured(address indexed creditLine);
 
-    // -------------------------------------------- //
-    //  Transactional functions                     //
-    // -------------------------------------------- //
+    // ------------------ Transactional functions ----------------- //
 
     /// @dev Updates the credit line configuration.
     /// @param config The structure containing the credit line configuration.
     function configureCreditLine(CreditLineConfig memory config) external;
 
-    // -------------------------------------------- //
-    //  View functions                              //
-    // -------------------------------------------- //
+    // ------------------ View functions -------------------------- //
 
     /// @dev Retrieves the credit line configuration.
     /// @return The structure containing the credit line configuration.
@@ -118,7 +103,7 @@ interface ICreditLineConfiguration is ICreditLineTypes {
 }
 
 /// @title ICreditLineHooks interface
-/// @author CloudWalk Inc. (See https://cloudwalk.io)
+/// @author CloudWalk Inc. (See https://www.cloudwalk.io)
 /// @dev The hooks part of the credit line contract interface.
 interface ICreditLineHooks {
     /// @dev A hook that is triggered by the associated market before a loan is taken.
@@ -140,7 +125,7 @@ interface ICreditLineHooks {
 }
 
 /// @title ICreditLineErrors interface
-/// @author CloudWalk Inc. (See https://cloudwalk.io)
+/// @author CloudWalk Inc. (See https://www.cloudwalk.io)
 /// @dev Defines the custom errors used in the credit line contract.
 interface ICreditLineErrors {
     /// @dev Thrown when the credit line configuration is invalid.
@@ -166,6 +151,9 @@ interface ICreditLineErrors {
 }
 
 /// @title ICreditLine interface
-/// @author CloudWalk Inc. (See https://cloudwalk.io)
+/// @author CloudWalk Inc. (See https://www.cloudwalk.io)
 /// @dev Defines the full interface of the credit line contract.
-interface ICreditLine is ICreditLinePrimary, ICreditLineConfiguration, ICreditLineHooks, ICreditLineErrors {}
+interface ICreditLine is ICreditLinePrimary, ICreditLineConfiguration, ICreditLineHooks, ICreditLineErrors {
+    /// @dev Proves the contract is the credit line one. A marker function.
+    function proveCreditLine() external pure;
+}

@@ -15,7 +15,7 @@ import { Loan } from "./libraries/Loan.sol";
 import { SafeCast } from "./libraries/SafeCast.sol";
 
 import { ICreditLine } from "./interfaces/ICreditLine.sol";
-import {IERC20Mintable} from "./interfaces/IERC20Mintable.sol";
+import { IERC20Mintable } from "./interfaces/IERC20Mintable.sol";
 import { ILendingMarket } from "./interfaces/ILendingMarket.sol";
 import { ILiquidityPool } from "./interfaces/ILiquidityPool.sol";
 import { ILiquidityPoolConfiguration } from "./interfaces/ILiquidityPool.sol";
@@ -25,8 +25,8 @@ import { ILiquidityPoolPrimary } from "./interfaces/ILiquidityPool.sol";
 import { LiquidityPoolStorage } from "./LiquidityPoolStorage.sol";
 
 /// @title LiquidityPool contract
-/// @author CloudWalk Inc. (See https://cloudwalk.io)
-/// @dev The upgradable liquidity pool contract.
+/// @author CloudWalk Inc. (See https://www.cloudwalk.io)
+/// @dev The upgradeable liquidity pool contract.
 contract LiquidityPool is
     LiquidityPoolStorage,
     AccessControlExtUpgradeable,
@@ -38,18 +38,12 @@ contract LiquidityPool is
     using SafeERC20 for IERC20;
     using SafeCast for uint256;
 
-    // -------------------------------------------- //
-    //  Constants                                   //
-    // -------------------------------------------- //
+    // ------------------ Constants ------------------------------- //
 
-    /// @dev The role of this contract owner.
-    bytes32 public constant OWNER_ROLE = keccak256("OWNER_ROLE");
-    /// @dev The role of this contract admin.
+    /// @dev The role of an admin that is allowed to execute pool-related functions.
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
 
-    // -------------------------------------------- //
-    //  Modifiers                                   //
-    // -------------------------------------------- //
+    // ------------------ Modifiers ------------------------------- //
 
     /// @dev Throws if called by any account other than the lending market.
     modifier onlyMarket() {
@@ -59,21 +53,21 @@ contract LiquidityPool is
         _;
     }
 
-    // -------------------------------------------- //
-    //  Constructor                                 //
-    // -------------------------------------------- //
+    // ------------------ Constructor ----------------------------- //
 
-    /// @dev Constructor that prohibits the initialization of the implementation of the upgradable contract.
+    /// @dev Constructor that prohibits the initialization of the implementation of the upgradeable contract.
+    ///
+    /// See details
+    /// https://docs.openzeppelin.com/upgrades-plugins/writing-upgradeable#initializing_the_implementation_contract
+    ///
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
 
-    // -------------------------------------------- //
-    //  Initializers                                //
-    // -------------------------------------------- //
+    // ------------------ Initializers ---------------------------- //
 
-    /// @dev Initializer of the upgradable contract.
+    /// @dev Initializer of the upgradeable contract.
     /// @param owner_ The address of the liquidity pool owner.
     /// @param market_ The address of the lending market.
     /// @param token_ The address of the token.
@@ -83,38 +77,6 @@ contract LiquidityPool is
         address market_,
         address token_
     ) external initializer {
-        __LiquidityPool_init(owner_, market_, token_);
-    }
-
-    /// @dev Internal initializer of the upgradable contract.
-    /// @param owner_ The address of the liquidity pool owner.
-    /// @param market_ The address of the lending market.
-    /// @param token_ The address of the token.
-    /// See details https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable.
-    function __LiquidityPool_init(
-        address owner_, // Tools: this comment prevents Prettier from formatting into a single line.
-        address market_,
-        address token_
-    ) internal onlyInitializing {
-        __Context_init_unchained();
-        __ERC165_init_unchained();
-        __AccessControl_init_unchained();
-        __AccessControlExt_init_unchained();
-        __Pausable_init_unchained();
-        __PausableExt_init_unchained(OWNER_ROLE);
-        __LiquidityPool_init_unchained(owner_, market_, token_);
-    }
-
-    /// @dev Unchained internal initializer of the upgradable contract.
-    /// @param owner_ The address of the liquidity pool owner.
-    /// @param market_ The address of the lending market.
-    /// @param token_ The address of the token.
-    /// See details https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable.
-    function __LiquidityPool_init_unchained(
-        address owner_, // Tools: this comment prevents Prettier from formatting into a single line.
-        address market_,
-        address token_
-    ) internal onlyInitializing {
         if (owner_ == address(0)) {
             revert Error.ZeroAddress();
         }
@@ -139,17 +101,18 @@ contract LiquidityPool is
             revert Error.ContractAddressInvalid();
         }
 
-        _setRoleAdmin(OWNER_ROLE, OWNER_ROLE);
-        _setRoleAdmin(ADMIN_ROLE, OWNER_ROLE);
+        __AccessControlExt_init_unchained();
+        __PausableExt_init_unchained();
+        __UUPSExt_init_unchained();
+
+        _setRoleAdmin(ADMIN_ROLE, GRANTOR_ROLE);
         _grantRole(OWNER_ROLE, owner_);
 
         _market = market_;
         _token = token_;
     }
 
-    // -------------------------------------------- //
-    //  Configuration transactional functions       //
-    // -------------------------------------------- //
+    // ----------- Configuration transactional functions ---------- //
 
     /// @inheritdoc ILiquidityPoolConfiguration
     function setAddonTreasury(address newTreasury) external onlyRole(OWNER_ROLE) {
@@ -169,9 +132,7 @@ contract LiquidityPool is
         _grantRole(ADMIN_ROLE, msg.sender);
     }
 
-    // -------------------------------------------- //
-    //  Primary transactional functions             //
-    // -------------------------------------------- //
+    // -------------- Primary transactional functions ------------- //
 
     /// @inheritdoc ILiquidityPoolPrimary
     function deposit(uint256 amount) external onlyRole(OWNER_ROLE) {
@@ -219,9 +180,7 @@ contract LiquidityPool is
         emit Rescue(token_, amount);
     }
 
-    // -------------------------------------------- //
-    //  Hook transactional functions                //
-    // -------------------------------------------- //
+    // ------------------ Hook transactional functions ------------ //
 
     /// @inheritdoc ILiquidityPoolHooks
     function onBeforeLoanTaken(uint256 loanId) external whenNotPaused onlyMarket {
@@ -257,9 +216,7 @@ contract LiquidityPool is
         }
     }
 
-    // -------------------------------------------- //
-    //  View functions                              //
-    // -------------------------------------------- //
+    // ------------------ View functions -------------------------- //
 
     /// @inheritdoc ILiquidityPoolPrimary
     function addonTreasury() external view returns (address) {
@@ -286,16 +243,12 @@ contract LiquidityPool is
         return _token;
     }
 
-    // -------------------------------------------- //
-    //  Pure functions                              //
-    // -------------------------------------------- //
+    // ------------------ Pure functions -------------------------- //
 
-    /// @inheritdoc ILiquidityPoolPrimary
+    /// @inheritdoc ILiquidityPool
     function proveLiquidityPool() external pure {}
 
-    // -------------------------------------------- //
-    //  Internal functions                          //
-    // -------------------------------------------- //
+    // ------------------ Internal functions ---------------------- //
 
     /// @dev Deposits the tokens into the liquidity pool internally.
     /// @param amount The amount of tokens to deposit.
