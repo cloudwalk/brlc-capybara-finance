@@ -6,15 +6,19 @@ import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils
 
 import { PausableExtUpgradeable } from "../base/PausableExtUpgradeable.sol";
 
-/// @title PausableExtUpgradeableMock contract
-/// @author CloudWalk Inc. (See https://www.cloudwalk.io)
-/// @dev An implementation of the {PausableExtUpgradeable} contract for test purposes.
+/**
+ * @title PausableExtUpgradeableMock contract
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
+ * @dev An implementation of the {PausableExtUpgradeable} contract for test purposes.
+ */
 contract PausableExtUpgradeableMock is PausableExtUpgradeable, UUPSUpgradeable {
     // ------------------ Initializers ---------------------------- //
 
-    /// @dev The initialize function of the upgradeable contract.
-    ///
-    /// See details: https://docs.openzeppelin.com/upgrades-plugins/writing-upgradeable
+    /**
+     * @dev The initialize function of the upgradeable contract.
+     *
+     * See details: https://docs.openzeppelin.com/upgrades-plugins/writing-upgradeable
+     */
     function initialize() public initializer {
         __AccessControlExt_init_unchained();
         __PausableExt_init_unchained();
@@ -34,8 +38,10 @@ contract PausableExtUpgradeableMock is PausableExtUpgradeable, UUPSUpgradeable {
 
     // ------------------ Internal functions ---------------------- //
 
-    /// @dev The implementation of the upgrade authorization function of the parent UUPSUpgradeable contract.
-    /// @param newImplementation The address of the new implementation.
+    /**
+     * @dev The implementation of the upgrade authorization function of the parent UUPSUpgradeable contract.
+     * @param newImplementation The address of the new implementation.
+     */
     function _authorizeUpgrade(address newImplementation) internal pure override {
         newImplementation; // Suppresses a compiler warning about the unused variable
     }

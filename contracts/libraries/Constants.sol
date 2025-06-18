@@ -2,9 +2,11 @@
 
 pragma solidity 0.8.24;
 
-/// @title Constants library
-/// @author CloudWalk Inc. (See https://www.cloudwalk.io)
-/// @dev Defines the constants used across the contracts.
+/**
+ * @title Constants library
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
+ * @dev Defines the constants used across the contracts.
+ */
 library Constants {
     /// @dev The loan period duration in seconds.
     uint256 internal constant PERIOD_IN_SECONDS = 24 hours;

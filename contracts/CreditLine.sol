@@ -22,9 +22,11 @@ import { ILendingMarket } from "./interfaces/ILendingMarket.sol";
 
 import { CreditLineStorage } from "./CreditLineStorage.sol";
 
-/// @title CreditLine contract
-/// @author CloudWalk Inc. (See https://www.cloudwalk.io)
-/// @dev The upgradeable credit line contract.
+/**
+ * @title CreditLine contract
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
+ * @dev The upgradeable credit line contract.
+ */
 contract CreditLine is
     CreditLineStorage,
     AccessControlExtUpgradeable,
@@ -52,23 +54,27 @@ contract CreditLine is
 
     // ------------------ Constructor ----------------------------- //
 
-    /// @dev Constructor that prohibits the initialization of the implementation of the upgradeable contract.
-    ///
-    /// See details
-    /// https://docs.openzeppelin.com/upgrades-plugins/writing-upgradeable#initializing_the_implementation_contract
-    ///
-    /// @custom:oz-upgrades-unsafe-allow constructor
+    /**
+     * @dev Constructor that prohibits the initialization of the implementation of the upgradeable contract.
+     *
+     * See details
+     * https://docs.openzeppelin.com/upgrades-plugins/writing-upgradeable#initializing_the_implementation_contract
+     *
+     * @custom:oz-upgrades-unsafe-allow constructor
+     */
     constructor() {
         _disableInitializers();
     }
 
     // ------------------ Initializers ---------------------------- //
 
-    /// @dev Initializer of the upgradeable contract.
-    /// @param owner_ The address of the credit line owner.
-    /// @param market_ The address of the lending market.
-    /// @param token_ The address of the token.
-    /// See details https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable.
+    /**
+     * @dev Initializer of the upgradeable contract.
+     * @param owner_ The address of the credit line owner.
+     * @param market_ The address of the lending market.
+     * @param token_ The address of the token.
+     * See details https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable.
+     */
     function initialize(
         address owner_, // Tools: this comment prevents Prettier from formatting into a single line.
         address market_,
@@ -311,9 +317,11 @@ contract CreditLine is
 
     // ------------------ Internal functions ---------------------- //
 
-    /// @dev Updates the configuration of a borrower.
-    /// @param borrower The address of the borrower to configure.
-    /// @param config The new borrower configuration to be applied.
+    /**
+     * @dev Updates the configuration of a borrower.
+     * @param borrower The address of the borrower to configure.
+     * @param config The new borrower configuration to be applied.
+     */
     function _configureBorrower(address borrower, BorrowerConfig memory config) internal {
         if (borrower == address(0)) {
             revert Error.ZeroAddress();
@@ -368,10 +376,12 @@ contract CreditLine is
         emit BorrowerConfigured(address(this), borrower);
     }
 
-    /// @dev Calculates the late fee amount for the provided loan tracked balance and late fee rate.
-    /// @param loanTrackedBalance The tracked balance of the loan as the base to calculate the late fee amount.
-    /// @param lateFeeRate The late fee rate to be applied to the loan.
-    /// @return The amount of the late fee.
+    /**
+     * @dev Calculates the late fee amount for the provided loan tracked balance and late fee rate.
+     * @param loanTrackedBalance The tracked balance of the loan as the base to calculate the late fee amount.
+     * @param lateFeeRate The late fee rate to be applied to the loan.
+     * @return The amount of the late fee.
+     */
     function _determineLateFeeAmount(uint256 loanTrackedBalance, uint256 lateFeeRate) private pure returns (uint256) {
         // The equivalent formula: round(loanTrackedBalance * lateFeeRate / INTEREST_RATE_FACTOR)
         // Where division operator `/` takes into account the fractional part and
@@ -385,9 +395,11 @@ contract CreditLine is
         return result;
     }
 
-    /// @dev Updates the configuration of a borrower.
-    /// @param borrower The address of the borrower to configure.
-    /// @param config The new borrower configuration to be applied.
+    /**
+     * @dev Updates the configuration of a borrower.
+     * @param borrower The address of the borrower to configure.
+     * @param config The new borrower configuration to be applied.
+     */
     function _configureBorrowerLegacy(address borrower, BorrowerConfigLegacy memory config) internal {
         BorrowerConfig memory newConfig = BorrowerConfig({
             expiration: config.expiration,
@@ -411,8 +423,10 @@ contract CreditLine is
         return block.timestamp - Constants.NEGATIVE_TIME_OFFSET;
     }
 
-    /// @dev Executes additional checks and updates the borrower structures when a loan is opened.
-    /// @param loan The state of the loan that is being opened.
+    /**
+     * @dev Executes additional checks and updates the borrower structures when a loan is opened.
+     * @param loan The state of the loan that is being opened.
+     */
     function _openLoan(Loan.State memory loan) internal {
         address borrower = loan.borrower;
         uint256 borrowedAmount = loan.borrowedAmount;
@@ -444,8 +458,10 @@ contract CreditLine is
         }
     }
 
-    /// @dev Updates the borrower structures when a loan is closed.
-    /// @param loan The state of the loan that is being closed.
+    /**
+     * @dev Updates the borrower structures when a loan is closed.
+     * @param loan The state of the loan that is being closed.
+     */
     function _closeLoan(Loan.State memory loan) internal {
         BorrowerState storage borrowerState = _borrowerStates[loan.borrower];
         borrowerState.activeLoanCount -= 1;
@@ -454,9 +470,11 @@ contract CreditLine is
         borrowerState.totalClosedLoanAmount += loan.borrowedAmount;
     }
 
-    /// @dev The upgrade validation function for the UUPSExtUpgradeable contract.
-    /// @param newImplementation The address of the new implementation.
-    ///
+    /**
+     * @dev The upgrade validation function for the UUPSExtUpgradeable contract.
+     * @param newImplementation The address of the new implementation.
+     *
+     */
     function _validateUpgrade(address newImplementation) internal view override onlyRole(OWNER_ROLE) {
         try ICreditLine(newImplementation).proveCreditLine() {} catch {
             revert Error.ImplementationAddressInvalid();

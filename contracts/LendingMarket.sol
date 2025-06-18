@@ -26,11 +26,13 @@ import { ILiquidityPool } from "./interfaces/ILiquidityPool.sol";
 
 import { LendingMarketStorage } from "./LendingMarketStorage.sol";
 
-/// @title LendingMarket contract
-/// @author CloudWalk Inc. (See https://www.cloudwalk.io)
-/// @dev Implementation of the lending market contract.
-///
-/// See additional notes in the comments of the interface `ILendingMarket.sol`.
+/**
+ * @title LendingMarket contract
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
+ * @dev Implementation of the lending market contract.
+ *
+ * See additional notes in the comments of the interface `ILendingMarket.sol`.
+ */
 contract LendingMarket is
     LendingMarketStorage,
     Initializable,
@@ -50,8 +52,10 @@ contract LendingMarket is
 
     // ------------------ Modifiers ------------------------------- //
 
-    /// @dev Throws if the loan does not exist or has already been repaid.
-    /// @param loanId The unique identifier of the loan to check.
+    /**
+     * @dev Throws if the loan does not exist or has already been repaid.
+     * @param loanId The unique identifier of the loan to check.
+     */
     modifier onlyOngoingLoan(uint256 loanId) {
         _checkIfLoanOngoing(loanId);
         _;
@@ -59,21 +63,25 @@ contract LendingMarket is
 
     // ------------------ Constructor ----------------------------- //
 
-    /// @dev Constructor that prohibits the initialization of the implementation of the upgradeable contract.
-    ///
-    /// See details
-    /// https://docs.openzeppelin.com/upgrades-plugins/writing-upgradeable#initializing_the_implementation_contract
-    ///
-    /// @custom:oz-upgrades-unsafe-allow constructor
+    /**
+     * @dev Constructor that prohibits the initialization of the implementation of the upgradeable contract.
+     *
+     * See details
+     * https://docs.openzeppelin.com/upgrades-plugins/writing-upgradeable#initializing_the_implementation_contract
+     *
+     * @custom:oz-upgrades-unsafe-allow constructor
+     */
     constructor() {
         _disableInitializers();
     }
 
     // ------------------ Initializers ---------------------------- //
 
-    /// @dev Initializer of the upgradeable contract.
-    /// @param owner_ The owner of the contract.
-    /// See details https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable.
+    /**
+     * @dev Initializer of the upgradeable contract.
+     * @param owner_ The owner of the contract.
+     * See details https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable.
+     */
     function initialize(address owner_) external initializer {
         __AccessControlExt_init_unchained();
         __PausableExt_init_unchained();
@@ -519,18 +527,22 @@ contract LendingMarket is
 
     // ------------------ Pure functions -------------------------- //
 
-    /// @dev Calculates the period index that corresponds the specified timestamp.
-    /// @param timestamp The timestamp to calculate the period index.
-    /// @param periodInSeconds_ The period duration in seconds.
+    /**
+     * @dev Calculates the period index that corresponds the specified timestamp.
+     * @param timestamp The timestamp to calculate the period index.
+     * @param periodInSeconds_ The period duration in seconds.
+     */
     function calculatePeriodIndex(uint256 timestamp, uint256 periodInSeconds_) external pure returns (uint256) {
         return _periodIndex(timestamp, periodInSeconds_);
     }
 
-    /// @dev Calculates the tracked balance of a loan.
-    /// @param originalBalance The balance of the loan at the beginning.
-    /// @param numberOfPeriods The number of periods to calculate the tracked balance.
-    /// @param interestRate The interest rate applied to the loan.
-    /// @param interestRateFactor_ The interest rate factor.
+    /**
+     * @dev Calculates the tracked balance of a loan.
+     * @param originalBalance The balance of the loan at the beginning.
+     * @param numberOfPeriods The number of periods to calculate the tracked balance.
+     * @param interestRate The interest rate applied to the loan.
+     * @param interestRateFactor_ The interest rate factor.
+     */
     function calculateTrackedBalance(
         uint256 originalBalance,
         uint256 numberOfPeriods,
@@ -551,13 +563,15 @@ contract LendingMarket is
 
     // ------------------ Internal functions ---------------------- //
 
-    /// @dev Takes a loan for a provided account internally.
-    /// @param borrower The account for whom the loan is taken.
-    /// @param programId The identifier of the program to take the loan from.
-    /// @param borrowedAmount The desired amount of tokens to borrow.
-    /// @param addonAmount The off-chain calculated addon amount (extra charges or fees) for the loan,
-    /// @param durationInPeriods The desired duration of the loan in periods.
-    /// @return The unique identifier of the loan.
+    /**
+     * @dev Takes a loan for a provided account internally.
+     * @param borrower The account for whom the loan is taken.
+     * @param programId The identifier of the program to take the loan from.
+     * @param borrowedAmount The desired amount of tokens to borrow.
+     * @param addonAmount The off-chain calculated addon amount (extra charges or fees) for the loan,
+     * @param durationInPeriods The desired duration of the loan in periods.
+     * @return The unique identifier of the loan.
+     */
     function _takeLoan(
         address borrower,
         uint32 programId,
@@ -609,10 +623,12 @@ contract LendingMarket is
         return id;
     }
 
-    /// @dev Updates the loan state and makes the necessary transfers when repaying a loan.
-    /// @param loanId The unique identifier of the loan to repay.
-    /// @param repaymentAmount The amount to repay.
-    /// @param repayer The token source for the repayment or zero if the source is the loan borrower themself.
+    /**
+     * @dev Updates the loan state and makes the necessary transfers when repaying a loan.
+     * @param loanId The unique identifier of the loan to repay.
+     * @param repaymentAmount The amount to repay.
+     * @param repayer The token source for the repayment or zero if the source is the loan borrower themself.
+     */
     function _repayLoan(
         uint256 loanId, // Tools: this comment prevents Prettier from formatting into a single line.
         uint256 repaymentAmount,
@@ -634,9 +650,11 @@ contract LendingMarket is
         emit LoanRepayment(loanId, repayer, loan.borrower, repaymentAmount, newTrackedBalance);
     }
 
-    /// @dev Updates the loan state and makes the necessary transfers when revoking a loan.
-    /// @param loanId The unique identifier of the loan to revoke.
-    /// @param loan The storage state of the loan to update.
+    /**
+     * @dev Updates the loan state and makes the necessary transfers when revoking a loan.
+     * @param loanId The unique identifier of the loan to revoke.
+     * @param loan The storage state of the loan to update.
+     */
     function _revokeLoan(uint256 loanId, Loan.State storage loan) internal {
         address creditLine = _programCreditLines[loan.programId];
         address liquidityPool = _programLiquidityPools[loan.programId];
@@ -650,9 +668,11 @@ contract LendingMarket is
         emit LoanRevoked(loanId);
     }
 
-    /// @dev Discounts a loan.
-    /// @param loanId The unique identifier of the loan to discount.
-    /// @param discountAmount The amount of the discount.
+    /**
+     * @dev Discounts a loan.
+     * @param loanId The unique identifier of the loan to discount.
+     * @param discountAmount The amount of the discount.
+     */
     function _discountLoan(
         uint256 loanId, // Tools: this comment prevents Prettier from formatting into a single line.
         uint256 discountAmount
@@ -664,11 +684,13 @@ contract LendingMarket is
         emit LoanDiscounted(loanId, discountAmount, newTrackedBalance);
     }
 
-    /// @dev Processes a change in the tracked balance of a loan and updates the loan state accordingly.
-    /// @param loan The storage state of the loan.
-    /// @param changeAmount The amount of the change or type(uint256).max if it is a full repayment or a full discount.
-    /// @return newTrackedBalance The new tracked balance.
-    /// @return actualChangeAmount The actual change amount.
+    /**
+     * @dev Processes a change in the tracked balance of a loan and updates the loan state accordingly.
+     * @param loan The storage state of the loan.
+     * @param changeAmount The amount of the change or type(uint256).max if it is a full repayment or a full discount.
+     * @return newTrackedBalance The new tracked balance.
+     * @return actualChangeAmount The actual change amount.
+     */
     function _processTrackedBalanceChange(
         Loan.State storage loan,
         uint256 changeAmount
@@ -698,11 +720,13 @@ contract LendingMarket is
         _updateStoredLateFee(lateFeeAmount, loan);
     }
 
-    /// @dev Validates the change in the tracked balance of a loan.
-    ///
-    /// This function is made virtual to be overridden for testing purposes.
-    ///
-    /// @param changeAmount The amount of change in the tracked balance.
+    /**
+     * @dev Validates the change in the tracked balance of a loan.
+     *
+     * This function is made virtual to be overridden for testing purposes.
+     *
+     * @param changeAmount The amount of change in the tracked balance.
+     */
     function _checkTrackedBalanceChange(uint256 changeAmount) internal view virtual {
         if (changeAmount == 0) {
             revert Error.InvalidAmount();
@@ -715,11 +739,13 @@ contract LendingMarket is
         }
     }
 
-    /// @dev Validates the main parameters of the loan.
-    /// @param borrower The address of the borrower.
-    /// @param programId The ID of the lending program.
-    /// @param borrowedAmount The amount to borrow.
-    /// @param addonAmount The addon amount of the loan.
+    /**
+     * @dev Validates the main parameters of the loan.
+     * @param borrower The address of the borrower.
+     * @param programId The ID of the lending program.
+     * @param borrowedAmount The amount to borrow.
+     * @param addonAmount The addon amount of the loan.
+     */
     function _checkMainLoanParameters(
         address borrower,
         uint32 programId,
@@ -743,9 +769,11 @@ contract LendingMarket is
         }
     }
 
-    /// @dev Calculates the sum of all elements in an calldata array.
-    /// @param values Array of amounts to sum.
-    /// @return The total sum of all array elements.
+    /**
+     * @dev Calculates the sum of all elements in an calldata array.
+     * @param values Array of amounts to sum.
+     * @return The total sum of all array elements.
+     */
     function _sumArray(uint256[] calldata values) internal pure returns (uint256) {
         uint256 len = values.length;
         uint256 sum = 0;
@@ -755,8 +783,10 @@ contract LendingMarket is
         return sum;
     }
 
-    /// @dev Validates the loan durations in the array.
-    /// @param durationsInPeriods Array of loan durations in periods.
+    /**
+     * @dev Validates the loan durations in the array.
+     * @param durationsInPeriods Array of loan durations in periods.
+     */
     function _checkDurationArray(uint256[] calldata durationsInPeriods) internal pure {
         uint256 len = durationsInPeriods.length;
         uint256 previousDuration = durationsInPeriods[0];
@@ -769,18 +799,22 @@ contract LendingMarket is
         }
     }
 
-    /// @dev Ensures the installment count is within the valid range.
-    /// @param installmentCount The number of installments to check.
+    /**
+     * @dev Ensures the installment count is within the valid range.
+     * @param installmentCount The number of installments to check.
+     */
     function _checkInstallmentCount(uint256 installmentCount) internal view {
         if (installmentCount > _installmentCountMax()) {
             revert InstallmentCountExcess();
         }
     }
 
-    /// @dev Updates the loan installment data in storage.
-    /// @param loanId The ID of the loan to update.
-    /// @param firstInstallmentId The ID of the first installment.
-    /// @param installmentCount The total number of installments.
+    /**
+     * @dev Updates the loan installment data in storage.
+     * @param loanId The ID of the loan to update.
+     * @param firstInstallmentId The ID of the first installment.
+     * @param installmentCount The total number of installments.
+     */
     function _updateLoanInstallmentData(
         uint256 loanId, // Tools: this comment prevents Prettier from formatting into a single line.
         uint256 firstInstallmentId,
@@ -791,24 +825,30 @@ contract LendingMarket is
         loan.installmentCount = uint8(installmentCount); // Unchecked conversion is safe due to contract logic
     }
 
-    /// @dev Validates that the loan ID is within the valid range.
-    /// @param id The loan ID to check.
+    /**
+     * @dev Validates that the loan ID is within the valid range.
+     * @param id The loan ID to check.
+     */
     function _checkLoanId(uint256 id) internal pure {
         if (id > type(uint40).max) {
             revert LoanIdExcess();
         }
     }
 
-    /// @dev Checks if the loan exists.
-    /// @param loan The storage state of the loan.
+    /**
+     * @dev Checks if the loan exists.
+     * @param loan The storage state of the loan.
+     */
     function _checkLoanExistence(Loan.State storage loan) internal view {
         if (loan.borrower == address(0)) {
             revert LoanNotExist();
         }
     }
 
-    /// @dev Checks if a loan with the specified ID is ongoing.
-    /// @param loanId The ID of the loan.
+    /**
+     * @dev Checks if a loan with the specified ID is ongoing.
+     * @param loanId The ID of the loan.
+     */
     function _checkIfLoanOngoing(uint256 loanId) internal view {
         Loan.State storage loan = _loans[loanId];
         _checkLoanExistence(loan);
@@ -817,9 +857,11 @@ contract LendingMarket is
         }
     }
 
-    /// @dev Checks if the loan type is correct.
-    /// @param loan The storage state of the loan.
-    /// @param expectedLoanType The expected type of the loan according to the `Loan.Type` enum.
+    /**
+     * @dev Checks if the loan type is correct.
+     * @param loan The storage state of the loan.
+     * @param expectedLoanType The expected type of the loan according to the `Loan.Type` enum.
+     */
     function _checkLoanType(Loan.State storage loan, uint256 expectedLoanType) internal view {
         if (loan.installmentCount == 0) {
             if (expectedLoanType != uint256(Loan.Type.Ordinary)) {
@@ -838,10 +880,12 @@ contract LendingMarket is
         }
     }
 
-    /// @dev Checks if the undoing repayment parameters are valid.
-    /// @param loan The storage state of the loan.
-    /// @param repaymentAmount The repayment amount to check.
-    /// @param repaymentTimestamp The repayment timestamp to check in the lending market time zone.
+    /**
+     * @dev Checks if the undoing repayment parameters are valid.
+     * @param loan The storage state of the loan.
+     * @param repaymentAmount The repayment amount to check.
+     * @param repaymentTimestamp The repayment timestamp to check in the lending market time zone.
+     */
     function _checkUndoingRepaymentParameters(
         Loan.State storage loan,
         uint256 repaymentAmount,
@@ -856,11 +900,13 @@ contract LendingMarket is
         }
     }
 
-    /// @dev Calculates the tracked balance of a loan.
-    /// @param loan The storage state of the loan to calculate the tracked balance for.
-    /// @param timestamp The timestamp to calculate the tracked balance at.
-    /// @return trackedBalance The new calculated tracked balance of the loan at the specified timestamp.
-    /// @return lateFeeAmount The late fee amount or zero if the loan is not defaulted at the specified timestamp.
+    /**
+     * @dev Calculates the tracked balance of a loan.
+     * @param loan The storage state of the loan to calculate the tracked balance for.
+     * @param timestamp The timestamp to calculate the tracked balance at.
+     * @return trackedBalance The new calculated tracked balance of the loan at the specified timestamp.
+     * @return lateFeeAmount The late fee amount or zero if the loan is not defaulted at the specified timestamp.
+     */
     function _calculateTrackedBalance(
         Loan.State storage loan,
         uint256 timestamp
@@ -868,13 +914,15 @@ contract LendingMarket is
         return _calculateCustomTrackedBalance(loan, loan.trackedBalance, loan.trackedTimestamp, timestamp);
     }
 
-    /// @dev Calculates the tracked balance of a loan with additional parameters.
-    /// @param loan The storage state of the loan to calculate the tracked balance for.
-    /// @param initialBalance The initial balance for the calculation.
-    /// @param startTimestamp The start timestamp for the calculation.
-    /// @param finishTimestamp The finish timestamp for the calculation.
-    /// @return trackedBalance The new calculated tracked balance of the loan at the specified timestamp.
-    /// @return lateFeeAmount The late fee amount or zero if the loan is not defaulted at the specified timestamp.
+    /**
+     * @dev Calculates the tracked balance of a loan with additional parameters.
+     * @param loan The storage state of the loan to calculate the tracked balance for.
+     * @param initialBalance The initial balance for the calculation.
+     * @param startTimestamp The start timestamp for the calculation.
+     * @param finishTimestamp The finish timestamp for the calculation.
+     * @return trackedBalance The new calculated tracked balance of the loan at the specified timestamp.
+     * @return lateFeeAmount The late fee amount or zero if the loan is not defaulted at the specified timestamp.
+     */
     function _calculateCustomTrackedBalance(
         Loan.State storage loan,
         uint256 initialBalance,
@@ -930,10 +978,12 @@ contract LendingMarket is
         }
     }
 
-    /// @dev Calculates the loan preview.
-    /// @param loanId The ID of the loan.
-    /// @param timestamp The timestamp to calculate the preview at.
-    /// @return The loan preview.
+    /**
+     * @dev Calculates the loan preview.
+     * @param loanId The ID of the loan.
+     * @param timestamp The timestamp to calculate the preview at.
+     * @return The loan preview.
+     */
     function _getLoanPreview(uint256 loanId, uint256 timestamp) internal view returns (Loan.Preview memory) {
         Loan.Preview memory preview;
         Loan.State storage loan = _loans[loanId];
@@ -945,10 +995,12 @@ contract LendingMarket is
         return preview;
     }
 
-    /// @dev Calculates the loan extended preview.
-    /// @param loanId The ID of the loan.
-    /// @param timestamp The timestamp to calculate the preview at.
-    /// @return The loan extended preview.
+    /**
+     * @dev Calculates the loan extended preview.
+     * @param loanId The ID of the loan.
+     * @param timestamp The timestamp to calculate the preview at.
+     * @return The loan extended preview.
+     */
     function _getLoanPreviewExtended(
         uint256 loanId,
         uint256 timestamp
@@ -979,10 +1031,12 @@ contract LendingMarket is
         return preview;
     }
 
-    /// @dev Calculates the installment loan preview.
-    /// @param loanId The ID of the loan.
-    /// @param timestamp The timestamp to calculate the preview at.
-    /// @return The installment loan preview.
+    /**
+     * @dev Calculates the installment loan preview.
+     * @param loanId The ID of the loan.
+     * @param timestamp The timestamp to calculate the preview at.
+     * @return The installment loan preview.
+     */
     function _getInstallmentLoanPreview(
         uint256 loanId,
         uint256 timestamp
@@ -1021,24 +1075,30 @@ contract LendingMarket is
         return preview;
     }
 
-    /// @dev Calculates the due period index for a loan.
-    /// @param loan The storage state of the loan.
-    /// @return The due period index.
+    /**
+     * @dev Calculates the due period index for a loan.
+     * @param loan The storage state of the loan.
+     * @return The due period index.
+     */
     function _getDuePeriodIndex(Loan.State storage loan) internal view returns (uint256) {
         uint256 startPeriodIndex = _periodIndex(loan.startTimestamp, Constants.PERIOD_IN_SECONDS);
         return startPeriodIndex + loan.durationInPeriods;
     }
 
-    /// @dev Calculates the due timestamp for a loan.
-    /// @param loan The storage state of the loan.
-    /// @return The due timestamp.
+    /**
+     * @dev Calculates the due timestamp for a loan.
+     * @param loan The storage state of the loan.
+     * @return The due timestamp.
+     */
     function _getDueTimestamp(Loan.State storage loan) internal view returns (uint256) {
         return _getDuePeriodIndex(loan) * Constants.PERIOD_IN_SECONDS + Constants.PERIOD_IN_SECONDS - 1;
     }
 
-    /// @dev Checks if the loan is repaid.
-    /// @param loan The storage state of the loan.
-    /// @return True if the loan is repaid, false otherwise.
+    /**
+     * @dev Checks if the loan is repaid.
+     * @param loan The storage state of the loan.
+     * @return True if the loan is repaid, false otherwise.
+     */
     function _isRepaid(Loan.State storage loan) internal view returns (bool) {
         return loan.trackedBalance == 0;
     }
@@ -1058,10 +1118,12 @@ contract LendingMarket is
         return Constants.INSTALLMENT_COUNT_MAX;
     }
 
-    /// @dev Calculates the late fee amount for a loan.
-    /// @param trackedBalance The tracked balance of the loan.
-    /// @param loan The storage state of the loan.
-    /// @return The late fee amount.
+    /**
+     * @dev Calculates the late fee amount for a loan.
+     * @param trackedBalance The tracked balance of the loan.
+     * @param loan The storage state of the loan.
+     * @return The late fee amount.
+     */
     function _calculateLateFee(
         uint256 trackedBalance, // Tools: this comment prevents Prettier from formatting into a single line.
         Loan.State storage loan
@@ -1071,18 +1133,22 @@ contract LendingMarket is
         return ICreditLine(creditLine).determineLateFeeAmount(loan.borrower, trackedBalance);
     }
 
-    /// @dev Updates the stored late fee amount for a loan.
-    /// @param lateFeeAmount The late fee amount to store.
-    /// @param loan The storage state of the loan.
+    /**
+     * @dev Updates the stored late fee amount for a loan.
+     * @param lateFeeAmount The late fee amount to store.
+     * @param loan The storage state of the loan.
+     */
     function _updateStoredLateFee(uint256 lateFeeAmount, Loan.State storage loan) internal {
         if (lateFeeAmount > 0) {
             loan.lateFeeAmount = lateFeeAmount.toUint64();
         }
     }
 
-    /// @dev Checks if the credit line and liquidity pool are valid.
-    /// @param creditLine The address of the credit line.
-    /// @param liquidityPool The address of the liquidity pool.
+    /**
+     * @dev Checks if the credit line and liquidity pool are valid.
+     * @param creditLine The address of the credit line.
+     * @param liquidityPool The address of the liquidity pool.
+     */
     function _checkCreditLineAndLiquidityPool(address creditLine, address liquidityPool) internal view {
         if (creditLine == address(0)) {
             revert Error.ZeroAddress();
@@ -1105,10 +1171,12 @@ contract LendingMarket is
         }
     }
 
-    /// @dev Transfers tokens from the liquidity pool to the borrower and the addon treasury.
-    /// @param loanId The ID of the loan.
-    /// @param borrowedAmount The amount of tokens to borrow.
-    /// @param addonAmount The addon amount of the loan.
+    /**
+     * @dev Transfers tokens from the liquidity pool to the borrower and the addon treasury.
+     * @param loanId The ID of the loan.
+     * @param borrowedAmount The amount of tokens to borrow.
+     * @param addonAmount The addon amount of the loan.
+     */
     function _transferTokensOnLoanTaking(uint256 loanId, uint256 borrowedAmount, uint256 addonAmount) internal {
         Loan.State storage loan = _loans[loanId];
         address liquidityPool = _programLiquidityPools[loan.programId];
@@ -1123,11 +1191,13 @@ contract LendingMarket is
         }
     }
 
-    /// @dev Transfers tokens from the borrower and the addon treasury back to the liquidity pool.
-    /// @param loan The storage state of the loan.
-    /// @param borrowedAmount The amount of tokens to borrow.
-    /// @param addonAmount The addon amount of the loan.
-    /// @param repaidAmount The repaid amount of the loan.
+    /**
+     * @dev Transfers tokens from the borrower and the addon treasury back to the liquidity pool.
+     * @param loan The storage state of the loan.
+     * @param borrowedAmount The amount of tokens to borrow.
+     * @param addonAmount The addon amount of the loan.
+     * @param repaidAmount The repaid amount of the loan.
+     */
     function _transferTokensOnLoanRevocation(
         Loan.State storage loan,
         uint256 borrowedAmount,
@@ -1150,8 +1220,10 @@ contract LendingMarket is
         }
     }
 
-    /// @dev The upgrade validation function for the UUPSExtUpgradeable contract.
-    /// @param newImplementation The address of the new implementation.
+    /**
+     * @dev The upgrade validation function for the UUPSExtUpgradeable contract.
+     * @param newImplementation The address of the new implementation.
+     */
     function _validateUpgrade(address newImplementation) internal view override onlyRole(OWNER_ROLE) {
         try ILendingMarket(newImplementation).proveLendingMarket() {} catch {
             revert Error.ImplementationAddressInvalid();

@@ -24,9 +24,11 @@ import { ILiquidityPoolPrimary } from "./interfaces/ILiquidityPool.sol";
 
 import { LiquidityPoolStorage } from "./LiquidityPoolStorage.sol";
 
-/// @title LiquidityPool contract
-/// @author CloudWalk Inc. (See https://www.cloudwalk.io)
-/// @dev The upgradeable liquidity pool contract.
+/**
+ * @title LiquidityPool contract
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
+ * @dev The upgradeable liquidity pool contract.
+ */
 contract LiquidityPool is
     LiquidityPoolStorage,
     AccessControlExtUpgradeable,
@@ -55,23 +57,27 @@ contract LiquidityPool is
 
     // ------------------ Constructor ----------------------------- //
 
-    /// @dev Constructor that prohibits the initialization of the implementation of the upgradeable contract.
-    ///
-    /// See details
-    /// https://docs.openzeppelin.com/upgrades-plugins/writing-upgradeable#initializing_the_implementation_contract
-    ///
-    /// @custom:oz-upgrades-unsafe-allow constructor
+    /**
+     * @dev Constructor that prohibits the initialization of the implementation of the upgradeable contract.
+     *
+     * See details
+     * https://docs.openzeppelin.com/upgrades-plugins/writing-upgradeable#initializing_the_implementation_contract
+     *
+     * @custom:oz-upgrades-unsafe-allow constructor
+     */
     constructor() {
         _disableInitializers();
     }
 
     // ------------------ Initializers ---------------------------- //
 
-    /// @dev Initializer of the upgradeable contract.
-    /// @param owner_ The address of the liquidity pool owner.
-    /// @param market_ The address of the lending market.
-    /// @param token_ The address of the token.
-    /// See details https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable.
+    /**
+     * @dev Initializer of the upgradeable contract.
+     * @param owner_ The address of the liquidity pool owner.
+     * @param market_ The address of the lending market.
+     * @param token_ The address of the token.
+     * See details https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable.
+     */
     function initialize(
         address owner_, // Tools: this comment prevents Prettier from formatting into a single line.
         address market_,
@@ -124,9 +130,11 @@ contract LiquidityPool is
         _setOperationalTreasury(newTreasury);
     }
 
-    /// @dev Initializes the admin role for already deployed contracts.
-    ///
-    /// This function can be removed after the admin role is initialized in all deployed contracts.
+    /**
+     * @dev Initializes the admin role for already deployed contracts.
+     *
+     * This function can be removed after the admin role is initialized in all deployed contracts.
+     */
     function initAdminRole() external onlyRole(OWNER_ROLE) {
         _setRoleAdmin(ADMIN_ROLE, OWNER_ROLE);
         _grantRole(ADMIN_ROLE, msg.sender);
@@ -250,9 +258,11 @@ contract LiquidityPool is
 
     // ------------------ Internal functions ---------------------- //
 
-    /// @dev Deposits the tokens into the liquidity pool internally.
-    /// @param amount The amount of tokens to deposit.
-    /// @param sender The address of the tokens sender.
+    /**
+     * @dev Deposits the tokens into the liquidity pool internally.
+     * @param amount The amount of tokens to deposit.
+     * @param sender The address of the tokens sender.
+     */
     function _deposit(uint256 amount, address sender) internal {
         if (amount == 0) {
             revert Error.InvalidAmount();
@@ -272,10 +282,12 @@ contract LiquidityPool is
         emit Deposit(amount);
     }
 
-    /// @dev Withdraws the tokens from the liquidity pool internally.
-    /// @param borrowableAmount The amount of borrowable tokens to withdraw.
-    /// @param addonAmount The amount of addon tokens to withdraw.
-    /// @param recipient The address of the tokens recipient.
+    /**
+     * @dev Withdraws the tokens from the liquidity pool internally.
+     * @param borrowableAmount The amount of borrowable tokens to withdraw.
+     * @param addonAmount The amount of addon tokens to withdraw.
+     * @param recipient The address of the tokens recipient.
+     */
     function _withdraw(uint256 borrowableAmount, uint256 addonAmount, address recipient) internal {
         if (borrowableAmount == 0) {
             revert Error.InvalidAmount();
@@ -313,8 +325,10 @@ contract LiquidityPool is
         _addonTreasury = newTreasury;
     }
 
-    /// @dev Sets the new address of the operational treasury internally.
-    /// @param newTreasury The new address of the operational treasury.
+    /**
+     * @dev Sets the new address of the operational treasury internally.
+     * @param newTreasury The new address of the operational treasury.
+     */
     function _setOperationalTreasury(address newTreasury) internal {
         address oldTreasury = _operationalTreasury;
         if (oldTreasury == newTreasury) {
@@ -338,9 +352,11 @@ contract LiquidityPool is
         return operationalTreasury_;
     }
 
-    /// @dev The upgrade validation function for the UUPSExtUpgradeable contract.
-    /// @param newImplementation The address of the new implementation.
-    ///
+    /**
+     * @dev The upgrade validation function for the UUPSExtUpgradeable contract.
+     * @param newImplementation The address of the new implementation.
+     *
+     */
     function _validateUpgrade(address newImplementation) internal view override onlyRole(OWNER_ROLE) {
         try ILiquidityPool(newImplementation).proveLiquidityPool() {} catch {
             revert Error.ImplementationAddressInvalid();

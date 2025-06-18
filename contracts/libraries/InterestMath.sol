@@ -4,16 +4,20 @@ pragma solidity 0.8.24;
 
 import { ABDKMath64x64 } from "./ABDKMath64x64.sol";
 
-/// @title InterestMath library
-/// @author CloudWalk Inc. (See https://www.cloudwalk.io)
-/// @dev Defines interest calculation functions.
+/**
+ * @title InterestMath library
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
+ * @dev Defines interest calculation functions.
+ */
 library InterestMath {
-    /// @dev Calculates the tracked balance of a loan using the compound interest formula.
-    /// @param originalBalance The original balance of the loan.
-    /// @param numberOfPeriods The number of periods since the loan was taken.
-    /// @param interestRate The interest rate applied to the loan.
-    /// @param interestRateFactor The interest rate factor.
-    /// @return trackedBalance The tracked balance of the loan.
+    /**
+     * @dev Calculates the tracked balance of a loan using the compound interest formula.
+     * @param originalBalance The original balance of the loan.
+     * @param numberOfPeriods The number of periods since the loan was taken.
+     * @param interestRate The interest rate applied to the loan.
+     * @param interestRateFactor The interest rate factor.
+     * @return trackedBalance The tracked balance of the loan.
+     */
     function calculateTrackedBalance(
         uint256 originalBalance,
         uint256 numberOfPeriods,

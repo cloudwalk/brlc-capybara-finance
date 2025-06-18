@@ -2,9 +2,11 @@
 
 pragma solidity 0.8.24;
 
-/// @title Error library
-/// @author CloudWalk Inc. (See https://www.cloudwalk.io)
-/// @dev Defines common error types used across the contracts.
+/**
+ * @title Error library
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
+ * @dev Defines common error types used across the contracts.
+ */
 library Error {
     /// @dev Thrown when the caller is not authorized.
     error Unauthorized();

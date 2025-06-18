@@ -7,9 +7,11 @@ import { Loan } from "../libraries/Loan.sol";
 import { ICreditLine } from "../interfaces/ICreditLine.sol";
 import { ILiquidityPool } from "../interfaces/ILiquidityPool.sol";
 
-/// @title LendingMarketMock contract
-/// @author CloudWalk Inc. (See https://www.cloudwalk.io)
-/// @dev Mock of the `LendingMarket` contract used for testing.
+/**
+ * @title LendingMarketMock contract
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
+ * @dev Mock of the `LendingMarket` contract used for testing.
+ */
 contract LendingMarketMock {
     // ------------------ Storage variables ----------------------- //
 
