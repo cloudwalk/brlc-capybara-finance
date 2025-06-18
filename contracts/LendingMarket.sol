@@ -568,7 +568,7 @@ contract LendingMarket is
      * @param borrower The account for whom the loan is taken.
      * @param programId The identifier of the program to take the loan from.
      * @param borrowedAmount The desired amount of tokens to borrow.
-     * @param addonAmount The off-chain calculated addon amount (extra charges or fees) for the loan,
+     * @param addonAmount The off-chain calculated addon amount (extra charges or fees) for the loan.
      * @param durationInPeriods The desired duration of the loan in periods.
      * @return The unique identifier of the loan.
      */

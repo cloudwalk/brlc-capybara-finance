@@ -7,7 +7,7 @@ import { Rounding } from "../libraries/Rounding.sol";
 /**
  * @title RoundingMock contract
  * @author CloudWalk Inc. (See https://www.cloudwalk.io)
- * @dev A mock contract to test rounding functions
+ * @dev A mock contract to test rounding functions.
  */
 contract RoundingMock {
     /**

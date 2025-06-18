@@ -20,6 +20,6 @@ library Constants {
     /// @dev The accuracy factor used for loan amounts calculation.
     uint64 internal constant ACCURACY_FACTOR = 10000;
 
-    /// @dev The maximum number of installments. Must not be greater than uint16
+    /// @dev The maximum number of installments. Must not be greater than uint16,
     uint256 internal constant INSTALLMENT_COUNT_MAX = 255;
 }

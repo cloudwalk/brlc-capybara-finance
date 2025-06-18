@@ -43,8 +43,8 @@ library ABDKMath64x64 {
 
     /**
      * @dev Convert unsigned 256-bit integer number into signed 64.64-bit fixed point number. Revert on overflow.
-     * @param x unsigned 256-bit integer number
-     * @return signed 64.64-bit fixed point number
+     * @param x unsigned 256-bit integer number.
+     * @return signed 64.64-bit fixed point number.
      */
     function fromUInt(uint256 x) internal pure returns (int128) {
         unchecked {
@@ -55,9 +55,9 @@ library ABDKMath64x64 {
 
     /**
      * @dev Calculate x * y rounding down. Revert on overflow.
-     * @param x signed 64.64-bit fixed point number
-     * @param y signed 64.64-bit fixed point number
-     * @return signed 64.64-bit fixed point number
+     * @param x signed 64.64-bit fixed point number.
+     * @param y signed 64.64-bit fixed point number.
+     * @return signed 64.64-bit fixed point number.
      */
     function mul(int128 x, int128 y) internal pure returns (int128) {
         unchecked {
@@ -69,9 +69,9 @@ library ABDKMath64x64 {
 
     /**
      * @dev Calculate x / y rounding towards zero. Revert on overflow or when y is zero.
-     * @param x signed 64.64-bit fixed point number
-     * @param y signed 64.64-bit fixed point number
-     * @return signed 64.64-bit fixed point number
+     * @param x signed 64.64-bit fixed point number.
+     * @param y signed 64.64-bit fixed point number.
+     * @return signed 64.64-bit fixed point number.
      */
     function div(int128 x, int128 y) internal pure returns (int128) {
         unchecked {
@@ -85,9 +85,9 @@ library ABDKMath64x64 {
     /**
      * @dev Calculate x^y assuming 0^0 is 1, where x is signed 64.64 fixed point number
      * and y is unsigned 256-bit integer number. Revert on overflow.
-     * @param x signed 64.64-bit fixed point number
-     * @param y uint256 value
-     * @return signed 64.64-bit fixed point number
+     * @param x signed 64.64-bit fixed point number.
+     * @param y uint256 value.
+     * @return signed 64.64-bit fixed point number.
      */
     function pow(int128 x, uint256 y) internal pure returns (int128) {
         unchecked {
