@@ -2,9 +2,11 @@
 
 pragma solidity 0.8.24;
 
-/// @title Constants library
-/// @author CloudWalk Inc. (See https://www.cloudwalk.io)
-/// @dev Defines the constants used across the contracts.
+/**
+ * @title Constants library
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
+ * @dev Defines the constants used across the contracts.
+ */
 library Constants {
     /// @dev The loan period duration in seconds.
     uint256 internal constant PERIOD_IN_SECONDS = 24 hours;
@@ -18,6 +20,6 @@ library Constants {
     /// @dev The accuracy factor used for loan amounts calculation.
     uint64 internal constant ACCURACY_FACTOR = 10000;
 
-    /// @dev The maximum number of installments. Must not be greater than uint16
+    /// @dev The maximum number of installments. Must not be greater than uint16,
     uint256 internal constant INSTALLMENT_COUNT_MAX = 255;
 }

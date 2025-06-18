@@ -7,9 +7,11 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Error } from "../libraries/Error.sol";
 import { ILendingMarket } from "../interfaces/ILendingMarket.sol";
 
-/// @title LiquidityPoolMock contract
-/// @author CloudWalk Inc. (See https://www.cloudwalk.io)
-/// @dev Mock of the `LiquidityPool` contract used for testing.
+/**
+ * @title LiquidityPoolMock contract
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
+ * @dev Mock of the `LiquidityPool` contract used for testing.
+ */
 contract LiquidityPoolMock {
     // ------------------ Storage variables ----------------------- //
 
