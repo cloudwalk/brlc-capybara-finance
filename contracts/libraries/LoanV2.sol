@@ -121,12 +121,11 @@ library LoanV2 {
         uint16 nextOperationId;
         uint16 prevOperationId;
         uint32 timestamp;
-        uint64 parameter1;
-        uint64 parameter2;
-        // uint48 __reserved; // Reserved until the end of the storage slot
+        uint64 parameterOfAmount;
+        // uint112 __reserved; // Reserved until the end of the storage slot
 
         // Slot2
-        address parameter3;
+        address parameterOfAccount;
         // uint96 __reserved; // Reserved until the end of the storage slot
     }
 
@@ -138,9 +137,8 @@ library LoanV2 {
         uint256 status;
         uint256 kind;
         uint256 timestamp;
-        uint256 parameter1;
-        uint256 parameter2;
-        address parameter3;
+        uint256 parameterOfAmount;
+        address parameterOfAccount;
     }
 
     /**
@@ -165,6 +163,7 @@ library LoanV2 {
         uint256 id;
         uint256 status;
         uint256 programId;
+        address borrower;
         uint256 flags; // TODO: use it to mark fields that actually changed during processing
         uint256 startTimestamp;
         uint256 duration;

@@ -86,13 +86,9 @@ interface ILendingMarketPrimaryV2 {
         uint256 indexed subLoanId,
         uint256 indexed operationId,
         uint256 indexed kind,
-        uint256 day,
-        uint256 newParameter1,
-        uint256 newParameter2,
-        address newParameter3,
-        uint256 oldParameter1,
-        uint256 oldParameter2,
-        address oldParameter3,
+        uint256 timestamp,
+        uint256 newParameterOfAmount,
+        uint256 oldParameterOfAmount,
         bytes addendum
     );
 
@@ -120,11 +116,11 @@ interface ILendingMarketPrimaryV2 {
     /**
      * @dev Emitted when a loan is fully revoked by revocation of all its sub-loans.
      * @param firstSubLoanId The ID of the first sub-loan of the  loan.
-     * @param installmentCount The total number of installments.
+     * @param subLoanCount The total number of sub-loans.
      */
     event LoanRevoked(
         uint256 indexed firstSubLoanId, // Tools: this comment prevents Prettier from formatting into a single line.
-        uint256 installmentCount
+        uint256 subLoanCount
     );
 
     /**
@@ -216,7 +212,13 @@ interface ILendingMarketPrimaryV2 {
     /**
      * @dev TODO
      */
-    function addOperation(uint256 subLoanId) external;
+    function addOperation(
+        uint256 subLoanId,
+        uint256 kind,
+        uint256 timestamp,
+        uint256 parameterOfAmount,
+        uint256 parameterOfAddress
+    ) external;
 
     /**
      * @dev TODO
@@ -224,7 +226,8 @@ interface ILendingMarketPrimaryV2 {
     function changeOperation(
         uint256 subLoanId,
         uint256 operationId,
-        uint256 newParameter1
+        uint256 newParameterOfAmount,
+        address counterparty
     ) external;
 
 
@@ -436,13 +439,6 @@ interface ILendingMarketErrorsV2 {
     /// @dev Thrown when the loan is already frozen.
     error LoanAlreadyFrozen();
 
-    /**
-     * @dev Thrown when the loan type according to the provided ID does not match the expected one.
-     * @param actualType The actual type of the loan.
-     * @param expectedType The expected type of the loan.
-     */
-    error LoanTypeUnexpected(Loan.Type actualType, Loan.Type expectedType);
-
     /// @dev Thrown when provided interest rate is inappropriate.
     error InappropriateInterestRate();
 
@@ -475,6 +471,12 @@ interface ILendingMarketErrorsV2 {
 
     /// @dev TODO
     error OperationTimestampInvalid(); // TODO: add parameters
+
+    /// @dev TODO
+    error OperationKindUnacceptable(); // TODO: add parameters
+
+    /// @dev TODO
+    error OperationUnchanged(); // TODO: add parameters
 
     /// @dev TODO
     error RepaymentOrDiscountAmountInvalid(); // TODO: add parameters
