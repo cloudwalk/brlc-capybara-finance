@@ -130,6 +130,7 @@ contract LendingMarketV2 is
     // -------------- Primary transactional functions ------------- //
 
     /// @inheritdoc ILendingMarketPrimary
+    // TODO: Here and in similar functions remove `For` in the name
     function takeLoanFor(
         address borrower,
         uint32 programId,
@@ -254,9 +255,10 @@ contract LendingMarketV2 is
         uint256 kind,
         uint256 timestamp,
         uint256 parameterOfAmount,
-        address parameterOfAccount
+        address parameterOfAccount,
+        address counterparty
     ) external {
-        LoanV2.ProcessingSubLoan memory subLoan = _getExistingNonRepaidSubLoanInMemory(subLoanId);
+        LoanV2.ProcessingSubLoan memory subLoan = _getOngoingSubLoanInMemory(subLoanId);
         uint256 currentTimestamp = _blockTimestamp();
         if (timestamp == 0) {
             timestamp = currentTimestamp;
@@ -272,7 +274,7 @@ contract LendingMarketV2 is
             if (kind == LoanV2.OperationKind.Revocation) {
                 revert OperationKindUnacceptable();
             }
-            _replayOperationsInTransaction(subLoan);
+            _replayOperationsInTransaction(subLoan, counterparty);
         } else {
             _processOperationsInTransaction(subLoan);
         }
@@ -282,25 +284,14 @@ contract LendingMarketV2 is
     function changeOperation(
         uint256 subLoanId,
         uint256 operationId,
-        uint256 newParameter1,
-        address receiver
+        uint256 newParameterOfAmount,
+        address counterparty
     ) external {
-        LoanV2.ProcessingSubLoan memory subLoan = _getExistingNonRepaidSubLoanInMemory(subLoanId);
+        LoanV2.ProcessingSubLoan memory subLoan = _getUnrevokedSubLoanInMemory(subLoanId);
         LoanV2.ProcessingOperation memory operation = _getExistingOperationInMemory(operationId);
-        _changeOperation(subLoanId, operationId);
-        _addOperation(
-            subLoanId,
-            kind,
-            timestamp,
-            parameter1,
-            parameter2,
-            parameter3
-        );
-        if (timestamp < currentTimestamp) {
-            if (kind == LoanV2.OperationKind.Revocation) {
-                revert OperationKindUnacceptable();
-            }
-            _replayOperationsInTransaction(subLoan);
+        _changeOperation(subLoanId, operationId, newParameterOfAmount);
+        if (operation.timestamp < _blockTimestamp()) {
+            _replayOperationsInTransaction(subLoan, counterparty);
         } else {
             _processOperationsInTransaction(subLoan);
         }
@@ -542,7 +533,7 @@ contract LendingMarketV2 is
         uint256 repaymentAmount,
         address repayer
     ) internal {
-        LoanV2.ProcessingSubLoan memory subLoan = _getExistingNonRepaidSubLoanInMemory(subLoanId);
+        LoanV2.ProcessingSubLoan memory subLoan = _getOngoingSubLoanInMemory(subLoanId);
         _addOperation(
             subLoanId,
             LoanV2.OperationKind.Repayment,
@@ -633,11 +624,12 @@ contract LendingMarketV2 is
             oldParameterOfAmount,
             "" // addendum
         );
-
-        return operationId;
     }
 
-    function _processOperationsInTransaction(LoanV2.ProcessingSubLoan memory subLoan) internal {
+    /// TODO @dev
+    function _processOperationsInTransaction(
+        LoanV2.ProcessingSubLoan memory subLoan
+    ) internal {
         LoanV2.OperationalState storage opState = _getLendingMarketStorage().subLoanOperationalStates[subLoan.id];
         uint256 pastOperationId = opState.pastOperationId;
         uint256 operationId = opState.operations[pastOperationId].nextOperationId;
@@ -645,7 +637,27 @@ contract LendingMarketV2 is
         while (operationId != 0) {
             LoanV2.ProcessingOperation memory operation = _getExistingOperationInMemory(operationId);
             _processOperation(subLoan, operation, currentTimestamp);
+            if (operation.status != uint256(LoanV2.OperationStatus.Pending)) {
+                pastOperationId = operationId;
+            } else {
+                break;
+            }
             _postProcessOperation(subLoan, operation);
+        }
+        opState.pastOperationId = pastOperationId;
+        _applyChangesInSubLoan(subLoan);
+    }
+
+    /// TODO: @dev
+    function _replayOperationsInTransaction(LoanV2.ProcessingSubLoan memory subLoan, address counterparty) internal {
+        LoanV2.OperationalState storage opState = _getLendingMarketStorage().subLoanOperationalStates[subLoan.id];
+        _initiateSubLoan(subLoan);
+        uint256 operationId = opState.earliestOperationId;
+        uint256 pastOperationId = 0;
+        uint256 currentTimestamp = _blockTimestamp();
+        while (operationId != 0) {
+            LoanV2.ProcessingOperation memory operation = _getExistingOperationInMemory(operationId);
+            _processOperation(subLoan, operation, currentTimestamp);
             if (operation.status != uint256(LoanV2.OperationStatus.Pending)) {
                 pastOperationId = operationId;
             } else {
@@ -653,6 +665,7 @@ contract LendingMarketV2 is
             }
         }
         opState.pastOperationId = pastOperationId;
+        _postProcessRepaymentChanges(subLoan);
         _applyChangesInSubLoan(subLoan);
     }
 
@@ -665,7 +678,8 @@ contract LendingMarketV2 is
         uint256 currentTimestamp
     ) internal pure {
         if (
-            operation.status != uint256(LoanV2.OperationStatus.Pending) ||
+            operation.status == uint256(LoanV2.OperationStatus.Nonexistent) ||
+            operation.status == uint256(LoanV2.OperationStatus.Skipped) ||
             operation.kind == uint256(LoanV2.OperationKind.Nonexistent) ||
             operation.kind > uint256(LoanV2.OperationKind.NonexistentLimit)
         ) {
@@ -706,6 +720,9 @@ contract LendingMarketV2 is
         uint256 amount,
         uint256 operationKind
     ) internal pure returns (uint256 actualAmount) {
+        if (amount != _roundMath(amount) && amount < type(uint64).max) {
+            revert RepaymentOrDiscountAmountInvalid();
+        }
         uint256 initialAmount = amount;
         amount = _repayOrDiscountPartial(subLoan, amount, LoanV2.SubLoanPartKind.InterestMoratory, operationKind);
         amount = _repayOrDiscountPartial(subLoan, amount, LoanV2.SubLoanPartKind.LateFee, operationKind);
@@ -759,29 +776,14 @@ contract LendingMarketV2 is
         }
 
         // TODO: Review the rounding logic if a loan part is being fully repaid
-        // TODO: What we should do with the unrounded repaid amount when discounting? Skip for now
-        if (trackedPartAmount <= amount) {
+        uint256 roundedTrackedPartAmount = _roundMath(trackedPartAmount);
+        if (roundedTrackedPartAmount <= amount) {
             unchecked {
-                amount -= trackedPartAmount;
+                amount -= roundedTrackedPartAmount;
                 if (operationKind == uint256(LoanV2.OperationKind.Repayment)) {
-                    repaidPartAmount += trackedPartAmount;
+                    repaidPartAmount += roundedTrackedPartAmount;
                 }
                 trackedPartAmount = 0;
-            }
-            if (operationKind == uint256(LoanV2.OperationKind.Repayment)) {
-                uint256 roundedRepaidPartAmount = _roundMath(repaidPartAmount);
-                unchecked {
-                    if (roundedRepaidPartAmount > repaidPartAmount) {
-                        uint256 diff = roundedRepaidPartAmount - repaidPartAmount;
-                        if (diff > amount) {
-                            revert RepaymentOrDiscountAmountInvalid();
-                        } else {
-                            amount -= diff;
-                        }
-                    } else {
-                        amount += repaidPartAmount - roundedRepaidPartAmount;
-                    }
-                }
             }
         } else {
             trackedPartAmount -= amount;
@@ -899,7 +901,6 @@ contract LendingMarketV2 is
             operation.kind,
             operation.timestamp,
             operation.parameterOfAmount,
-            operation.parameter2,
             operation.parameterOfAccount,
             "" // addendum
         );
@@ -948,6 +949,28 @@ contract LendingMarketV2 is
 
         ILiquidityPool(liquidityPool).onAfterLoanRevocation(subLoan.id);
         ICreditLine(creditLine).onAfterLoanRevocation(subLoan.id);
+    }
+
+    function _postProcessRepaymentChanges(
+        LoanV2.ProcessingSubLoan memory subLoan,
+        address counterparty
+    ) internal {
+        uint256 oldTotalRepayment = _getTotalRepaymentInStorage(subLoan.id);
+        uint256 newTotalRepayment = _getTotalRepaymentInMemory(subLoan);
+        if (oldTotalRepayment == newTotalRepayment) {
+            return;
+        }
+        address liquidityPool = _getLendingMarketStorage().programLiquidityPools[subLoan.programId];
+        address token = _getLendingMarketStorage().token;
+        if (newTotalRepayment < oldTotalRepayment) {
+            uint256 repaymentDiff = oldTotalRepayment - newTotalRepayment;
+            ILiquidityPool(liquidityPool).onAfterLoanRepaymentUndoing(subLoan.id, repaymentDiff);
+            IERC20(token).safeTransferFrom(liquidityPool, counterparty, repaymentDiff);
+        } else {
+            uint256 repaymentDiff = newTotalRepayment - oldTotalRepayment;
+            ILiquidityPool(liquidityPool).onAfterLoanPayment(subLoan.id, repaymentDiff);
+            IERC20(token).safeTransferFrom(counterparty, liquidityPool, repaymentDiff);
+        }
     }
 
     /**
@@ -1376,16 +1399,6 @@ contract LendingMarketV2 is
         return ICreditLine(creditLine).determineLateFeeAmount(loan.borrower, trackedBalance);
     }
 
-    /**
-     * @dev Updates the stored late fee amount for a loan.
-     * @param lateFeeAmount The late fee amount to store.
-     * @param loan The storage state of the loan.
-     */
-    function _updateStoredLateFee(uint256 lateFeeAmount, Loan.State storage loan) internal {
-        if (lateFeeAmount > 0) {
-            loan.lateFeeAmount = lateFeeAmount.toUint64();
-        }
-    }
 
     /**
      * @dev Checks if the credit line and liquidity pool are valid.
@@ -1468,7 +1481,7 @@ contract LendingMarketV2 is
      * @param newImplementation The address of the new implementation.
      */
     function _validateUpgrade(address newImplementation) internal view override onlyRole(OWNER_ROLE) {
-        try ILendingMarket(newImplementation).proveLendingMarket() {} catch {
+        try ILendingMarketV2(newImplementation).proveLendingMarket() {} catch {
             revert Error.ImplementationAddressInvalid();
         }
     }

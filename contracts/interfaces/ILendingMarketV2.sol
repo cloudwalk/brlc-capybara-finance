@@ -58,9 +58,8 @@ interface ILendingMarketPrimaryV2 {
         uint256 indexed operationId,
         uint256 indexed kind,
         uint256 timestamp,
-        uint256 parameter1,
-        uint256 parameter2,
-        address parameter3,
+        uint256 parameterOfAmount,
+        address parameterOfAccount,
         bytes addendum
     );
 
@@ -72,11 +71,10 @@ interface ILendingMarketPrimaryV2 {
         uint256 indexed operationId,
         uint256 indexed kind,
         uint256 timestamp,
-        uint256 parameter1,
-        uint256 parameter2,
-        address parameter3,
-        bytes addendum
+        uint256 parameterOfAmount,
+        address parameterOfAccount,
         // TODO: add more subLoan fields here
+        bytes addendum
     );
 
     /**
@@ -217,7 +215,8 @@ interface ILendingMarketPrimaryV2 {
         uint256 kind,
         uint256 timestamp,
         uint256 parameterOfAmount,
-        uint256 parameterOfAddress
+        uint256 parameterOfAccount,
+        address counterparty
     ) external;
 
     /**
