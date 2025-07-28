@@ -30,6 +30,7 @@ interface ILendingMarketPrimaryV2 {
         uint256 borrowedAmount,
         uint256 addonAmount,
         uint256 duration
+        // TODO: add more parameters if needed
     );
 
     /**
@@ -51,6 +52,16 @@ interface ILendingMarketPrimaryV2 {
     );
 
     /**
+     * @dev Emitted when a loan is fully revoked by revocation of all its sub-loans.
+     * @param firstSubLoanId The ID of the first sub-loan of the  loan.
+     * @param subLoanCount The total number of sub-loans.
+     */
+    event LoanRevoked(
+        uint256 indexed firstSubLoanId, // Tools: this comment prevents Prettier from formatting into a single line.
+        uint256 subLoanCount
+    );
+
+    /**
      * @dev TODO
      */
     event OperationAdded(
@@ -58,21 +69,21 @@ interface ILendingMarketPrimaryV2 {
         uint256 indexed operationId,
         uint256 indexed kind,
         uint256 timestamp,
-        uint256 parameterOfAmount,
-        address parameterOfAccount,
+        uint256 parameter, //TODO: consider another name, same for similar events
+        address account, //TODO: consider another name, same for similar events
         bytes addendum
     );
 
     /**
      * @dev TODO
      */
-    event OperationExecuted(
+    event OperationApplied(
         uint256 indexed subLoanId,
         uint256 indexed operationId,
         uint256 indexed kind,
         uint256 timestamp,
-        uint256 parameterOfAmount,
-        address parameterOfAccount,
+        uint256 parameter,
+        address account,
         // TODO: add more subLoan fields here
         bytes addendum
     );
@@ -85,52 +96,21 @@ interface ILendingMarketPrimaryV2 {
         uint256 indexed operationId,
         uint256 indexed kind,
         uint256 timestamp,
-        uint256 newParameterOfAmount,
-        uint256 oldParameterOfAmount,
+        uint256 newParameter,
+        uint256 oldParameter,
         bytes addendum
     );
 
     /**
-     * @dev Emitted when a sub loan is repaid (fully or partially).
-     * @param subLoanId The unique identifier of the sub-loan.
-     * @param repayer The address of the token source for the repayment (borrower or third-party).
-     * @param borrower The address of the borrower of the loan.
-     * @param repaymentAmount The amount of the repayment.
-     // TODO Add more fields if needed
+     * @dev TODO
      */
-    event SubLoanRepayment(
+    event OperationVoided(
         uint256 indexed subLoanId,
-        address indexed repayer,
-        address indexed borrower,
-        uint256 repaymentAmount
-    );
-
-    /**
-     * @dev Emitted when a sub-loan is revoked.
-     * @param subLoanId The unique identifier of the sub-loan.
-     */
-    event SubLoanRevoked(uint256 indexed subLoanId);
-
-    /**
-     * @dev Emitted when a loan is fully revoked by revocation of all its sub-loans.
-     * @param firstSubLoanId The ID of the first sub-loan of the  loan.
-     * @param subLoanCount The total number of sub-loans.
-     */
-    event LoanRevoked(
-        uint256 indexed firstSubLoanId, // Tools: this comment prevents Prettier from formatting into a single line.
-        uint256 subLoanCount
-    );
-
-    /**
-     * @dev Emitted when a sub-loan is discounted.
-     * @param subLoanId The unique identifier of the sub-loan.
-     * @param discountAmount The amount of the discount.
-     * @param newTrackedBalance The new tracked balance of the loan after the discount.
-     */
-    event SubLoanDiscounted(
-        uint256 indexed subLoanId, // Tools: this comment prevents Prettier from formatting into a single line.
-        uint256 discountAmount,
-        uint256 newTrackedBalance
+        uint256 indexed operationId,
+        uint256 indexed kind,
+        uint256 timestamp,
+        uint256 parameter,
+        bytes addendum
     );
 
     // TODO: add more events
@@ -144,9 +124,9 @@ interface ILendingMarketPrimaryV2 {
      *
      * @param borrower The account for whom the loan is taken.
      * @param programId The identifier of the program to take the loan from.
-     * @param borrowedAmounts The desired amounts of tokens to borrow for each installment.
-     * @param addonAmounts The off-chain calculated addon amounts for each installment.
-     * @param durationInDays The desired duration of each installment in days.
+     * @param borrowedAmounts The desired amounts of tokens to borrow for each sub-loan.
+     * @param addonAmounts The off-chain calculated addon amounts for each sub-loan.
+     * @param durations The desired duration of each sub-loan in days.
      * @return firstSubLoanId The unique identifier of the first sub-loan of the loan.
      * @return subLoanCount The total number of sub-loans.
      */
@@ -155,7 +135,7 @@ interface ILendingMarketPrimaryV2 {
         uint32 programId,
         uint256[] calldata borrowedAmounts,
         uint256[] calldata addonAmounts,
-        uint256[] calldata durationsInPeriods
+        uint256[] calldata durations
     ) external returns (uint256 firstSubLoanId, uint256 subLoanCount);
 
     /**
@@ -169,7 +149,7 @@ interface ILendingMarketPrimaryV2 {
      * @param repayer The address of the token source for the repayments (borrower or third-party).
      */
     function repaySubLoanForBatch(
-        uint256[] calldata loanIds,
+        uint256[] calldata subLoanIds,
         uint256[] calldata repaymentAmounts,
         address repayer
     ) external;
@@ -195,28 +175,14 @@ interface ILendingMarketPrimaryV2 {
     ) external;
 
     /**
-     * @dev Undoes a repayment for a sub-loan by replaying its operation list with zeroing the provided repayment.
-     *
-     * @param subLoanId The unique identifier of the sub-loan.
-     * @param operationId TODO
-     * @param receiver The address of the receiver of the tokens due to the repayment undoing.
-     */
-    function undoRepaymentFor(
-        uint256 subLoanId, // Tools: this comment prevents Prettier from formatting into a single line.
-        uint256 operationId,
-        address receiver
-    ) external;
-
-    /**
      * @dev TODO
      */
     function addOperation(
         uint256 subLoanId,
         uint256 kind,
         uint256 timestamp,
-        uint256 parameterOfAmount,
-        uint256 parameterOfAccount,
-        address counterparty
+        uint256 parameter,
+        address repayer
     ) external;
 
     /**
@@ -225,10 +191,18 @@ interface ILendingMarketPrimaryV2 {
     function changeOperation(
         uint256 subLoanId,
         uint256 operationId,
-        uint256 newParameterOfAmount,
+        uint256 newParameter,
         address counterparty
     ) external;
 
+    /**
+     * @dev TODO
+     */
+    function voidOperation(
+        uint256 subLoanId,
+        uint256 operationId,
+        address counterparty
+    ) external;
 
     // ------------------ View functions -------------------------- //
 
@@ -247,26 +221,15 @@ interface ILendingMarketPrimaryV2 {
     function getProgramLiquidityPool(uint32 programId) external view returns (address);
 
     /**
-     * @dev Gets the stored state of a given sub-loan.
-     * @param subLoanId The unique identifier of the loan to check.
-     * @return The stored state of the sub-loan
+     * @dev Gets the stored state for a batch of sub-loans.
+     * @param subLoanIds The unique identifiers of the sub-loans to get
+     * @return The stored states of the sub-loans
      */
-    function getSubLoanStorage(uint256 subLoanId) external view returns (LoanV2.SubLoan memory);
-
-    /**
-     * @dev Gets the preview of an ordinary loan or a sub-loan at a specific timestamp.
-     * @param loanId The unique identifier of the loan to check.
-     * @param timestamp The timestamp with the shift to get the sub-loan preview for.
-     * @return The preview state of the sub-loan (see the `LoanV2.SubLoanPreview` struct).
-     */
-    function getSubLoanPreview(
-        uint256 subLoanId,
-        uint256 timestamp
-    ) external view returns (LoanV2.SubLoanPreview memory);
+    function getSubLoanBatch(uint256[] calldata subLoanIds) external view returns (LoanV2.SubLoan[] memory);
 
     /**
      * @dev Gets the sub-loan preview at a specific timestamp for a batch of sub-loans.
-     * @param subLoanIds The unique identifiers of the sub-loans to check.
+     * @param subLoanIds The unique identifiers of the sub-loans to get.
      * @param timestamp The timestamp to get the sub-loan preview for. If 0, the current timestamp is used.
      * @return The previews of the sub-loans (see the `LoanV2.SubLoanPreview` struct).
      */
@@ -420,6 +383,9 @@ interface ILendingMarketErrorsV2 {
     /// @dev Thrown when the loan ID exceeds the maximum allowed value.
     error LoanIdExcess();
 
+    /// @dev TODO
+    error SubLoanIdExcess();
+
     /// @dev Thrown when the loan does not exist.
     error LoanNotExist();
 
@@ -475,10 +441,46 @@ interface ILendingMarketErrorsV2 {
     error OperationKindUnacceptable(); // TODO: add parameters
 
     /// @dev TODO
+    error OperationKindInvalid(); // TODO: add parameters
+
+    /// @dev TODO
+    error OperationParameterInvalid(); // TODO: add parameters
+
+    /// @dev TODO
+    error OperationTimestampTooEarly(); // TODO: add parameters
+
+    /// @dev TODO
     error OperationUnchanged(); // TODO: add parameters
 
     /// @dev TODO
+    error RapayerAddressZero(); // TODO: add parameters
+
+    /// @dev TODO
     error RepaymentOrDiscountAmountInvalid(); // TODO: add parameters
+
+    /// @dev TODO
+    error RepaymentOrDiscountAmountExcess(); // TODO: add parameters
+
+    /// @dev TODO
+    error RateValueInvalid(); // TODO: add parameters
+
+    /// @dev TODO
+    error OperationIdExcess(); // TODO: add parameters
+
+    /// @dev TODO
+    error OperationNonexistent(); // TODO: add parameters
+
+    /// @dev TODO
+    error OperationAlreadySkipped(); // TODO: add parameters
+
+    /// @dev TODO
+    error SubLoanRevoked(); // TODO: add parameters
+
+    /// @dev TODO
+    error SubLoanFullyRepaid(); // TODO: add parameters
+
+    /// @dev TODO
+    error OperationParameterNotZero(); // TODO: add parameters
 }
 
 /**
