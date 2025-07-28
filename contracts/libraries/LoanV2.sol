@@ -13,7 +13,7 @@ library LoanV2 {
      */
     enum SubLoanStatus {
         Nonexistent,
-        Active,
+        Ongoing,
         FullyRepaid,
         Revoked
     }
@@ -26,8 +26,8 @@ library LoanV2 {
     enum OperationStatus {
         Nonexistent,
         Pending,
-        Executed,
-        Skipped
+        Applied,
+        Voided
     }
 
     /**
@@ -93,10 +93,10 @@ library LoanV2 {
         uint16 duration;
         uint32 trackedTimestamp;
         uint32 freezeTimestamp;
-        uint64 discountAmount;
+        uint64 __reserved;
         // uint8 __reserved; // Reserved until the end of the storage slot
 
-        // Slot 4
+        // Slot 4 //trackedBalance
         uint64 trackedPrincipal;
         uint64 trackedInterestRemuneratory;
         uint64 trackedInterestMoratory;
@@ -108,6 +108,13 @@ library LoanV2 {
         uint64 repaidInterestRemuneratory;
         uint64 repaidInterestMoratory;
         uint64 repaidLateFee;
+        // No reserve until the end of the storage slot
+
+        // Slot 6
+        uint64 discountPrincipal; // Must not be used, just for alignment
+        uint64 discountInterestRemuneratory;
+        uint64 discountInterestMoratory;
+        uint64 discountLateFee;
         // No reserve until the end of the storage slot
     }
 
@@ -121,11 +128,11 @@ library LoanV2 {
         uint16 nextOperationId;
         uint16 prevOperationId;
         uint32 timestamp;
-        uint64 parameterOfAmount;
+        uint64 parameter;
         // uint112 __reserved; // Reserved until the end of the storage slot
 
         // Slot2
-        address parameterOfAccount;
+        address account;
         // uint96 __reserved; // Reserved until the end of the storage slot
     }
 
@@ -137,8 +144,8 @@ library LoanV2 {
         uint256 status;
         uint256 kind;
         uint256 timestamp;
-        uint256 parameterOfAmount;
-        address parameterOfAccount;
+        uint256 parameter;
+        address account;
     }
 
     /**
@@ -178,9 +185,12 @@ library LoanV2 {
         uint256 repaidInterestRemuneratory;
         uint256 repaidInterestMoratory;
         uint256 repaidLateFee;
+        uint256 discountInterestRemuneratory;
+        uint256 discountInterestMoratory;
+        uint256 discountLateFee;
         uint256 trackedTimestamp;
         uint256 freezeTimestamp;
-        uint256 discountAmount;
+        address counterparty;
     }
 
     /**
@@ -208,23 +218,28 @@ library LoanV2 {
         uint256 startTimestamp;
         uint256 trackedTimestamp;
         uint256 freezeTimestamp;
-        uint256 durationInDays;
+        uint256 duration;
         uint256 interestRateRemuneratory;
         uint256 interestRateMoratory;
         uint256 lateFeeRate;
         uint256 firstInstallmentId;
-        uint256 installmentCount;
+        uint256 subLoanCount;
         uint256 trackedPrincipal;
         uint256 trackedInterestRemuneratory;
         uint256 trackedInterestMoratory;
-        uint256 lateFeeAmount;
-        uint256 discountAmount;
+        uint256 trackedLateFee;
+        uint256 trackedBalance;
+        uint256 outstandingBalance;
         uint256 repaidPrincipal;
         uint256 repaidInterestRemuneratory;
         uint256 repaidInterestMoratory;
         uint256 repaidLateFee;
-        uint256 nextIndexInOperationQueue;
-        // TODO: reorder and add more fields
+        uint256 repaidAmount;
+        uint256 discountInterestRemuneratory;
+        uint256 discountInterestMoratory;
+        uint256 discountLateFee;
+        uint256 discountAmount;
+        // TODO: reorder and add more fields if needed
     }
 
     /**
@@ -238,9 +253,9 @@ library LoanV2 {
      * 3. The outstanding balance is the tracked balance rounded according to the accuracy factor with math rules.
      */
     struct LoanPreview {
-        uint256 firstInstallmentId;
-        uint256 installmentCount;
-        uint256 periodIndex;
+        uint256 day;
+        uint256 firstSubLoanId;
+        uint256 subLoanCount;
         uint256 totalTrackedBalance;
         uint256 totalOutstandingBalance;
         uint256 totalBorrowedAmount;
