@@ -115,7 +115,7 @@ contract LendingMarketV2 is
         address liquidityPool
     ) external whenNotPaused onlyRole(OWNER_ROLE) {
         if (programId == 0) {
-            revert ProgramNotExist();
+            revert ProgramNonexistent();
         }
         _checkCreditLineAndLiquidityPool(creditLine, liquidityPool);
         if (
@@ -135,7 +135,7 @@ contract LendingMarketV2 is
 
     /// @inheritdoc ILendingMarketPrimaryV2
     // TODO: Remove `For` in the name, consider the same for other fucntions
-    function takeLoanFor(
+    function takeLoan(
         address borrower,
         uint32 programId,
         uint256[] calldata borrowedAmounts,
@@ -168,7 +168,7 @@ contract LendingMarketV2 is
             if (i == 0) {
                 firstSubLoanId = subLoanId;
             }
-            _updateLoanPartsData(subLoanId, firstSubLoanId, subLoanCount);
+            _setLoanPartsData(subLoanId, firstSubLoanId, subLoanCount);
         }
 
         emit LoanTaken(
@@ -177,14 +177,15 @@ contract LendingMarketV2 is
             programId,
             subLoanCount,
             totalBorrowedAmount,
-            totalAddonAmount
+            totalAddonAmount,
+            "" // addendum
         );
 
         _transferTokensOnLoanTaking(firstSubLoanId, totalBorrowedAmount, totalAddonAmount);
     }
 
     /// @inheritdoc ILendingMarketPrimaryV2
-    function repaySubLoanForBatch(
+    function repaySubLoanBatch(
         uint256[] calldata subLoanIds,
         uint256[] calldata repaymentAmounts,
         address repayer
@@ -200,43 +201,7 @@ contract LendingMarketV2 is
     }
 
     /// @inheritdoc ILendingMarketPrimaryV2
-    function revokeLoanFor(uint256 subLoanId) external whenNotPaused onlyRole(ADMIN_ROLE) {
-        LoanV2.SubLoan storage subLoanStored = _getExitingSubLoanInStorage(subLoanId);
-
-        uint256 firstSubLoanId = subLoanStored.firstSubLoanId;
-        uint256 subLoanCount = subLoanStored.subLoanCount;
-        uint256 ongoingSubLoanCount = 0;
-        LoanV2.ProcessingSubLoan memory subLoan;
-
-        for (uint256 i = 0; i < subLoanCount; ++i) {
-            subLoan = _getOngoingSubLoanInMemory(firstSubLoanId + i);
-            if (!_isRepaid(subLoan)) {
-                ++ongoingSubLoanCount;
-            }
-            _revokeSubLoan(subLoan);
-        }
-
-        // If all the sub-loans are repaid the revocation is prohibited
-        if (ongoingSubLoanCount == 0) {
-            revert LoanAlreadyRepaid();
-        }
-
-        emit LoanRevoked(
-            firstSubLoanId, // Tools: this comment prevents Prettier from formatting into a single line.
-            subLoanCount
-        );
-
-        LoanV2.LoanPreview memory loanPreview = _getLoanPreview(firstSubLoanId, 0);
-        _transferTokensOnLoanRevocation(
-            subLoan,
-            loanPreview.totalBorrowedAmount,
-            loanPreview.totalAddonAmount,
-            loanPreview.totalRepaidAmount
-        );
-    }
-
-    /// @inheritdoc ILendingMarketPrimaryV2
-    function discountSubLoanForBatch(
+    function discountSubLoanBatch(
         uint256[] calldata loanIds, // Tools: this comment prevents Prettier from formatting into a single line.
         uint256[] calldata discountAmounts
     ) external whenNotPaused onlyRole(ADMIN_ROLE) {
@@ -251,6 +216,43 @@ contract LendingMarketV2 is
     }
 
     /// @inheritdoc ILendingMarketPrimaryV2
+    function revokeLoan(uint256 subLoanId) external whenNotPaused onlyRole(ADMIN_ROLE) {
+        LoanV2.SubLoan storage subLoanStored = _getExitingSubLoanInStorage(subLoanId);
+
+        uint256 firstSubLoanId = subLoanStored.firstSubLoanId;
+        uint256 subLoanCount = subLoanStored.subLoanCount;
+        uint256 ongoingSubLoanCount = 0;
+        LoanV2.ProcessingSubLoan memory subLoan;
+
+        for (uint256 i = 0; i < subLoanCount; ++i) {
+            subLoan = _getOngoingSubLoan(firstSubLoanId + i);
+            if (!_isRepaid(subLoan)) {
+                ++ongoingSubLoanCount;
+            }
+            _revokeSubLoan(subLoan);
+        }
+
+        // If all the sub-loans are repaid the revocation is prohibited
+        if (ongoingSubLoanCount == 0) {
+            revert LoanStatusFullyRepaid();
+        }
+
+        emit LoanRevoked(
+            firstSubLoanId,
+            subLoanCount,
+            "" // addendum
+        );
+
+        LoanV2.LoanPreview memory loanPreview = _getLoanPreview(firstSubLoanId, 0);
+        _transferTokensOnLoanRevocation(
+            subLoan,
+            loanPreview.totalBorrowedAmount,
+            loanPreview.totalAddonAmount,
+            loanPreview.totalRepaidAmount
+        );
+    }
+
+    /// @inheritdoc ILendingMarketPrimaryV2
     function addOperation(
         uint256 subLoanId,
         uint256 kind,
@@ -259,7 +261,7 @@ contract LendingMarketV2 is
         address repayer
     ) external {
         _checkOperationKind(kind);
-        LoanV2.ProcessingSubLoan memory subLoan = _getOngoingSubLoanInMemory(subLoanId);
+        LoanV2.ProcessingSubLoan memory subLoan = _getOngoingSubLoan(subLoanId);
         uint256 currentTimestamp = _blockTimestamp();
         if (timestamp == 0) {
             timestamp = currentTimestamp;
@@ -338,7 +340,7 @@ contract LendingMarketV2 is
         uint256 len = subLoanIds.length;
         LoanV2.SubLoanPreview[] memory previews = new LoanV2.SubLoanPreview[](len);
         for (uint256 i = 0; i < len; ++i) {
-            previews[i] = _getSubLoanPreview(subLoanIds[i], timestamp);
+            previews[i] = _getSubLoanPreview(_getSubLoanWithAccruedInterest(subLoanIds[i], timestamp));
         }
 
         return previews;
@@ -378,7 +380,7 @@ contract LendingMarketV2 is
         uint256 operationId = opState.earliestOperationId;
         uint256 i = 0;
         while (operationId != 0) {
-            operations[i] = _getExistingOperationInMemory(subLoanId, operationId);
+            operations[i] = _getExistingOperation(subLoanId, operationId);
             ++i;
             operationId = opState.operations[operationId].nextOperationId;
         }
@@ -468,39 +470,15 @@ contract LendingMarketV2 is
             programId,
             borrowedAmount,
             addonAmount,
-            terms.duration
+            terms.duration,
+            "" //
         );
 
         return id;
     }
 
     /**
-     * @dev TODO
-     */
-    // TODO: Replace by taking from the credit line contract
-    function _determineLoanTerms(
-        address borrower,
-        uint256 borrowedAmount,
-        uint256 duration
-    ) public pure returns (LoanV2.Terms memory terms) {
-        if (borrower == address(0)) {
-            revert Error.ZeroAddress();
-        }
-        if (borrowedAmount == 0) {
-            revert Error.InvalidAmount();
-        }
-        if (duration > type(uint16).max) {
-            revert DurationInvalid();
-        }
-
-        terms.duration = duration;
-        terms.interestRateRemuneratory = Constants.INTEREST_RATE_FACTOR / 100; // 1%
-        terms.interestRateMoratory = Constants.INTEREST_RATE_FACTOR / 50; // 2%
-        terms.lateFeeRate = Constants.INTEREST_RATE_FACTOR / 1000; // 0.1%
-    }
-
-    /**
-     * @dev Updates the loan state and makes the necessary transfers when repaying a sub-loan.
+     * @dev Repays a sub-loan internally.
      * @param subLoanId The unique identifier of the sub-loan to repay.
      * @param repaymentAmount The amount to repay.
      * @param repayer The token source for the repayment or zero if the source is the loan borrower themself.
@@ -511,13 +489,48 @@ contract LendingMarketV2 is
         address repayer
     ) internal {
         repaymentAmount = _normalizeAmount(repaymentAmount);
-        LoanV2.ProcessingSubLoan memory subLoan = _getOngoingSubLoanInMemory(subLoanId);
+        LoanV2.ProcessingSubLoan memory subLoan = _getOngoingSubLoan(subLoanId);
         _addOperation(
             subLoan,
             uint256(LoanV2.OperationKind.Repayment),
             _blockTimestamp(), // timestamp
             repaymentAmount, // parameter
             repayer // account
+        );
+        _processOperations(subLoan, DO_OPERATION_POST_PROCESSING);
+    }
+
+    /**
+     * @dev Discounts a sub-loan internally.
+     * @param subLoanId The unique identifier of the sub-loan to discount.
+     * @param discountAmount The amount of the discount.
+     */
+    function _discountLoan(
+        uint256 subLoanId, // Tools: this comment prevents Prettier from formatting into a single line.
+        uint256 discountAmount
+    ) internal {
+        LoanV2.ProcessingSubLoan memory subLoan = _getOngoingSubLoan(subLoanId);
+        _addOperation(
+            subLoan,
+            uint256(LoanV2.OperationKind.Discounting),
+            _blockTimestamp(),
+            discountAmount,
+            address(0) // account
+        );
+        _processOperations(subLoan, DO_OPERATION_POST_PROCESSING);
+    }
+
+    /**
+     * @dev Updates the loan state and makes the necessary transfers when revoking a loan.
+     * @param subLoan TODO
+     */
+    function _revokeSubLoan(LoanV2.ProcessingSubLoan memory subLoan) internal {
+        _addOperation(
+            subLoan,
+            uint256(LoanV2.OperationKind.Repayment),
+            _blockTimestamp(),
+            0,
+            address(0)
         );
         _processOperations(subLoan, DO_OPERATION_POST_PROCESSING);
     }
@@ -610,7 +623,7 @@ contract LendingMarketV2 is
     }
 
     /**
- * @dev TODO
+     * @dev TODO
      */
     function _voidOperation(
         uint256 subLoanId,
@@ -618,7 +631,7 @@ contract LendingMarketV2 is
     ) internal returns (LoanV2.Operation storage operation){
         operation = _getExistingOperationInStorage(subLoanId, operationId);
         if (operation.status == LoanV2.OperationStatus.Voided) {
-            revert OperationAlreadySkipped();
+            revert OperationVoidedAlready();
         }
 
         emit OperationVoided(
@@ -631,6 +644,96 @@ contract LendingMarketV2 is
         );
     }
 
+    /**
+     * @dev TODO
+     */
+    // TODO: Replace by taking from the credit line contract
+    function _determineLoanTerms(
+        address borrower,
+        uint256 borrowedAmount,
+        uint256 duration
+    ) public pure returns (LoanV2.Terms memory terms) {
+        if (borrower == address(0)) {
+            revert Error.ZeroAddress();
+        }
+        if (borrowedAmount == 0) {
+            revert Error.InvalidAmount();
+        }
+        if (duration > type(uint16).max) {
+            revert DurationInvalid();
+        }
+
+        terms.duration = duration;
+        terms.interestRateRemuneratory = Constants.INTEREST_RATE_FACTOR / 100; // 1%
+        terms.interestRateMoratory = Constants.INTEREST_RATE_FACTOR / 50; // 2%
+        terms.lateFeeRate = Constants.INTEREST_RATE_FACTOR / 1000; // 0.1%
+    }
+
+    /**
+     * @dev Sets the loan parts data in storage.
+     * @param subLoanId The ID of the sub-loan to update.
+     * @param firstSubLoanId The ID of the first sub-loan.
+     * @param subLoanCount The total number of sub-loans.
+     */
+    function _setLoanPartsData(
+        uint256 subLoanId, // Tools: this comment prevents Prettier from formatting into a single line.
+        uint256 firstSubLoanId,
+        uint256 subLoanCount
+    ) internal {
+        LoanV2.SubLoan storage subLoan = _getSubLoanInStorage(subLoanId);
+        subLoan.firstSubLoanId = uint40(firstSubLoanId); // Unchecked conversion is safe due to contract logic
+        subLoan.subLoanCount = uint16(subLoanCount); // Unchecked conversion is safe due to contract logic
+    }
+
+    /**
+     * @dev Transfers tokens from the liquidity pool to the borrower and the addon treasury.
+     * @param subLoanId The ID of the loan.
+     * @param borrowedAmount The amount of tokens to borrow.
+     * @param addonAmount The addon amount of the loan.
+     */
+    function _transferTokensOnLoanTaking(uint256 subLoanId, uint256 borrowedAmount, uint256 addonAmount) internal {
+        LoanV2.SubLoan storage subLoan = _getSubLoanInStorage(subLoanId);
+        address liquidityPool = _getLendingMarketStorage().programLiquidityPools[subLoan.programId];
+        address token = _getLendingMarketStorage().token;
+        address addonTreasury = ILiquidityPool(liquidityPool).addonTreasury();
+        if (addonTreasury == address(0)) {
+            revert AddonTreasuryAddressZero();
+        }
+        IERC20(token).safeTransferFrom(liquidityPool, subLoan.borrower, borrowedAmount);
+        if (addonAmount != 0) {
+            IERC20(token).safeTransferFrom(liquidityPool, addonTreasury, addonAmount);
+        }
+    }
+
+    /**
+     * @dev Transfers tokens from the borrower and the addon treasury back to the liquidity pool.
+     * @param subLoan The memory state of the loan.
+     * @param borrowedAmount The amount of tokens to borrow.
+     * @param addonAmount The addon amount of the loan.
+     * @param repaidAmount The repaid amount of the loan.
+     */
+    function _transferTokensOnLoanRevocation(
+        LoanV2.ProcessingSubLoan memory subLoan,
+        uint256 borrowedAmount,
+        uint256 addonAmount,
+        uint256 repaidAmount
+    ) internal {
+        address liquidityPool = _getLendingMarketStorage().programLiquidityPools[subLoan.programId];
+        address token = _getLendingMarketStorage().token;
+        address addonTreasury = ILiquidityPool(liquidityPool).addonTreasury();
+        if (addonTreasury == address(0)) {
+            revert AddonTreasuryAddressZero();
+        }
+        if (repaidAmount < borrowedAmount) {
+            IERC20(token).safeTransferFrom(subLoan.borrower, liquidityPool, borrowedAmount - repaidAmount);
+        } else if (repaidAmount != borrowedAmount) {
+            IERC20(token).safeTransferFrom(liquidityPool, subLoan.borrower, repaidAmount - borrowedAmount);
+        }
+        if (addonAmount != 0) {
+            IERC20(token).safeTransferFrom(addonTreasury, liquidityPool, addonAmount);
+        }
+    }
+
     /// @dev TODO
     function _findEarlierOperation(LoanV2.OperationalState storage opState, uint256 timestamp) internal view returns (uint256) {
         uint256 operationId = opState.latestOperationId;
@@ -638,24 +741,6 @@ contract LendingMarketV2 is
             operationId = opState.operations[operationId].prevOperationId;
         }
         return operationId;
-    }
-
-    /// @dev TODO
-    function _treatOperations(uint256 subLoanId, uint256 timestamp, address counterparty) internal {
-        LoanV2.ProcessingSubLoan memory subLoan = _getUnrevokedSubLoanInMemory(subLoanId);
-        if (timestamp < _blockTimestamp()) {
-            _replayOperations(subLoan, counterparty);
-        } else {
-            _processOperations(subLoan, DO_OPERATION_POST_PROCESSING);
-        }
-    }
-
-    /// @dev TODO
-    function _replayOperations(LoanV2.ProcessingSubLoan memory subLoan, address counterparty) internal {
-        _initiateSubLoan(subLoan);
-        subLoan.counterparty = counterparty;
-        _getLendingMarketStorage().subLoanOperationalStates[subLoan.id].pastOperationId = 0;
-        _processOperations(subLoan, SKIP_OPERATION_POST_PROCESSING);
     }
 
     /// @dev TODO
@@ -674,8 +759,10 @@ contract LendingMarketV2 is
         }
         uint256 currentTimestamp = _blockTimestamp();
         while (operationId != 0) {
-            LoanV2.ProcessingOperation memory operation = _getExistingOperationInMemory(subLoan.id, operationId);
-            _processOperation(subLoan, operation, currentTimestamp);
+            LoanV2.ProcessingOperation memory operation = _getExistingOperation(subLoan.id, operationId);
+            uint256 oldStatus = operation.status;
+            _processSingleOperation(subLoan, operation, currentTimestamp);
+            _acceptOperationStatusChange(subLoan, operation, oldStatus);
             if (operation.status == uint256(LoanV2.OperationStatus.Pending)) {
                 break;
             }
@@ -691,10 +778,28 @@ contract LendingMarketV2 is
         _updateSubLoan(subLoan);
     }
 
+    /// @dev TODO
+    function _replayOperations(LoanV2.ProcessingSubLoan memory subLoan, address counterparty) internal {
+        _initiateSubLoan(subLoan);
+        subLoan.counterparty = counterparty;
+        _getLendingMarketStorage().subLoanOperationalStates[subLoan.id].pastOperationId = 0;
+        _processOperations(subLoan, SKIP_OPERATION_POST_PROCESSING);
+    }
+
+    /// @dev TODO
+    function _treatOperations(uint256 subLoanId, uint256 timestamp, address counterparty) internal {
+        LoanV2.ProcessingSubLoan memory subLoan = _getUnrevokedSubLoan(subLoanId);
+        if (timestamp < _blockTimestamp()) {
+            _replayOperations(subLoan, counterparty);
+        } else {
+            _processOperations(subLoan, DO_OPERATION_POST_PROCESSING);
+        }
+    }
+
     /**
      * @dev TODO
      */
-    function _processOperation(
+    function _processSingleOperation(
         LoanV2.ProcessingSubLoan memory subLoan,
         LoanV2.ProcessingOperation memory operation,
         uint256 currentTimestamp
@@ -714,10 +819,116 @@ contract LendingMarketV2 is
         if (operationTimestamp <= currentTimestamp) {
             _accrueInterest(subLoan, operation.timestamp);
             _applyOperation(subLoan, operation);
-            subLoan.trackedTimestamp = operationTimestamp;
         }
     }
 
+    /**
+     * @dev TODO
+     */
+    function _acceptOperationStatusChange(
+        LoanV2.ProcessingSubLoan memory subLoan,
+        LoanV2.ProcessingOperation memory operation,
+        uint256 oldOperationStatus
+    ) internal {
+        uint256 newOperationStatus = operation.status;
+        if (oldOperationStatus == newOperationStatus) {
+            return;
+        }
+
+        uint256 operationId = operation.id;
+
+        _getOperationInStorage(subLoan.id, operationId).status = LoanV2.OperationStatus(newOperationStatus);
+
+        if (newOperationStatus == uint256(LoanV2.OperationStatus.Applied)) {
+            emit OperationApplied(
+                subLoan.id,
+                operationId,
+                operation.kind,
+                operation.timestamp,
+                operation.parameter,
+                operation.account,
+                "" // addendum
+            );
+        }
+    }
+
+    /**
+     * @dev TODO
+     */
+    function _postProcessOperation(
+        LoanV2.ProcessingSubLoan memory subLoan,
+        LoanV2.ProcessingOperation memory operation
+    ) internal {
+        if (operation.status != uint256(LoanV2.OperationStatus.Applied)) {
+            return;
+        } else if (operation.kind == uint256(LoanV2.OperationKind.Repayment)) {
+            _postProcessRepayment(subLoan, operation);
+        }
+    }
+
+    /**
+     * @dev TODO
+     */
+    function _initiateSubLoan(LoanV2.ProcessingSubLoan memory subLoan) internal view {
+        LoanV2.SubLoan storage oldSubLoan = _getSubLoanInStorage(subLoan.id);
+        subLoan.status = uint256(LoanV2.SubLoanStatus.Ongoing);
+        subLoan.duration = oldSubLoan.initialDuration;
+        subLoan.interestRateRemuneratory = oldSubLoan.initialInterestRateRemuneratory;
+        subLoan.interestRateMoratory = oldSubLoan.initialInterestRateMoratory;
+        subLoan.lateFeeRate = oldSubLoan.initialLateFeeRate;
+        subLoan.trackedPrincipal = oldSubLoan.borrowedAmount + oldSubLoan.addonAmount;
+        subLoan.trackedInterestRemuneratory = 0;
+        subLoan.trackedInterestMoratory = 0;
+        subLoan.trackedLateFee = 0;
+        subLoan.repaidPrincipal = 0;
+        subLoan.repaidInterestRemuneratory = 0;
+        subLoan.repaidInterestMoratory = 0;
+        subLoan.repaidLateFee = 0;
+        subLoan.discountInterestRemuneratory = 0;
+        subLoan.discountInterestMoratory = 0;
+        subLoan.discountLateFee = 0;
+        subLoan.trackedTimestamp = subLoan.startTimestamp;
+        subLoan.freezeTimestamp = 0;
+    }
+
+    /**
+     * @dev TODO
+     */
+    function _accrueInterest(
+        LoanV2.ProcessingSubLoan memory subLoan,
+        uint256 finishTimestamp
+    ) internal pure {
+        uint256 startDay = _dayIndex(subLoan.trackedTimestamp);
+        subLoan.trackedTimestamp = finishTimestamp;
+
+        {
+            uint256 freezeTimestamp = subLoan.freezeTimestamp;
+            if (freezeTimestamp != 0 && freezeTimestamp < finishTimestamp) {
+                finishTimestamp = freezeTimestamp;
+            }
+        }
+
+        uint256 finishDay = _dayIndex(finishTimestamp);
+
+        if (finishDay > startDay) {
+            uint256 dueDay =  _dayIndex(subLoan.startTimestamp) + subLoan.duration;
+            if (startDay <= dueDay) {
+                if (finishDay <= dueDay) {
+                    _accrueInterestRemuneratory(subLoan, finishDay - startDay);
+                } else {
+                    _accrueInterestRemuneratory(subLoan, finishDay - startDay);
+                    _calculateInitialLateFee(subLoan);
+                    _accrueInterestMoratory(subLoan, finishDay - dueDay);
+                }
+            } else {
+                _accrueInterestMoratory(subLoan, finishDay - dueDay);
+            }
+        }
+    }
+
+    /**
+     * @dev TODO
+     */
     function _applyOperation(
         LoanV2.ProcessingSubLoan memory subLoan,
         LoanV2.ProcessingOperation memory operation
@@ -739,6 +950,9 @@ contract LendingMarketV2 is
         }
     }
 
+    /**
+     * @dev TODO
+     */
     function _applyRepaymentOrDiscount(
         LoanV2.ProcessingSubLoan memory subLoan,
         uint256 amount,
@@ -775,6 +989,20 @@ contract LendingMarketV2 is
         }
     }
 
+    /**
+     * @dev TODO
+     */
+    function _applyRevocation(LoanV2.ProcessingSubLoan memory subLoan) internal pure {
+        subLoan.trackedPrincipal = 0;
+        subLoan.trackedInterestRemuneratory = 0;
+        subLoan.trackedInterestMoratory = 0;
+        subLoan.trackedLateFee = 0;
+        subLoan.status = uint256(LoanV2.SubLoanStatus.Revoked);
+    }
+
+    /**
+     * @dev TODO
+     */
     function _repayOrDiscountPartial(
         LoanV2.ProcessingSubLoan memory subLoan,
         uint256 amount,
@@ -859,197 +1087,6 @@ contract LendingMarketV2 is
     /**
      * @dev TODO
      */
-    function _applyRevocation(LoanV2.ProcessingSubLoan memory subLoan) internal pure {
-        subLoan.trackedPrincipal = 0;
-        subLoan.trackedInterestRemuneratory = 0;
-        subLoan.trackedInterestMoratory = 0;
-        subLoan.trackedLateFee = 0;
-        subLoan.status = uint256(LoanV2.SubLoanStatus.Revoked);
-    }
-
-    /**
-     * @dev TODO
-     */
-    function _initiateSubLoan(LoanV2.ProcessingSubLoan memory subLoan) internal view {
-        LoanV2.SubLoan storage oldSubLoan = _getSubLoanInStorage(subLoan.id);
-        subLoan.status = uint256(LoanV2.SubLoanStatus.Ongoing);
-        subLoan.duration = oldSubLoan.initialDuration;
-        subLoan.interestRateRemuneratory = oldSubLoan.initialInterestRateRemuneratory;
-        subLoan.interestRateMoratory = oldSubLoan.initialInterestRateMoratory;
-        subLoan.lateFeeRate = oldSubLoan.initialLateFeeRate;
-        subLoan.trackedPrincipal = oldSubLoan.borrowedAmount + oldSubLoan.addonAmount;
-        subLoan.trackedInterestRemuneratory = 0;
-        subLoan.trackedInterestMoratory = 0;
-        subLoan.trackedLateFee = 0;
-        subLoan.repaidPrincipal = 0;
-        subLoan.repaidInterestRemuneratory = 0;
-        subLoan.repaidInterestMoratory = 0;
-        subLoan.repaidLateFee = 0;
-        subLoan.discountInterestRemuneratory = 0;
-        subLoan.discountInterestMoratory = 0;
-        subLoan.discountLateFee = 0;
-        subLoan.trackedTimestamp = subLoan.startTimestamp;
-        subLoan.freezeTimestamp = 0;
-    }
-
-    /**
-     * @dev TODO
-     */
-    function _getSubLoanInStorage(uint256 subLoanId) internal view returns (LoanV2.SubLoan storage) {
-        return _getLendingMarketStorage().subLoans[subLoanId];
-    }
-
-    /**
-     * @dev TODO
-     */
-    function _getExitingSubLoanInStorage(uint256 subLoanId) internal view returns (LoanV2.SubLoan storage) {
-        LoanV2.SubLoan storage subLoan = _getSubLoanInStorage(subLoanId);
-        if (subLoan.status == LoanV2.SubLoanStatus.Nonexistent) {
-            revert SubLoanNotExist();
-        }
-        return subLoan;
-    }
-
-    /**
-     * @dev TODO
-     */
-    function _getSubLoanInMemory(uint256 subLoanId) internal view returns (LoanV2.ProcessingSubLoan memory) {
-        LoanV2.SubLoan storage subLoanStored = _getSubLoanInStorage(subLoanId);
-        LoanV2.ProcessingSubLoan memory subLoan = _convertSubLoan(subLoanStored);
-        subLoan.id = subLoanId;
-        subLoan.flags = 0;
-        return subLoan;
-    }
-
-    /**
-     * @dev TODO
-     */
-    function _getUnrevokedSubLoanInMemory(uint256 subLoanId) internal view returns (LoanV2.ProcessingSubLoan memory) {
-        LoanV2.ProcessingSubLoan memory subLoan = _getSubLoanInMemory(subLoanId);
-        uint256 status = subLoan.status;
-        if (status == uint256(LoanV2.SubLoanStatus.Nonexistent)) {
-            revert SubLoanNotExist();
-        }
-        if (status == uint256(LoanV2.SubLoanStatus.Revoked)) {
-            revert SubLoanRevoked();
-        }
-        return subLoan;
-    }
-
-    /**
-     * @dev TODO
-     */
-    function _getOngoingSubLoanInMemory(uint256 subLoanId) internal view returns (LoanV2.ProcessingSubLoan memory) {
-        LoanV2.ProcessingSubLoan memory subLoan = _getUnrevokedSubLoanInMemory(subLoanId);
-        if (subLoan.status == uint256(LoanV2.SubLoanStatus.FullyRepaid)) {
-            revert SubLoanFullyRepaid();
-        }
-        return subLoan;
-    }
-
-    function _convertSubLoan(LoanV2.SubLoan storage subLoanStored) internal view returns (LoanV2.ProcessingSubLoan memory) {
-        LoanV2.ProcessingSubLoan memory subLoan;
-        // subLoan.id = 0;
-        subLoan.status = uint256(subLoanStored.status);
-        subLoan.programId = subLoanStored.programId;
-        subLoan.borrower = subLoanStored.borrower;
-        // subLoan.flags = 0;
-        subLoan.startTimestamp = subLoanStored.startTimestamp;
-        subLoan.duration = subLoanStored.duration;
-        subLoan.interestRateRemuneratory = subLoanStored.interestRateRemuneratory;
-        subLoan.interestRateMoratory = subLoanStored.interestRateMoratory;
-        subLoan.lateFeeRate = subLoanStored.lateFeeRate;
-        subLoan.trackedPrincipal = subLoanStored.trackedPrincipal;
-        subLoan.trackedInterestRemuneratory = subLoanStored.trackedInterestRemuneratory;
-        subLoan.trackedInterestMoratory = subLoanStored.trackedInterestMoratory;
-        subLoan.trackedLateFee = subLoanStored.trackedLateFee;
-        subLoan.repaidPrincipal = subLoanStored.repaidPrincipal;
-        subLoan.repaidInterestRemuneratory = subLoanStored.repaidInterestRemuneratory;
-        subLoan.repaidInterestMoratory = subLoanStored.repaidInterestMoratory;
-        subLoan.repaidLateFee = subLoanStored.repaidLateFee;
-        subLoan.discountInterestRemuneratory = subLoanStored.discountInterestRemuneratory;
-        subLoan.discountInterestMoratory = subLoanStored.discountInterestMoratory;
-        subLoan.discountLateFee = subLoanStored.discountLateFee;
-        subLoan.trackedTimestamp = subLoanStored.trackedTimestamp;
-        subLoan.freezeTimestamp = subLoanStored.freezeTimestamp;
-        // subLoan.counterparty = 0;
-        return subLoan;
-    }
-
-    /**
-     * @dev TODO
-     */
-    function _getExistingOperationInStorage(uint256 subLoanId, uint256 operationId) internal view returns (LoanV2.Operation storage) {
-        LoanV2.Operation storage operation =
-            _getLendingMarketStorage().subLoanOperationalStates[subLoanId].operations[operationId];
-        if (operation.status == LoanV2.OperationStatus.Nonexistent) {
-            revert OperationNonexistent();
-        }
-        return operation;
-    }
-
-    /**
-     * @dev TODO
-     */
-    function _getExistingOperationInMemory(uint256 subLoanId, uint256 operationId) internal view returns (LoanV2.ProcessingOperation memory) {
-        LoanV2.ProcessingOperation memory operation = _convertOperation(
-            _getExistingOperationInStorage(subLoanId, operationId)
-        );
-        operation.id = operationId;
-        return operation;
-    }
-
-    /**
-     * @dev TODO
-     */
-    function _convertOperation(LoanV2.Operation storage operationInStorage) internal view returns (LoanV2.ProcessingOperation memory) {
-        LoanV2.ProcessingOperation memory operation;
-        // operation.id = 0;
-        operation.status = uint256(operationInStorage.status);
-        operation.kind = uint256(operationInStorage.kind);
-        operation.timestamp = operationInStorage.timestamp;
-        operation.parameter = operationInStorage.parameter;
-        operation.account = operationInStorage.account;
-        return operation;
-    }
-
-
-    /**
-     * @dev TODO
-     */
-    function _accrueInterest(
-        LoanV2.ProcessingSubLoan memory subLoan,
-        uint256 finishTimestamp
-    ) internal pure {
-        {
-            uint256 freezeTimestamp = subLoan.freezeTimestamp;
-            if (freezeTimestamp != 0 && freezeTimestamp < finishTimestamp) {
-                finishTimestamp = freezeTimestamp;
-            }
-        }
-
-        uint256 finishDay = _dayIndex(finishTimestamp);
-        uint256 startDay = _dayIndex(subLoan.trackedTimestamp);
-
-        if (finishDay > startDay) {
-            uint256 dueDay =  _dayIndex(subLoan.startTimestamp) + subLoan.duration;
-            if (startDay <= dueDay) {
-                if (finishDay <= dueDay) {
-                    _accrueInterestRemuneratory(subLoan, finishDay - startDay);
-                } else {
-                    _accrueInterestRemuneratory(subLoan, finishDay - startDay);
-                    _calculateLateFee(subLoan);
-                    _accrueInterestMoratory(subLoan, finishDay - dueDay);
-                }
-            } else {
-                _accrueInterestMoratory(subLoan, finishDay - dueDay);
-            }
-        }
-    }
-
-    /**
-     * @dev TODO
-     */
     function _accrueInterestRemuneratory(LoanV2.ProcessingSubLoan memory subLoan, uint256 dayCount) internal pure {
         uint256 oldTrackedBalance = subLoan.trackedPrincipal + subLoan.trackedInterestRemuneratory;
         uint256 newTrackedBalance = InterestMath.calculateTrackedBalance(
@@ -1069,41 +1106,6 @@ contract LendingMarketV2 is
             subLoan.trackedPrincipal,
             dayCount,
             subLoan.interestRateMoratory
-        );
-    }
-
-    /**
-     * @dev TODO
-     */
-    function _calculateSimpleInterest(
-        uint256 principal,
-        uint256 dayCount,
-        uint256 interestRate
-    ) internal pure returns (uint256) {
-        return principal * dayCount * interestRate / Constants.INTEREST_RATE_FACTOR;
-    }
-
-    /**
-     * @dev TODO
-     */
-    function _postProcessOperation(
-        LoanV2.ProcessingSubLoan memory subLoan,
-        LoanV2.ProcessingOperation memory operation
-    ) internal {
-        if (operation.status != uint256(LoanV2.OperationStatus.Applied)) {
-            return;
-        } else if (operation.kind == uint256(LoanV2.OperationKind.Repayment)) {
-            _postProcessRepayment(subLoan, operation);
-        }
-
-        emit OperationApplied(
-            subLoan.id,
-            operation.id,
-            operation.kind,
-            operation.timestamp,
-            operation.parameter,
-            operation.account,
-            "" // addendum
         );
     }
 
@@ -1130,15 +1132,19 @@ contract LendingMarketV2 is
 
         // TODO: add events if needed
 
-        // Check full repayment status
-        {
-            uint256 newTotalTrackedBalance = _getTrackedBalance(newSubLoan);
-            if (newTotalTrackedBalance == 0 && newSubLoan.status != uint256(LoanV2.SubLoanStatus.Revoked)) {
+        // Check full repayment status or its disappearing
+        if (newSubLoan.status != uint256(LoanV2.SubLoanStatus.Revoked)) {
+            uint256 newTrackedBalance = _calculateTrackedBalance(newSubLoan);
+            if (newTrackedBalance == 0) {
                 newSubLoan.status = uint256(LoanV2.SubLoanStatus.FullyRepaid);
+            } else {
+                newSubLoan.status = uint256(LoanV2.SubLoanStatus.Ongoing);
             }
         }
 
         _acceptRepaymentChange(newSubLoan, oldSubLoan);
+        _acceptDiscountChange(newSubLoan, oldSubLoan);
+        _acceptSubLoanParametersChange(newSubLoan, oldSubLoan);
         _acceptSubLoanStatusChange(newSubLoan, oldSubLoan);
 
         // Update storage with the unchecked type conversion is used for all stored values due to prior checks
@@ -1166,84 +1172,117 @@ contract LendingMarketV2 is
     /**
      * @dev TODO
      */
-    function _getTrackedBalance(LoanV2.ProcessingSubLoan memory subLoan) internal pure returns (uint256) {  
-        return
-            subLoan.trackedPrincipal + 
-            subLoan.trackedInterestRemuneratory +
-            subLoan.trackedInterestMoratory +
-            subLoan.trackedLateFee;
-    }
-
-    /**
-     * @dev TODO
-     */
-    function _getOutstandingBalance(LoanV2.ProcessingSubLoan memory subLoan) internal pure returns (uint256) {
-        return
-            _roundMath(subLoan.trackedPrincipal) +
-            _roundMath(subLoan.trackedInterestRemuneratory) +
-            _roundMath(subLoan.trackedInterestMoratory) +
-            _roundMath(subLoan.trackedLateFee);
-    }
-
-    /**
-     * @dev TODO
-     */
-    function _getRepaidAmountInMemory(LoanV2.ProcessingSubLoan memory subLoan) internal pure returns (uint256) {
-        return
-            subLoan.repaidPrincipal +
-            subLoan.repaidInterestRemuneratory +
-            subLoan.repaidInterestMoratory +
-            subLoan.repaidLateFee;
-    }
-
-    /**
-     * @dev TODO
-     */
-    function _getRepaidAmountInStorage(LoanV2.SubLoan storage subLoan) internal view returns (uint256) {
-        return
-            subLoan.repaidPrincipal +
-            subLoan.repaidInterestRemuneratory +
-            subLoan.repaidInterestMoratory +
-            subLoan.repaidLateFee;
-    }
-
-    /**
-     * @dev TODO
-     */
-    function _getDiscountAmountInMemory(LoanV2.ProcessingSubLoan memory subLoan) internal pure returns (uint256) {
-        return
-            subLoan.discountInterestRemuneratory +
-            subLoan.discountInterestMoratory +
-            subLoan.discountLateFee;
-    }
-
-    /**
-     * @dev TODO
-     */
     function _acceptRepaymentChange(
         LoanV2.ProcessingSubLoan memory newSubLoan,
         LoanV2.SubLoan storage oldSubLoan
     ) internal {
-        uint256 oldTotalRepayment = _getRepaidAmountInStorage(oldSubLoan);
-        uint256 newTotalRepayment = _getRepaidAmountInMemory(newSubLoan);
-        if (oldTotalRepayment == newTotalRepayment) {
+        uint256 oldRepaidAmount = _calculateRepaidAmountInStorage(oldSubLoan);
+        uint256 newRepaidAmount = _calculateRepaidAmount(newSubLoan);
+        if (oldRepaidAmount == newRepaidAmount) {
             return;
         }
         (, address liquidityPool) = _getCreditLineAndLiquidityPool(newSubLoan.programId);
         address token = _getLendingMarketStorage().token;
         address counterparty = newSubLoan.counterparty;
-        if (newTotalRepayment < oldTotalRepayment) {
-            uint256 repaymentDiff = oldTotalRepayment - newTotalRepayment;
+        if (newRepaidAmount < oldRepaidAmount) {
+            uint256 repaymentDiff = oldRepaidAmount - newRepaidAmount;
             ILiquidityPool(liquidityPool).onAfterLoanRepaymentUndoing(newSubLoan.id, repaymentDiff);
             if (counterparty != address(0)) {
                 IERC20(token).safeTransferFrom(liquidityPool, counterparty, repaymentDiff);
             }
         } else {
-            uint256 repaymentDiff = newTotalRepayment - oldTotalRepayment;
+            uint256 repaymentDiff = newRepaidAmount - oldRepaidAmount;
             ILiquidityPool(liquidityPool).onAfterLoanPayment(newSubLoan.id, repaymentDiff);
             if (counterparty != address(0)) {
                 IERC20(token).safeTransferFrom(counterparty, liquidityPool, repaymentDiff);
             }
+        }
+
+        emit SubLoanRepaidAmountChanged(
+            newSubLoan.id,
+            newSubLoan.borrower,
+            newRepaidAmount,
+            oldRepaidAmount,
+            _calculateTrackedBalance(newSubLoan),
+            "" // addendum
+        );
+    }
+
+    /**
+     * @dev TODO
+     */
+    function _acceptDiscountChange(
+        LoanV2.ProcessingSubLoan memory newSubLoan,
+        LoanV2.SubLoan storage oldSubLoan
+    ) internal {
+        uint256 oldDiscountAmount = _calculateDiscountAmountInStorage(oldSubLoan);
+        uint256 newDiscountAmount = _calculateDiscountAmount(newSubLoan);
+        if (oldDiscountAmount == newDiscountAmount) {
+            return;
+        }
+
+        emit SubLoanDiscountAmountChanged(
+            newSubLoan.id,
+            newSubLoan.borrower,
+            newDiscountAmount,
+            oldDiscountAmount,
+            _calculateTrackedBalance(newSubLoan),
+            "" // addendum
+        );
+    }
+
+    /**
+     * @dev TODO
+     */
+    function _acceptSubLoanParametersChange(
+        LoanV2.ProcessingSubLoan memory newSubLoan,
+        LoanV2.SubLoan storage oldSubLoan
+    ) internal {
+
+        // TODO Consider emitting events in this function during operation post processing
+
+        if (newSubLoan.interestRateRemuneratory != oldSubLoan.interestRateRemuneratory) {
+            emit SubLoanInterestRateRemuneratoryChanged(
+                newSubLoan.id,
+                newSubLoan.borrower,
+                newSubLoan.interestRateRemuneratory,
+                oldSubLoan.interestRateRemuneratory,
+                _calculateTrackedBalance(newSubLoan),
+                "" // addendum
+            );
+        }
+
+        if (newSubLoan.interestRateMoratory != oldSubLoan.interestRateMoratory) {
+            emit SubLoanInterestRateMoratoryChanged(
+                newSubLoan.id,
+                newSubLoan.borrower,
+                newSubLoan.interestRateMoratory,
+                oldSubLoan.interestRateMoratory,
+                _calculateTrackedBalance(newSubLoan),
+                "" // addendum
+            );
+        }
+
+        if (newSubLoan.lateFeeRate != oldSubLoan.lateFeeRate) {
+            emit SubLoanLateFeeRateChanged(
+                newSubLoan.id,
+                newSubLoan.borrower,
+                newSubLoan.lateFeeRate,
+                oldSubLoan.lateFeeRate,
+                _calculateTrackedBalance(newSubLoan),
+                "" // addendum
+            );
+        }
+
+        if (newSubLoan.duration != oldSubLoan.duration) {
+            emit SubLoanDurationChanged(
+                newSubLoan.id,
+                newSubLoan.borrower,
+                newSubLoan.duration,
+                oldSubLoan.duration,
+                _calculateTrackedBalance(newSubLoan),
+                "" // addendum
+            );
         }
     }
 
@@ -1262,51 +1301,114 @@ contract LendingMarketV2 is
 
             ILiquidityPool(liquidityPool).onAfterLoanRevocation(newSubLoan.id);
             ICreditLine(creditLine).onAfterLoanRevocation(newSubLoan.id);
+
+            emit SubLoanRevoked(
+                newSubLoan.id,
+                "" // addendum
+            );
         }
     }
 
-    function _getCreditLineAndLiquidityPool(uint256 programId) internal view returns (address, address) {
-        LendingMarketStorageV2 storage storageStruct = _getLendingMarketStorage();
-        address creditLine = storageStruct.programCreditLines[programId];
-        address liquidityPool = storageStruct.programLiquidityPools[programId];
-        return (creditLine, liquidityPool);
+    /**
+     * @dev TODO
+     */
+    function _calculateSimpleInterest(
+        uint256 principal,
+        uint256 dayCount,
+        uint256 interestRate
+    ) internal pure returns (uint256) {
+        return principal * dayCount * interestRate / Constants.INTEREST_RATE_FACTOR;
     }
 
     /**
-     * @dev Updates the loan state and makes the necessary transfers when revoking a loan.
-     * @param subLoan TODO
+     * @dev TODO
      */
-    function _revokeSubLoan(LoanV2.ProcessingSubLoan memory subLoan) internal {
-        _addOperation(
-            subLoan,
-            uint256(LoanV2.OperationKind.Repayment),
-            _blockTimestamp(),
-            0,
-            address(0)
-        );
-        _processOperations(subLoan, DO_OPERATION_POST_PROCESSING);
+    function _calculateTrackedBalance(LoanV2.ProcessingSubLoan memory subLoan) internal pure returns (uint256) {
+        return
+            subLoan.trackedPrincipal + 
+            subLoan.trackedInterestRemuneratory +
+            subLoan.trackedInterestMoratory +
+            subLoan.trackedLateFee;
     }
 
     /**
-     * @dev Discounts a sub-loan.
-     * @param subLoanId The unique identifier of the sub-loan to discount.
-     * @param discountAmount The amount of the discount.
+     * @dev TODO
      */
-    function _discountLoan(
-        uint256 subLoanId, // Tools: this comment prevents Prettier from formatting into a single line.
-        uint256 discountAmount
-    ) internal {
-        LoanV2.ProcessingSubLoan memory subLoan = _getOngoingSubLoanInMemory(subLoanId);
-        _addOperation(
-            subLoan,
-            uint256(LoanV2.OperationKind.Discounting),
-            _blockTimestamp(),
-            discountAmount,
-            address(0) // account
-        );
-        _processOperations(subLoan, DO_OPERATION_POST_PROCESSING);
+    function _calculateOutstandingBalance(LoanV2.ProcessingSubLoan memory subLoan) internal pure returns (uint256) {
+        return
+            _roundMath(subLoan.trackedPrincipal) +
+            _roundMath(subLoan.trackedInterestRemuneratory) +
+            _roundMath(subLoan.trackedInterestMoratory) +
+            _roundMath(subLoan.trackedLateFee);
     }
 
+    /**
+     * @dev TODO
+     */
+    function _calculateRepaidAmount(LoanV2.ProcessingSubLoan memory subLoan) internal pure returns (uint256) {
+        return
+            subLoan.repaidPrincipal +
+            subLoan.repaidInterestRemuneratory +
+            subLoan.repaidInterestMoratory +
+            subLoan.repaidLateFee;
+    }
+
+    /**
+     * @dev TODO
+     */
+    function _calculateRepaidAmountInStorage(LoanV2.SubLoan storage subLoan) internal view returns (uint256) {
+        return
+            subLoan.repaidPrincipal +
+            subLoan.repaidInterestRemuneratory +
+            subLoan.repaidInterestMoratory +
+            subLoan.repaidLateFee;
+    }
+
+    /**
+     * @dev TODO
+     */
+    function _calculateDiscountAmount(LoanV2.ProcessingSubLoan memory subLoan) internal pure returns (uint256) {
+        return
+            subLoan.discountInterestRemuneratory +
+            subLoan.discountInterestMoratory +
+            subLoan.discountLateFee;
+    }
+
+    /**
+     * @dev TODO
+     */
+    function _calculateDiscountAmountInStorage(LoanV2.SubLoan storage subLoan) internal view returns (uint256) {
+        return
+            subLoan.discountInterestRemuneratory +
+            subLoan.discountInterestMoratory +
+            subLoan.discountLateFee;
+    }
+
+    /**
+     * @dev TODO
+     */
+    function _calculateLateFeeAmount(LoanV2.ProcessingSubLoan memory subLoan) internal pure returns (uint256) {
+        return
+            subLoan.trackedLateFee +
+            subLoan.repaidLateFee +
+            subLoan.discountLateFee;
+    }
+
+    /**
+     * @dev TODO
+     */
+    function _calculateInitialLateFee(LoanV2.ProcessingSubLoan memory subLoan) internal pure {
+        // The equivalent formula: round(trackedPrincipal * lateFeeRate / INTEREST_RATE_FACTOR)
+        // Where division operator `/` takes into account the fractional part and
+        // the `round()` function returns an integer rounded according to standard mathematical rules.
+        uint256 product = subLoan.trackedPrincipal * subLoan.lateFeeRate;
+        uint256 remainder = product % Constants.INTEREST_RATE_FACTOR;
+        uint256 result = product / Constants.INTEREST_RATE_FACTOR;
+        if (remainder >= (Constants.INTEREST_RATE_FACTOR / 2)) {
+            ++result;
+        }
+        subLoan.trackedLateFee = uint64(_roundMath(result)); // Safe cast due to prior checks
+    }
 
     /**
      * @dev Validates the main parameters of the loan.
@@ -1321,8 +1423,10 @@ contract LendingMarketV2 is
         uint256 borrowedAmount,
         uint256 addonAmount
     ) internal pure {
+        // TODO: Try to optimize this function by reusing other function
+
         if (programId == 0) {
-            revert ProgramNotExist();
+            revert ProgramNonexistent();
         }
         if (borrower == address(0)) {
             revert Error.ZeroAddress();
@@ -1351,20 +1455,6 @@ contract LendingMarketV2 is
     }
 
     /**
-     * @dev Calculates the sum of all elements in an calldata array.
-     * @param values Array of amounts to sum.
-     * @return The total sum of all array elements.
-     */
-    function _sumArray(uint256[] calldata values) internal pure returns (uint256) {
-        uint256 len = values.length;
-        uint256 sum = 0;
-        for (uint256 i = 0; i < len; ++i) {
-            sum += values[i];
-        }
-        return sum;
-    }
-
-    /**
      * @dev Validates the loan durations in the array.
      * @param durationsInPeriods Array of loan durations in periods.
      */
@@ -1379,197 +1469,6 @@ contract LendingMarketV2 is
             previousDuration = duration;
         }
     }
-
-    /**
-     * @dev Ensures the sub-loan count is within the valid range.
-     * @param subLoanCount The number of sub-loans to check.
-     */
-    function _checkSubLoanCount(uint256 subLoanCount) internal view {
-        if (subLoanCount > _subLoanCountMax()) {
-            revert InstallmentCountExcess();
-        }
-    }
-
-    /**
-     * @dev Updates the loan parts data in storage.
-     * @param subLoanId The ID of the sub-loan to update.
-     * @param firstSubLoanId The ID of the first sub-loan.
-     * @param subLoanCount The total number of sub-loans.
-     */
-    function _updateLoanPartsData(
-        uint256 subLoanId, // Tools: this comment prevents Prettier from formatting into a single line.
-        uint256 firstSubLoanId,
-        uint256 subLoanCount
-    ) internal {
-        LoanV2.SubLoan storage subLoan = _getSubLoanInStorage(subLoanId);
-        subLoan.firstSubLoanId = uint40(firstSubLoanId); // Unchecked conversion is safe due to contract logic
-        subLoan.subLoanCount = uint16(subLoanCount); // Unchecked conversion is safe due to contract logic
-    }
-
-    /**
-     * @dev Validates that the loan ID is within the valid range.
-     * @param id The loan ID to check.
-     */
-    function _checkLoanId(uint256 id) internal pure {
-        if (id > type(uint40).max) {
-            revert SubLoanIdExcess();
-        }
-    }
-
-    /// TODO
-    function _checkOperationId(uint256 id) internal pure {
-        if (id > type(uint16).max) {
-            revert OperationIdExcess();
-        }
-    }
-
-    /// @dev TODO
-    function _normalizeAmount(uint256 amount) internal pure returns (uint256) {
-        if (amount == type(uint256).max) {
-            amount = type(uint64).max;
-        }
-        return amount;
-    }
-
-
-    /**
-     * @dev Calculates the sub-loan preview.
-     * @param subLoanId The ID of the sub-loan.
-     * @param timestamp The timestamp to calculate the preview at.
-     * @return The sub-loan preview.
-     */
-    function _getSubLoanPreview(
-        uint256 subLoanId,
-        uint256 timestamp
-    ) internal view returns (LoanV2.SubLoanPreview memory) {
-        LoanV2.SubLoanPreview memory preview;
-        LoanV2.ProcessingSubLoan memory subLoan = _getSubLoanInMemory(subLoanId);
-        LoanV2.SubLoan storage subLoanStored = _getSubLoanInStorage(subLoanId);
-
-        if (subLoan.status != uint256(LoanV2.SubLoanStatus.Nonexistent)) {
-            _accrueInterest(subLoan, timestamp);   
-        }
-        preview.day = _dayIndex(timestamp);
-        preview.borrower = subLoan.borrower;
-        preview.programId = subLoan.programId;
-        preview.borrowedAmount = subLoanStored.borrowedAmount;
-        preview.addonAmount = subLoanStored.addonAmount;
-        preview.previewTimestamp = timestamp;
-        preview.startTimestamp = subLoan.startTimestamp;
-        preview.trackedTimestamp = timestamp;
-        preview.freezeTimestamp = subLoan.freezeTimestamp;
-        preview.duration = subLoan.duration;
-        preview.interestRateRemuneratory = subLoan.interestRateRemuneratory;
-        preview.interestRateMoratory = subLoan.interestRateMoratory;
-        preview.lateFeeRate = subLoan.lateFeeRate;
-        preview.firstInstallmentId = subLoanStored.firstSubLoanId;
-        preview.subLoanCount = subLoanStored.subLoanCount;
-        preview.trackedPrincipal = subLoan.trackedPrincipal;
-        preview.trackedInterestRemuneratory = subLoan.trackedInterestRemuneratory;
-        preview.trackedInterestMoratory = subLoan.trackedInterestMoratory;
-        preview.trackedLateFee = subLoan.trackedLateFee;
-        preview.trackedBalance = _getTrackedBalance(subLoan);
-        preview.outstandingBalance = _getOutstandingBalance(subLoan);
-        preview.repaidPrincipal = subLoan.repaidPrincipal;
-        preview.repaidInterestRemuneratory = subLoan.repaidInterestRemuneratory;
-        preview.repaidInterestMoratory = subLoan.repaidInterestMoratory;
-        preview.repaidLateFee = subLoan.repaidLateFee;
-        preview.repaidAmount = _getRepaidAmountInMemory(subLoan);
-        preview.discountInterestRemuneratory = subLoan.discountInterestRemuneratory;
-        preview.discountInterestMoratory = subLoan.discountInterestMoratory;
-        preview.discountLateFee = subLoan.discountLateFee;
-        preview.discountAmount = _getDiscountAmountInMemory(subLoan);
-        return preview;
-    }
-
-    /**
-     * @dev Calculates the preview of a loan.
-     * @param subLoanId The ID of any sub-loan of the loan.
-     * @param timestamp The timestamp to calculate the preview at.
-     * @return The loan preview.
-     */
-    function _getLoanPreview(
-        uint256 subLoanId,
-        uint256 timestamp
-    ) internal view returns (LoanV2.LoanPreview memory) {
-        if (timestamp == 0) {
-            timestamp = _blockTimestamp();
-        }
-        LoanV2.SubLoan storage subLoan = _getSubLoanInStorage(subLoanId);
-        LoanV2.LoanPreview memory preview;
-        uint256 subLoanCount = subLoan.subLoanCount;
-        subLoanId = subLoan.firstSubLoanId;
-
-        preview.subLoanPreviews = new LoanV2.SubLoanPreview[](subLoanCount);
-        preview.firstSubLoanId = subLoanId;
-        preview.subLoanCount = subLoanCount;
-
-        LoanV2.SubLoanPreview memory singleLoanPreview;
-        for (uint256 i = 0; i < subLoanCount; ++i) {
-            singleLoanPreview = _getSubLoanPreview(subLoanId, timestamp);
-            preview.totalTrackedBalance += singleLoanPreview.trackedBalance;
-            preview.totalOutstandingBalance += singleLoanPreview.outstandingBalance;
-            preview.totalBorrowedAmount += singleLoanPreview.borrowedAmount;
-            preview.totalAddonAmount += singleLoanPreview.addonAmount;
-            preview.totalRepaidAmount += singleLoanPreview.repaidAmount;
-            preview.totalLateFeeAmount +=
-                singleLoanPreview.trackedLateFee + singleLoanPreview.repaidLateFee + singleLoanPreview.discountLateFee;
-            preview.totalDiscountAmount += singleLoanPreview.discountAmount;
-            preview.subLoanPreviews[i] = singleLoanPreview;
-            ++subLoanId;
-        }
-        preview.day = singleLoanPreview.day;
-
-        return preview;
-    }
-
-    /**
-     * @dev TODO
-     */
-    function _isRepaid(LoanV2.ProcessingSubLoan memory subLoan) internal pure returns (bool) {
-        return uint256(subLoan.status) != uint256(LoanV2.SubLoanStatus.FullyRepaid);
-    }
-
-    /// @dev Calculates the period index that corresponds the specified timestamp.
-    function _periodIndex(uint256 timestamp, uint256 periodInSeconds_) internal pure returns (uint256) {
-        return (timestamp / periodInSeconds_);
-    }
-
-    /// @dev Calculates the day index that corresponds the specified timestamp.
-    function _dayIndex(uint256 timestamp) internal pure returns (uint256) {
-        return (timestamp / 1 days);
-    }
-
-    /// @dev Returns the current block timestamp with the time offset applied.
-    // TODO: 1. Rename to currentTimestamp or whatever. 2. Consider use timestamps without the offset
-    function _blockTimestamp() internal view virtual returns (uint256) {
-        return block.timestamp - Constants.NEGATIVE_TIME_OFFSET;
-    }
-
-    /// @dev Returns the maximum number of sub-loans for a loan. Can be overridden for testing purposes.
-    function _subLoanCountMax() internal view virtual returns (uint256) {
-        return Constants.INSTALLMENT_COUNT_MAX;
-    }
-
-    /// TODO
-    function _calculateLateFee(LoanV2.ProcessingSubLoan memory subLoan) internal pure {
-        // The equivalent formula: round(trackedPrincipal * lateFeeRate / INTEREST_RATE_FACTOR)
-        // Where division operator `/` takes into account the fractional part and
-        // the `round()` function returns an integer rounded according to standard mathematical rules.
-        uint256 product = subLoan.trackedPrincipal * subLoan.lateFeeRate;
-        uint256 remainder = product % Constants.INTEREST_RATE_FACTOR;
-        uint256 result = product / Constants.INTEREST_RATE_FACTOR;
-        if (remainder >= (Constants.INTEREST_RATE_FACTOR / 2)) {
-            ++result;
-        }
-        subLoan.trackedLateFee = uint64(_roundMath(result)); // Safe cast due to prior checks
-    }
-
-    /// TODO
-    function _roundMath(uint256 value) internal pure returns (uint256) {
-        return Rounding.roundMath(value, Constants.ACCURACY_FACTOR);
-    }
-
 
     /// TODO
     function _checkOperationKind(uint256 kind) internal pure {
@@ -1624,17 +1523,6 @@ contract LendingMarketV2 is
         }
     }
 
-    /// @dev TODO
-    function _checkRepaymentAmount(uint256 amount) internal pure {
-        if (
-            amount > type(uint64).max ||
-            amount == 0 ||
-            (amount < type(uint64).max && amount != _roundMath(amount))
-        ) {
-            revert RepaymentOrDiscountAmountInvalid();
-        }
-    }
-
 
     /**
      * @dev Checks if the credit line and liquidity pool are valid.
@@ -1664,52 +1552,322 @@ contract LendingMarketV2 is
     }
 
     /**
-     * @dev Transfers tokens from the liquidity pool to the borrower and the addon treasury.
-     * @param subLoanId The ID of the loan.
-     * @param borrowedAmount The amount of tokens to borrow.
-     * @param addonAmount The addon amount of the loan.
+     * @dev Ensures the sub-loan count is within the valid range.
+     * @param subLoanCount The number of sub-loans to check.
      */
-    function _transferTokensOnLoanTaking(uint256 subLoanId, uint256 borrowedAmount, uint256 addonAmount) internal {
-        LoanV2.SubLoan storage subLoan = _getSubLoanInStorage(subLoanId);
-        address liquidityPool = _getLendingMarketStorage().programLiquidityPools[subLoan.programId];
-        address token = _getLendingMarketStorage().token;
-        address addonTreasury = ILiquidityPool(liquidityPool).addonTreasury();
-        if (addonTreasury == address(0)) {
-            revert AddonTreasuryAddressZero();
-        }
-        IERC20(token).safeTransferFrom(liquidityPool, subLoan.borrower, borrowedAmount);
-        if (addonAmount != 0) {
-            IERC20(token).safeTransferFrom(liquidityPool, addonTreasury, addonAmount);
+    function _checkSubLoanCount(uint256 subLoanCount) internal view {
+        if (subLoanCount > _subLoanCountMax()) {
+            revert SubLoanCountExcess();
         }
     }
 
     /**
-     * @dev Transfers tokens from the borrower and the addon treasury back to the liquidity pool.
-     * @param subLoan The memory state of the loan.
-     * @param borrowedAmount The amount of tokens to borrow.
-     * @param addonAmount The addon amount of the loan.
-     * @param repaidAmount The repaid amount of the loan.
+     * @dev Validates that the loan ID is within the valid range.
+     * @param id The loan ID to check.
      */
-    function _transferTokensOnLoanRevocation(
-        LoanV2.ProcessingSubLoan memory subLoan,
-        uint256 borrowedAmount,
-        uint256 addonAmount,
-        uint256 repaidAmount
-    ) internal {
-        address liquidityPool = _getLendingMarketStorage().programLiquidityPools[subLoan.programId];
-        address token = _getLendingMarketStorage().token;
-        address addonTreasury = ILiquidityPool(liquidityPool).addonTreasury();
-        if (addonTreasury == address(0)) {
-            revert AddonTreasuryAddressZero();
+    function _checkLoanId(uint256 id) internal pure {
+        if (id > type(uint40).max) {
+            revert SubLoanIdExcess();
         }
-        if (repaidAmount < borrowedAmount) {
-            IERC20(token).safeTransferFrom(subLoan.borrower, liquidityPool, borrowedAmount - repaidAmount);
-        } else if (repaidAmount != borrowedAmount) {
-            IERC20(token).safeTransferFrom(liquidityPool, subLoan.borrower, repaidAmount - borrowedAmount);
+    }
+
+    /**
+     * @dev TODO
+     */
+    function _checkOperationId(uint256 id) internal pure {
+        if (id > type(uint16).max) {
+            revert OperationIdExcess();
         }
-        if (addonAmount != 0) {
-            IERC20(token).safeTransferFrom(addonTreasury, liquidityPool, addonAmount);
+    }
+
+    /**
+     * @dev TODO
+     */
+    function _convertSubLoan(LoanV2.SubLoan storage subLoanStored) internal view returns (LoanV2.ProcessingSubLoan memory) {
+        LoanV2.ProcessingSubLoan memory subLoan;
+        // subLoan.id = 0;
+        subLoan.status = uint256(subLoanStored.status);
+        subLoan.programId = subLoanStored.programId;
+        subLoan.borrower = subLoanStored.borrower;
+        // subLoan.flags = 0;
+        subLoan.startTimestamp = subLoanStored.startTimestamp;
+        subLoan.duration = subLoanStored.duration;
+        subLoan.interestRateRemuneratory = subLoanStored.interestRateRemuneratory;
+        subLoan.interestRateMoratory = subLoanStored.interestRateMoratory;
+        subLoan.lateFeeRate = subLoanStored.lateFeeRate;
+        subLoan.trackedPrincipal = subLoanStored.trackedPrincipal;
+        subLoan.trackedInterestRemuneratory = subLoanStored.trackedInterestRemuneratory;
+        subLoan.trackedInterestMoratory = subLoanStored.trackedInterestMoratory;
+        subLoan.trackedLateFee = subLoanStored.trackedLateFee;
+        subLoan.repaidPrincipal = subLoanStored.repaidPrincipal;
+        subLoan.repaidInterestRemuneratory = subLoanStored.repaidInterestRemuneratory;
+        subLoan.repaidInterestMoratory = subLoanStored.repaidInterestMoratory;
+        subLoan.repaidLateFee = subLoanStored.repaidLateFee;
+        subLoan.discountInterestRemuneratory = subLoanStored.discountInterestRemuneratory;
+        subLoan.discountInterestMoratory = subLoanStored.discountInterestMoratory;
+        subLoan.discountLateFee = subLoanStored.discountLateFee;
+        subLoan.trackedTimestamp = subLoanStored.trackedTimestamp;
+        subLoan.freezeTimestamp = subLoanStored.freezeTimestamp;
+        // subLoan.counterparty = 0;
+        return subLoan;
+    }
+
+    /**
+     * @dev TODO
+     */
+    function _convertOperation(LoanV2.Operation storage operationInStorage) internal view returns (LoanV2.ProcessingOperation memory) {
+        LoanV2.ProcessingOperation memory operation;
+        // operation.id = 0;
+        operation.status = uint256(operationInStorage.status);
+        operation.kind = uint256(operationInStorage.kind);
+        operation.timestamp = operationInStorage.timestamp;
+        operation.parameter = operationInStorage.parameter;
+        operation.account = operationInStorage.account;
+        return operation;
+    }
+
+    /**
+     * @dev TODO
+     */
+    function _getSubLoanInStorage(uint256 subLoanId) internal view returns (LoanV2.SubLoan storage) {
+        return _getLendingMarketStorage().subLoans[subLoanId];
+    }
+
+    /**
+     * @dev TODO
+     */
+    function _getExitingSubLoanInStorage(uint256 subLoanId) internal view returns (LoanV2.SubLoan storage) {
+        LoanV2.SubLoan storage subLoan = _getSubLoanInStorage(subLoanId);
+        if (subLoan.status == LoanV2.SubLoanStatus.Nonexistent) {
+            revert SubLoanNonexistent();
         }
+        return subLoan;
+    }
+
+    /**
+     * @dev TODO
+     */
+    function _getSubLoan(uint256 subLoanId) internal view returns (LoanV2.ProcessingSubLoan memory) {
+        LoanV2.SubLoan storage subLoanStored = _getSubLoanInStorage(subLoanId);
+        LoanV2.ProcessingSubLoan memory subLoan = _convertSubLoan(subLoanStored);
+        subLoan.id = subLoanId;
+        subLoan.flags = 0;
+        return subLoan;
+    }
+
+    /**
+     * @dev TODO
+     */
+    function _getUnrevokedSubLoan(uint256 subLoanId) internal view returns (LoanV2.ProcessingSubLoan memory) {
+        LoanV2.ProcessingSubLoan memory subLoan = _getSubLoan(subLoanId);
+        uint256 status = subLoan.status;
+        if (status == uint256(LoanV2.SubLoanStatus.Nonexistent)) {
+            revert SubLoanNonexistent();
+        }
+        if (status == uint256(LoanV2.SubLoanStatus.Revoked)) {
+            revert SubLoanStatusRevoked();
+        }
+        return subLoan;
+    }
+
+    /**
+     * @dev TODO
+     */
+    function _getOngoingSubLoan(uint256 subLoanId) internal view returns (LoanV2.ProcessingSubLoan memory) {
+        LoanV2.ProcessingSubLoan memory subLoan = _getUnrevokedSubLoan(subLoanId);
+        if (subLoan.status == uint256(LoanV2.SubLoanStatus.FullyRepaid)) {
+            revert SubLoanStatusFullyRepaid();
+        }
+        return subLoan;
+    }
+
+    /**
+     * @dev TODO
+     */
+    function _getOperationInStorage(uint256 subLoanId, uint256 operationId) internal view returns (LoanV2.Operation storage) {
+        return _getLendingMarketStorage().subLoanOperationalStates[subLoanId].operations[operationId];
+    }
+
+    /**
+     * @dev TODO
+     */
+    function _getExistingOperationInStorage(uint256 subLoanId, uint256 operationId) internal view returns (LoanV2.Operation storage) {
+        LoanV2.Operation storage operation = _getOperationInStorage(subLoanId, operationId);
+        if (operation.status == LoanV2.OperationStatus.Nonexistent) {
+            revert OperationNonexistent();
+        }
+        return operation;
+    }
+
+    /**
+     * @dev TODO
+     */
+    function _getExistingOperation(uint256 subLoanId, uint256 operationId) internal view returns (LoanV2.ProcessingOperation memory) {
+        LoanV2.ProcessingOperation memory operation = _convertOperation(
+            _getExistingOperationInStorage(subLoanId, operationId)
+        );
+        operation.id = operationId;
+        return operation;
+    }
+
+    /**
+     * @dev TODO
+     */
+    function _getCreditLineAndLiquidityPool(uint256 programId) internal view returns (address, address) {
+        LendingMarketStorageV2 storage storageStruct = _getLendingMarketStorage();
+        address creditLine = storageStruct.programCreditLines[programId];
+        address liquidityPool = storageStruct.programLiquidityPools[programId];
+        return (creditLine, liquidityPool);
+    }
+
+    /**
+     * @dev TODO
+     */
+    function _getSubLoanWithAccruedInterest(
+        uint256 subLoanId,
+        uint256 timestamp
+    ) internal view returns (LoanV2.ProcessingSubLoan memory) {
+        LoanV2.ProcessingSubLoan memory subLoan = _getSubLoan(subLoanId);
+
+        if (subLoan.status != uint256(LoanV2.SubLoanStatus.Nonexistent)) {
+            _accrueInterest(subLoan, timestamp);
+        }
+
+        return subLoan;
+    }
+
+
+    /**
+     * @dev Calculates the sub-loan preview.
+     * @param subLoan TODO
+     * @return The sub-loan preview.
+     */
+    function _getSubLoanPreview(LoanV2.ProcessingSubLoan memory subLoan) internal view returns (LoanV2.SubLoanPreview memory) {
+        LoanV2.SubLoanPreview memory preview;
+        LoanV2.SubLoan storage subLoanStored = _getSubLoanInStorage(subLoan.id);
+
+        preview.day = _dayIndex(subLoan.trackedTimestamp);
+        preview.borrower = subLoan.borrower;
+        preview.programId = subLoan.programId;
+        preview.borrowedAmount = subLoanStored.borrowedAmount;
+        preview.addonAmount = subLoanStored.addonAmount;
+        preview.startTimestamp = subLoan.startTimestamp;
+        preview.trackedTimestamp = subLoan.trackedTimestamp;
+        preview.freezeTimestamp = subLoan.freezeTimestamp;
+        preview.duration = subLoan.duration;
+        preview.interestRateRemuneratory = subLoan.interestRateRemuneratory;
+        preview.interestRateMoratory = subLoan.interestRateMoratory;
+        preview.lateFeeRate = subLoan.lateFeeRate;
+        preview.firstInstallmentId = subLoanStored.firstSubLoanId;
+        preview.subLoanCount = subLoanStored.subLoanCount;
+        preview.trackedPrincipal = subLoan.trackedPrincipal;
+        preview.trackedInterestRemuneratory = subLoan.trackedInterestRemuneratory;
+        preview.trackedInterestMoratory = subLoan.trackedInterestMoratory;
+        preview.trackedLateFee = subLoan.trackedLateFee;
+        preview.outstandingBalance = _calculateOutstandingBalance(subLoan);
+        preview.repaidPrincipal = subLoan.repaidPrincipal;
+        preview.repaidInterestRemuneratory = subLoan.repaidInterestRemuneratory;
+        preview.repaidInterestMoratory = subLoan.repaidInterestMoratory;
+        preview.repaidLateFee = subLoan.repaidLateFee;
+        preview.discountInterestRemuneratory = subLoan.discountInterestRemuneratory;
+        preview.discountInterestMoratory = subLoan.discountInterestMoratory;
+        preview.discountLateFee = subLoan.discountLateFee;
+        return preview;
+    }
+
+    /**
+     * @dev Calculates the preview of a loan.
+     * @param subLoanId The ID of any sub-loan of the loan.
+     * @param timestamp The timestamp to calculate the preview at.
+     * @return The loan preview.
+     */
+    function _getLoanPreview(
+        uint256 subLoanId,
+        uint256 timestamp
+    ) internal view returns (LoanV2.LoanPreview memory) {
+        LoanV2.LoanPreview memory preview;
+
+        if (timestamp == 0) {
+            timestamp = _blockTimestamp();
+        }
+
+        LoanV2.SubLoan storage subLoanInStorage = _getSubLoanInStorage(subLoanId);
+        uint256 subLoanCount = subLoanInStorage.subLoanCount;
+        subLoanId = subLoanInStorage.firstSubLoanId;
+
+        preview.subLoanPreviews = new LoanV2.SubLoanPreview[](subLoanCount);
+        preview.firstSubLoanId = subLoanId;
+        preview.subLoanCount = subLoanCount;
+
+        LoanV2.SubLoanPreview memory singleLoanPreview;
+        for (uint256 i = 0; i < subLoanCount; ++i) {
+            LoanV2.ProcessingSubLoan memory subLoan = _getSubLoanWithAccruedInterest(subLoanId, timestamp);
+            singleLoanPreview = _getSubLoanPreview(subLoan);
+            preview.totalTrackedBalance += _calculateTrackedBalance(subLoan);
+            preview.totalOutstandingBalance += singleLoanPreview.outstandingBalance;
+            preview.totalBorrowedAmount += singleLoanPreview.borrowedAmount;
+            preview.totalAddonAmount += singleLoanPreview.addonAmount;
+            preview.totalRepaidAmount += _calculateRepaidAmount(subLoan);
+            preview.totalLateFeeAmount += _calculateLateFeeAmount(subLoan);
+            preview.totalDiscountAmount += _calculateDiscountAmount(subLoan);
+            preview.subLoanPreviews[i] = singleLoanPreview;
+            ++subLoanId;
+        }
+        preview.day = singleLoanPreview.day;
+
+        return preview;
+    }
+
+    /**
+     * @dev Calculates the sum of all elements in an calldata array.
+     * @param values Array of amounts to sum.
+     * @return The total sum of all array elements.
+     */
+    function _sumArray(uint256[] calldata values) internal pure returns (uint256) {
+        uint256 len = values.length;
+        uint256 sum = 0;
+        for (uint256 i = 0; i < len; ++i) {
+            sum += values[i];
+        }
+        return sum;
+    }
+
+    /**
+     * @dev TODO
+     */
+    function _normalizeAmount(uint256 amount) internal pure returns (uint256) {
+        if (amount == type(uint256).max) {
+            amount = type(uint64).max;
+        }
+        return amount;
+    }
+
+    /**
+     * @dev TODO
+     */
+    function _isRepaid(LoanV2.ProcessingSubLoan memory subLoan) internal pure returns (bool) {
+        return uint256(subLoan.status) != uint256(LoanV2.SubLoanStatus.FullyRepaid);
+    }
+
+    /// @dev Calculates the day index that corresponds the specified timestamp.
+    function _dayIndex(uint256 timestamp) internal pure returns (uint256) {
+        return (timestamp / 1 days);
+    }
+
+    /// @dev Returns the current block timestamp with the time offset applied.
+    // TODO: 1. Rename to currentTimestamp or whatever. 2. Consider use timestamps without the offset
+    function _blockTimestamp() internal view virtual returns (uint256) {
+        return block.timestamp - Constants.NEGATIVE_TIME_OFFSET;
+    }
+
+    /// @dev Returns the maximum number of sub-loans for a loan. Can be overridden for testing purposes.
+    function _subLoanCountMax() internal view virtual returns (uint256) {
+        return Constants.INSTALLMENT_COUNT_MAX;
+    }
+
+    /// TODO
+    function _roundMath(uint256 value) internal pure returns (uint256) {
+        return Rounding.roundMath(value, Constants.ACCURACY_FACTOR);
     }
 
     /**
