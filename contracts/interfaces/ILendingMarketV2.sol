@@ -29,8 +29,8 @@ interface ILendingMarketPrimaryV2 {
         uint256 indexed programId,
         uint256 borrowedAmount,
         uint256 addonAmount,
-        uint256 duration
-        // TODO: add more parameters if needed
+        uint256 duration,
+        bytes addendum
     );
 
     /**
@@ -48,7 +48,14 @@ interface ILendingMarketPrimaryV2 {
         uint256 indexed programId,
         uint256 subLoanCount,
         uint256 totalBorrowedAmount,
-        uint256 totalAddonAmount
+        uint256 totalAddonAmount,
+        bytes addendum
+    );
+
+    /// @dev TODO
+    event SubLoanRevoked(
+        uint256 indexed subLoanId,
+        bytes addendum
     );
 
     /**
@@ -58,7 +65,110 @@ interface ILendingMarketPrimaryV2 {
      */
     event LoanRevoked(
         uint256 indexed firstSubLoanId, // Tools: this comment prevents Prettier from formatting into a single line.
-        uint256 subLoanCount
+        uint256 subLoanCount,
+        bytes addendum
+    );
+
+    /**
+     * @dev Emitted when the repaid amount of a sub-loan is changed.
+     * @param subLoanId The unique identifier of the sub-loan.
+     * @param borrower The address of the borrower of the loan.
+     * @param newRepaidAmount TODO.
+     * @param oldRepaidAmount TODO.
+     * @param trackedBalance TODO.
+     */
+    event SubLoanRepaidAmountChanged(
+        uint256 indexed subLoanId,
+        address indexed borrower,
+        uint256 newRepaidAmount,
+        uint256 oldRepaidAmount,
+        uint256 trackedBalance,
+        bytes addendum
+    );
+
+    /**
+     * @dev Emitted when a the discount amount of a sub-loan is changed.
+     * @param subLoanId The unique identifier of the sub-loan.
+     * @param borrower The address of the borrower of the loan.
+     * @param newDiscountAmount TODO.
+     * @param oldDiscountAmount TODO.
+     * @param trackedBalance TODO.
+     */
+    event SubLoanDiscountAmountChanged(
+        uint256 indexed subLoanId,
+        address indexed borrower,
+        uint256 newDiscountAmount,
+        uint256 oldDiscountAmount,
+        uint256 trackedBalance,
+        bytes addendum
+    );
+
+    /**
+     * @dev Emitted when the remuneratory interest rate of a sub-loan is changed.
+     * @param subLoanId The unique identifier of the sub-loan.
+     * @param borrower The address of the borrower of the loan.
+     * @param newRate TODO.
+     * @param oldRate TODO.
+     * @param trackedBalance TODO.
+     */
+    event SubLoanInterestRateRemuneratoryChanged(
+        uint256 indexed subLoanId,
+        address indexed borrower,
+        uint256 newRate,
+        uint256 oldRate,
+        uint256 trackedBalance,
+        bytes addendum
+    );
+
+    /**
+     * @dev Emitted when the moratory interest rate of a sub-loan is changed.
+     * @param subLoanId The unique identifier of the sub-loan.
+     * @param borrower The address of the borrower of the loan.
+     * @param newRate TODO.
+     * @param oldRate TODO.
+     * @param trackedBalance TODO.
+     */
+    event SubLoanInterestRateMoratoryChanged(
+        uint256 indexed subLoanId,
+        address indexed borrower,
+        uint256 newRate,
+        uint256 oldRate,
+        uint256 trackedBalance,
+        bytes addendum
+    );
+
+    /**
+     * @dev Emitted when the late fee rate of a sub-loan is changed.
+     * @param subLoanId The unique identifier of the sub-loan.
+     * @param borrower The address of the borrower of the loan.
+     * @param newRate TODO.
+     * @param oldRate TODO.
+     * @param trackedBalance TODO.
+     */
+    event SubLoanLateFeeRateChanged(
+        uint256 indexed subLoanId,
+        address indexed borrower,
+        uint256 newRate,
+        uint256 oldRate,
+        uint256 trackedBalance,
+        bytes addendum
+    );
+
+    /**
+     * @dev Emitted when the duration in days of a sub-loan is changed.
+     * @param subLoanId The unique identifier of the sub-loan.
+     * @param borrower The address of the borrower of the loan.
+     * @param newDuration TODO.
+     * @param oldDuration TODO.
+     * @param trackedBalance TODO.
+     */
+    event SubLoanDurationChanged(
+        uint256 indexed subLoanId,
+        address indexed borrower,
+        uint256 newDuration,
+        uint256 oldDuration,
+        uint256 trackedBalance,
+        bytes addendum
     );
 
     /**
@@ -84,7 +194,6 @@ interface ILendingMarketPrimaryV2 {
         uint256 timestamp,
         uint256 parameter,
         address account,
-        // TODO: add more subLoan fields here
         bytes addendum
     );
 
@@ -113,7 +222,8 @@ interface ILendingMarketPrimaryV2 {
         bytes addendum
     );
 
-    // TODO: add more events
+    // TODO: add more events if needed
+    // TODO: add more parameters to the existing events if needed
 
     // ------------------ Transactional functions ----------------- //
 
@@ -130,13 +240,27 @@ interface ILendingMarketPrimaryV2 {
      * @return firstSubLoanId The unique identifier of the first sub-loan of the loan.
      * @return subLoanCount The total number of sub-loans.
      */
-    function takeLoanFor(
+    function takeLoan(
         address borrower,
         uint32 programId,
         uint256[] calldata borrowedAmounts,
         uint256[] calldata addonAmounts,
         uint256[] calldata durations
     ) external returns (uint256 firstSubLoanId, uint256 subLoanCount);
+
+    /**
+     * @dev Discounts a batch of sub-loans.
+     *
+     * Can be called only by an account with a special role.
+     * Using `type(uint256).max` for the `discountAmount` will discount the remaining balance of the sub-loan.
+     *
+     * @param subLoanIds The unique identifiers of the sub-loans to discount.
+     * @param discountAmounts The amounts to discount for each sub-loan in the batch.
+     */
+    function discountSubLoanBatch(
+        uint256[] calldata subLoanIds, // Tools: this comment prevents Prettier from formatting into a single line.
+        uint256[] calldata discountAmounts
+    ) external;
 
     /**
      * @dev Repays a batch of sub-loans.
@@ -148,7 +272,7 @@ interface ILendingMarketPrimaryV2 {
      * @param repaymentAmounts The amounts to repay for each sub-loan in the batch.
      * @param repayer The address of the token source for the repayments (borrower or third-party).
      */
-    function repaySubLoanForBatch(
+    function repaySubLoanBatch(
         uint256[] calldata subLoanIds,
         uint256[] calldata repaymentAmounts,
         address repayer
@@ -158,21 +282,7 @@ interface ILendingMarketPrimaryV2 {
      * @dev Revokes a loan by the ID of any of its sub-loans.
      * @param subLoanId The unique identifier of the sub-loan to revoke.
      */
-    function revokeLoanFor(uint256 subLoanId) external;
-
-    /**
-     * @dev Discounts a batch of sub-loans.
-     *
-     * Can be called only by an account with a special role.
-     * Using `type(uint256).max` for the `discountAmount` will discount the remaining balance of the sub-loan.
-     *
-     * @param subLoanIds The unique identifiers of the sub-loans to discount.
-     * @param discountAmounts The amounts to discount for each sub-loan in the batch.
-     */
-    function discountSubLoanForBatch(
-        uint256[] calldata subLoanIds, // Tools: this comment prevents Prettier from formatting into a single line.
-        uint256[] calldata discountAmounts
-    ) external;
+    function revokeLoan(uint256 subLoanId) external;
 
     /**
      * @dev TODO
@@ -377,38 +487,26 @@ interface ILendingMarketConfigurationV2 {
  * @dev Defines the custom errors used in the lending market contract.
  */
 interface ILendingMarketErrorsV2 {
+    // TODO: add prefixes to error names, like "LendingMarket_..."
+    // TODO: order by names
+
     /// @dev Thrown when the addon treasury address is zero.
     error AddonTreasuryAddressZero();
-
-    /// @dev Thrown when the loan ID exceeds the maximum allowed value.
-    error LoanIdExcess();
 
     /// @dev TODO
     error SubLoanIdExcess();
 
-    /// @dev Thrown when the loan does not exist.
-    error LoanNotExist();
-
     /// @dev Thrown when the sub-loan does not exist.
-    error SubLoanNotExist();
+    error SubLoanNonexistent();
 
-    /// @dev Thrown when the loan is not frozen.
-    error LoanNotFrozen();
+    /// @dev Thrown when the sub-loan is not frozen.
+    error SubLoanNotFrozen();
 
-    /// @dev Thrown when the loan is already repaid.
-    error LoanAlreadyRepaid();
-
-    /// @dev Thrown when the sub-loan is already repaid.
-    error SubLoanAlreadyRepaid();
+    /// @dev Thrown when the loan is already repaid fully.
+    error LoanStatusFullyRepaid();
 
     /// @dev Thrown when the loan is already frozen.
-    error LoanAlreadyFrozen();
-
-    /// @dev Thrown when provided interest rate is inappropriate.
-    error InappropriateInterestRate();
-
-    /// @dev Thrown when provided loan duration is inappropriate.
-    error InappropriateLoanDuration();
+    error SubLoanAlreadyFrozen();
 
     /// @dev Thrown when the credit line is not configured for the provided lending program.
     error ProgramCreditLineNotConfigured();
@@ -417,7 +515,7 @@ interface ILendingMarketErrorsV2 {
     error ProgramLiquidityPoolNotConfigured();
 
     /// @dev Thrown when the program does not exist.
-    error ProgramNotExist();
+    error ProgramNonexistent();
 
     /// @dev Thrown when the lending program ID exceeds the maximum allowed value.
     error ProgramIdExcess();
@@ -428,11 +526,8 @@ interface ILendingMarketErrorsV2 {
     /// @dev Thrown when the provided sub-loan duration is invalid.
     error DurationInvalid();
 
-    /// @dev Thrown when the installment count exceeds the maximum allowed value.
-    error InstallmentCountExcess();
-
-    /// @dev Thrown when the provided repayment timestamp is invalid.
-    error RepaymentTimestampInvalid();
+    /// @dev Thrown when the sub-loan count exceeds the maximum allowed value.
+    error SubLoanCountExcess();
 
     /// @dev TODO
     error OperationTimestampInvalid(); // TODO: add parameters
@@ -442,9 +537,6 @@ interface ILendingMarketErrorsV2 {
 
     /// @dev TODO
     error OperationKindInvalid(); // TODO: add parameters
-
-    /// @dev TODO
-    error OperationParameterInvalid(); // TODO: add parameters
 
     /// @dev TODO
     error OperationTimestampTooEarly(); // TODO: add parameters
@@ -471,13 +563,13 @@ interface ILendingMarketErrorsV2 {
     error OperationNonexistent(); // TODO: add parameters
 
     /// @dev TODO
-    error OperationAlreadySkipped(); // TODO: add parameters
+    error OperationVoidedAlready(); // TODO: add parameters
 
     /// @dev TODO
-    error SubLoanRevoked(); // TODO: add parameters
+    error SubLoanStatusFullyRepaid();
 
     /// @dev TODO
-    error SubLoanFullyRepaid(); // TODO: add parameters
+    error SubLoanStatusRevoked();
 
     /// @dev TODO
     error OperationParameterNotZero(); // TODO: add parameters

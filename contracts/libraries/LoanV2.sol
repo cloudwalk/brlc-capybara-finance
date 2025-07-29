@@ -40,12 +40,12 @@ library LoanV2 {
         Repayment,
         Discounting,
         Revocation,
-        Freezing,
-        Unfreezing,
-        ChangeInInterestRateRemuneratory,
-        ChangeInInterestRateMoratory,
-        ChangeInLateFeeRate,
-        ChangeInDuration,
+        Freezing, // TODO implement
+        Unfreezing, // TODO implement
+        ChangeInInterestRateRemuneratory, // TODO implement
+        ChangeInInterestRateMoratory, // TODO implement
+        ChangeInLateFeeRate, // TODO implement
+        ChangeInDuration, // TODO implement
         NonexistentLimit
     }
 
@@ -61,6 +61,16 @@ library LoanV2 {
         LateFee
     }
 
+    /**
+     * @dev A struct that defines the terms of a loan.
+     * TODO
+     */
+    struct Terms {
+        uint256 duration;
+        uint256 interestRateRemuneratory;
+        uint256 interestRateMoratory;
+        uint256 lateFeeRate;
+    }
 
     /**
      * @dev TODO
@@ -121,6 +131,36 @@ library LoanV2 {
     /**
      * @dev TODO
      */
+    struct ProcessingSubLoan {
+        uint256 id;
+        uint256 status;
+        uint256 programId;
+        address borrower;
+        uint256 flags; // TODO: use it to mark fields that actually changed during processing
+        uint256 startTimestamp;
+        uint256 duration;
+        uint256 interestRateRemuneratory;
+        uint256 interestRateMoratory;
+        uint256 lateFeeRate;
+        uint256 trackedPrincipal;
+        uint256 trackedInterestRemuneratory;
+        uint256 trackedInterestMoratory;
+        uint256 trackedLateFee;
+        uint256 repaidPrincipal;
+        uint256 repaidInterestRemuneratory;
+        uint256 repaidInterestMoratory;
+        uint256 repaidLateFee;
+        uint256 discountInterestRemuneratory;
+        uint256 discountInterestMoratory;
+        uint256 discountLateFee;
+        uint256 trackedTimestamp;
+        uint256 freezeTimestamp;
+        address counterparty;
+    }
+
+    /**
+     * @dev TODO
+     */
     struct Operation {
         // Slot1
         OperationStatus status;
@@ -164,47 +204,6 @@ library LoanV2 {
     }
 
     /**
-     * @dev TODO
-     */
-    struct ProcessingSubLoan {
-        uint256 id;
-        uint256 status;
-        uint256 programId;
-        address borrower;
-        uint256 flags; // TODO: use it to mark fields that actually changed during processing
-        uint256 startTimestamp;
-        uint256 duration;
-        uint256 interestRateRemuneratory;
-        uint256 interestRateMoratory;
-        uint256 lateFeeRate;
-        uint256 trackedPrincipal;
-        uint256 trackedInterestRemuneratory;
-        uint256 trackedInterestMoratory;
-        uint256 trackedLateFee;
-        uint256 repaidPrincipal;
-        uint256 repaidInterestRemuneratory;
-        uint256 repaidInterestMoratory;
-        uint256 repaidLateFee;
-        uint256 discountInterestRemuneratory;
-        uint256 discountInterestMoratory;
-        uint256 discountLateFee;
-        uint256 trackedTimestamp;
-        uint256 freezeTimestamp;
-        address counterparty;
-    }
-
-    /**
-     * @dev A struct that defines the terms of a loan.
-     * TODO
-     */
-    struct Terms {
-        uint256 duration;
-        uint256 interestRateRemuneratory;
-        uint256 interestRateMoratory;
-        uint256 lateFeeRate;
-    }
-
-    /**
      * @dev A struct that defines the preview of a sub-loan.
      * TODO
      */
@@ -214,7 +213,6 @@ library LoanV2 {
         uint256 programId;
         uint256 borrowedAmount;
         uint256 addonAmount;
-        uint256 previewTimestamp;
         uint256 startTimestamp;
         uint256 trackedTimestamp;
         uint256 freezeTimestamp;
@@ -228,17 +226,14 @@ library LoanV2 {
         uint256 trackedInterestRemuneratory;
         uint256 trackedInterestMoratory;
         uint256 trackedLateFee;
-        uint256 trackedBalance;
         uint256 outstandingBalance;
         uint256 repaidPrincipal;
         uint256 repaidInterestRemuneratory;
         uint256 repaidInterestMoratory;
         uint256 repaidLateFee;
-        uint256 repaidAmount;
         uint256 discountInterestRemuneratory;
         uint256 discountInterestMoratory;
         uint256 discountLateFee;
-        uint256 discountAmount;
         // TODO: reorder and add more fields if needed
     }
 
@@ -253,9 +248,9 @@ library LoanV2 {
      * 3. The outstanding balance is the tracked balance rounded according to the accuracy factor with math rules.
      */
     struct LoanPreview {
-        uint256 day;
         uint256 firstSubLoanId;
         uint256 subLoanCount;
+        uint256 day;
         uint256 totalTrackedBalance;
         uint256 totalOutstandingBalance;
         uint256 totalBorrowedAmount;
