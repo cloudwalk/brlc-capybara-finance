@@ -73,6 +73,8 @@ interface ILendingMarketPrimaryV2 {
      * @dev Emitted when the repaid amount of a sub-loan is changed.
      * @param subLoanId The unique identifier of the sub-loan.
      * @param borrower The address of the borrower of the loan.
+     * @param newSubLoanStatus TODO.
+     * @param oldSubLoanStatus TODO.
      * @param newRepaidAmount TODO.
      * @param oldRepaidAmount TODO.
      * @param trackedBalance TODO.
@@ -92,6 +94,8 @@ interface ILendingMarketPrimaryV2 {
      * @dev Emitted when a the discount amount of a sub-loan is changed.
      * @param subLoanId The unique identifier of the sub-loan.
      * @param borrower The address of the borrower of the loan.
+     * @param newSubLoanStatus TODO.
+     * @param oldSubLoanStatus TODO.
      * @param newDiscountAmount TODO.
      * @param oldDiscountAmount TODO.
      * @param trackedBalance TODO.
