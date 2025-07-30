@@ -208,20 +208,6 @@ interface ILendingMarketPrimaryV2 {
     /**
      * @dev TODO
      */
-    event OperationChanged(
-        uint256 indexed subLoanId,
-        uint256 indexed operationId,
-        uint256 indexed kind,
-        uint256 timestamp,
-        uint256 newParameter,
-        uint256 oldParameter,
-        address counterparty,
-        bytes addendum
-    );
-
-    /**
-     * @dev TODO
-     */
     event OperationVoided(
         uint256 indexed subLoanId,
         uint256 indexed operationId,
@@ -298,31 +284,11 @@ interface ILendingMarketPrimaryV2 {
     /**
      * @dev TODO
      */
-    function addOperation(
+    function modifySubLoanOperations(
         uint256 subLoanId,
-        uint256 kind,
-        uint256 timestamp,
-        uint256 parameter,
-        address repayer
-    ) external;
-
-    /**
-     * @dev TODO
-     */
-    function changeOperation(
-        uint256 subLoanId,
-        uint256 operationId,
-        uint256 newParameter,
-        address counterparty
-    ) external;
-
-    /**
-     * @dev TODO
-     */
-    function voidOperation(
-        uint256 subLoanId,
-        uint256 operationId,
-        address counterparty
+        address counterparty,
+        uint256[] calldata voidedOperationIds,
+        LoanV2.AddedOperation[] calldata addedOperations
     ) external;
 
     // ------------------ View functions -------------------------- //
@@ -557,6 +523,9 @@ interface ILendingMarketErrorsV2 {
 
     /// @dev TODO
     error RapayerAddressZero(); // TODO: add parameters
+
+    /// @dev TODO
+    error OperationAccountNotZero(); // TODO: add parameters
 
     /// @dev TODO
     error RepaymentOrDiscountAmountInvalid(); // TODO: add parameters
