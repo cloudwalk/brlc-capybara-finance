@@ -249,60 +249,48 @@ contract LendingMarketV2 is
     }
 
     /// @inheritdoc ILendingMarketPrimaryV2
-    function addOperation(
+    function modifySubLoanOperations(
         uint256 subLoanId,
-        uint256 kind,
-        uint256 timestamp,
-        uint256 parameter,
-        address repayer
+        address counterparty,
+        uint256[] calldata voidedOperationIds,
+        LoanV2.AddedOperation[] calldata addedOperations
     ) external {
-        _checkOperationKind(kind);
-        LoanV2.ProcessingSubLoan memory subLoan = _getOngoingSubLoan(subLoanId);
+        uint256 minTimestamp = type(uint256).max;
+        uint256 count = voidedOperationIds.length;
+        for (uint256 i = 0; i < count; ++i) {
+            LoanV2.Operation storage operation = _voidOperation(
+                subLoanId,
+                voidedOperationIds[i],
+                counterparty
+            );
+            uint256 timestamp = operation.timestamp;
+            if (timestamp < minTimestamp) {
+                minTimestamp = timestamp;
+            }
+        }
         uint256 currentTimestamp = _blockTimestamp();
-        if (timestamp == 0) {
-            timestamp = currentTimestamp;
+        count = addedOperations.length;
+        for (uint256 i = 0; i < count; ++i) {
+            LoanV2.AddedOperation calldata operation = addedOperations[i];
+            uint256 kind = operation.kind;
+            _checkOperationKind(kind);
+            uint256 timestamp = operation.timestamp;
+            if (timestamp == 0) {
+                timestamp = currentTimestamp;
+            }
+            if (timestamp < minTimestamp) {
+                minTimestamp = timestamp;
+            }
+            LoanV2.ProcessingSubLoan memory subLoan = _getOngoingSubLoan(subLoanId);
+            _addOperation(
+                subLoan,
+                kind,
+                timestamp,
+                operation.parameter,
+                operation.account
+            );
         }
-        if (kind != uint256(LoanV2.OperationKind.Repayment)) {
-            repayer = address(0);
-        }
-        _addOperation(
-            subLoan,
-            kind,
-            timestamp,
-            parameter,
-            repayer
-        );
-        if (timestamp < currentTimestamp) {
-            _replayOperations(subLoan, repayer);
-        } else {
-            _processOperations(subLoan);
-        }
-    }
-
-    /// @inheritdoc ILendingMarketPrimaryV2
-    function changeOperation(
-        uint256 subLoanId,
-        uint256 operationId,
-        uint256 newParameter,
-        address counterparty
-    ) external {
-        LoanV2.Operation storage operation = _changeOperation(
-            subLoanId,
-            operationId,
-            newParameter,
-            counterparty
-        );
-        _treatOperations(subLoanId, operation.timestamp, counterparty);
-    }
-
-    /// @inheritdoc ILendingMarketPrimaryV2
-    function voidOperation(
-        uint256 subLoanId,
-        uint256 operationId,
-        address counterparty
-    ) external {
-        LoanV2.Operation storage operation = _voidOperation(subLoanId, operationId,counterparty);
-        _treatOperations(subLoanId, operation.timestamp, counterparty);
+        _treatOperations(subLoanId, minTimestamp, counterparty);
     }
 
     // ------------------ View functions -------------------------- //
@@ -557,6 +545,7 @@ contract LendingMarketV2 is
         opState.operationCount = uint16(operationId);
         uint256 prevOperationId = _findEarlierOperation(opState, timestamp);
         uint256 nextOperationId;
+        // TODO: Check and fix the logic of inserting a new operation in the chain
         if (prevOperationId == 0) {
             // Add at the beginning of the operation list
             nextOperationId = opState.earliestOperationId;
@@ -597,34 +586,6 @@ contract LendingMarketV2 is
         }
 
         return operationId;
-    }
-
-    /**
-     * @dev TODO
-     */
-    function _changeOperation(
-        uint256 subLoanId,
-        uint256 operationId,
-        uint256 newParameter,
-        address counterparty
-    ) internal returns (LoanV2.Operation storage operation){
-        operation = _getExistingOperationInStorage(subLoanId, operationId);
-        _checkOperationParameter(uint256(operation.kind), newParameter);
-        uint256 oldParameter = operation.parameter;
-        if (oldParameter == newParameter) {
-            revert OperationUnchanged();
-        }
-
-        emit OperationChanged(
-            subLoanId,
-            operationId,
-            uint256(operation.kind),
-            operation.timestamp,
-            newParameter,
-            oldParameter,
-            counterparty,
-            "" // addendum
-        );
     }
 
     /**
@@ -1496,6 +1457,9 @@ contract LendingMarketV2 is
         if (kind == uint256(LoanV2.OperationKind.Repayment) && account == address(0)) {
             revert RapayerAddressZero();
         }
+        if (kind != uint256(LoanV2.OperationKind.Repayment) && account != address(0)) {
+            revert OperationAccountNotZero();
+        }
     }
 
     /// TODO
@@ -1507,7 +1471,7 @@ contract LendingMarketV2 is
             kind == uint256(LoanV2.OperationKind.Freezing) ||
             kind == uint256(LoanV2.OperationKind.Unfreezing)
         ) {
-            if (parameter > 0) {
+            if (parameter != 0) {
                 revert OperationParameterNotZero();
             }
         }

@@ -192,6 +192,16 @@ library LoanV2 {
     /**
      * @dev TODO
      */
+    struct AddedOperation {
+        uint256 kind;
+        uint256 timestamp;
+        uint256 parameter;
+        address account;
+    }
+
+    /**
+     * @dev TODO
+     */
     struct OperationalState {
         // Slot 1
         uint16 operationCount;
