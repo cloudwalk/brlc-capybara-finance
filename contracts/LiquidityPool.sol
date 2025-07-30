@@ -79,7 +79,7 @@ contract LiquidityPool is
      * See details https://docs.openzeppelin.com/upgrades-plugins/writing-upgradeable.
      */
     function initialize(
-        address owner_, // Tools: this comment prevents Prettier from formatting into a single line.
+        address owner_, // Tools: prevent Prettier one-liner
         address market_,
         address token_
     ) external initializer {

@@ -95,7 +95,7 @@ contract LendingMarket is
 
     /// @inheritdoc ILendingMarketConfiguration
     function createProgram(
-        address creditLine, // Tools: this comment prevents Prettier from formatting into a single line.
+        address creditLine, // Tools: prevent Prettier one-liner
         address liquidityPool
     ) external whenNotPaused onlyRole(OWNER_ROLE) {
         _checkCreditLineAndLiquidityPool(creditLine, liquidityPool);
@@ -117,7 +117,7 @@ contract LendingMarket is
 
     /// @inheritdoc ILendingMarketConfiguration
     function updateProgram(
-        uint32 programId, // Tools: this comment prevents Prettier from formatting into a single line.
+        uint32 programId, // Tools: prevent Prettier one-liner
         address creditLine,
         address liquidityPool
     ) external whenNotPaused onlyRole(OWNER_ROLE) {
@@ -147,7 +147,7 @@ contract LendingMarket is
     ) external whenNotPaused onlyRole(ADMIN_ROLE) returns (uint256) {
         _checkMainLoanParameters(borrower, programId, borrowedAmount, addonAmount);
         uint256 loanId = _takeLoan(
-            borrower, // Tools: this comment prevents Prettier from formatting into a single line.
+            borrower, // Tools: prevent Prettier one-liner
             programId,
             borrowedAmount,
             addonAmount,
@@ -182,7 +182,7 @@ contract LendingMarket is
                 revert Error.InvalidAmount();
             }
             uint256 loanId = _takeLoan(
-                borrower, // Tools: this comment prevents Prettier from formatting into a single line.
+                borrower, // Tools: prevent Prettier one-liner
                 programId,
                 borrowedAmounts[i],
                 addonAmounts[i],
@@ -264,7 +264,7 @@ contract LendingMarket is
         }
 
         emit InstallmentLoanRevoked(
-            loan.firstInstallmentId, // Tools: this comment prevents Prettier from formatting into a single line.
+            loan.firstInstallmentId, // Tools: prevent Prettier one-liner
             loan.installmentCount
         );
 
@@ -278,7 +278,7 @@ contract LendingMarket is
 
     /// @inheritdoc ILendingMarketPrimary
     function discountLoanForBatch(
-        uint256[] calldata loanIds, // Tools: this comment prevents Prettier from formatting into a single line.
+        uint256[] calldata loanIds, // Tools: prevent Prettier one-liner
         uint256[] calldata discountAmounts
     ) external whenNotPaused onlyRole(ADMIN_ROLE) {
         uint256 len = loanIds.length;
@@ -551,7 +551,7 @@ contract LendingMarket is
     ) external pure returns (uint256) {
         return
             InterestMath.calculateTrackedBalance(
-                originalBalance, // Tools: this comment prevents Prettier from formatting into a single line.
+                originalBalance, // Tools: prevent Prettier one-liner
                 numberOfPeriods,
                 interestRate,
                 interestRateFactor_
@@ -593,7 +593,7 @@ contract LendingMarket is
         _checkLoanId(id);
 
         Loan.Terms memory terms = ICreditLine(creditLine).determineLoanTerms(
-            borrower, // Tools: this comment prevents Prettier from formatting into a single line.
+            borrower, // Tools: prevent Prettier one-liner
             borrowedAmount,
             durationInPeriods
         );
@@ -630,7 +630,7 @@ contract LendingMarket is
      * @param repayer The token source for the repayment or zero if the source is the loan borrower themself.
      */
     function _repayLoan(
-        uint256 loanId, // Tools: this comment prevents Prettier from formatting into a single line.
+        uint256 loanId, // Tools: prevent Prettier one-liner
         uint256 repaymentAmount,
         address repayer
     ) internal {
@@ -674,7 +674,7 @@ contract LendingMarket is
      * @param discountAmount The amount of the discount.
      */
     function _discountLoan(
-        uint256 loanId, // Tools: this comment prevents Prettier from formatting into a single line.
+        uint256 loanId, // Tools: prevent Prettier one-liner
         uint256 discountAmount
     ) internal {
         uint256 newTrackedBalance;
@@ -816,7 +816,7 @@ contract LendingMarket is
      * @param installmentCount The total number of installments.
      */
     function _updateLoanInstallmentData(
-        uint256 loanId, // Tools: this comment prevents Prettier from formatting into a single line.
+        uint256 loanId, // Tools: prevent Prettier one-liner
         uint256 firstInstallmentId,
         uint256 installmentCount
     ) internal {
@@ -1125,7 +1125,7 @@ contract LendingMarket is
      * @return The late fee amount.
      */
     function _calculateLateFee(
-        uint256 trackedBalance, // Tools: this comment prevents Prettier from formatting into a single line.
+        uint256 trackedBalance, // Tools: prevent Prettier one-liner
         Loan.State storage loan
     ) internal view returns (uint256) {
         address creditLine = _programCreditLines[loan.programId];
