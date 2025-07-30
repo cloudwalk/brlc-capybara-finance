@@ -66,7 +66,7 @@ contract LendingMarket is
     /**
      * @dev Constructor that prohibits the initialization of the implementation of the upgradeable contract.
      *
-     * See details
+     * See details:
      * https://docs.openzeppelin.com/upgrades-plugins/writing-upgradeable#initializing_the_implementation_contract
      *
      * @custom:oz-upgrades-unsafe-allow constructor
@@ -80,7 +80,7 @@ contract LendingMarket is
     /**
      * @dev Initializer of the upgradeable contract.
      * @param owner_ The owner of the contract.
-     * See details https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable.
+     * See details https://docs.openzeppelin.com/upgrades-plugins/writing-upgradeable.
      */
     function initialize(address owner_) external initializer {
         __AccessControlExt_init_unchained();

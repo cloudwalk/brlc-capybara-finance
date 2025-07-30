@@ -60,7 +60,7 @@ contract LiquidityPool is
     /**
      * @dev Constructor that prohibits the initialization of the implementation of the upgradeable contract.
      *
-     * See details
+     * See details:
      * https://docs.openzeppelin.com/upgrades-plugins/writing-upgradeable#initializing_the_implementation_contract
      *
      * @custom:oz-upgrades-unsafe-allow constructor
@@ -76,7 +76,7 @@ contract LiquidityPool is
      * @param owner_ The address of the liquidity pool owner.
      * @param market_ The address of the lending market.
      * @param token_ The address of the token.
-     * See details https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable.
+     * See details https://docs.openzeppelin.com/upgrades-plugins/writing-upgradeable.
      */
     function initialize(
         address owner_, // Tools: this comment prevents Prettier from formatting into a single line.
