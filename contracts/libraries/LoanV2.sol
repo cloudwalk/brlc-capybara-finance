@@ -181,6 +181,7 @@ library LoanV2 {
      */
     struct ProcessingOperation {
         uint256 id;
+        uint256 initialStatus;
         uint256 status;
         uint256 kind;
         uint256 timestamp;

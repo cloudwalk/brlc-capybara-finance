@@ -50,10 +50,6 @@ contract LendingMarketV2 is
     /// @dev The role of an admin that is allowed to execute loan-related functions.
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
 
-    /// @dev TODO
-    uint256 private constant DO_OPERATION_POST_PROCESSING = 1;
-    uint256 private constant SKIP_OPERATION_POST_PROCESSING = 0;
-
     // ------------------ Constructor ----------------------------- //
 
     /**
@@ -279,7 +275,7 @@ contract LendingMarketV2 is
         if (timestamp < currentTimestamp) {
             _replayOperations(subLoan, repayer);
         } else {
-            _processOperations(subLoan, DO_OPERATION_POST_PROCESSING);
+            _processOperations(subLoan);
         }
     }
 
@@ -290,7 +286,12 @@ contract LendingMarketV2 is
         uint256 newParameter,
         address counterparty
     ) external {
-        LoanV2.Operation storage operation = _changeOperation(subLoanId, operationId, newParameter);
+        LoanV2.Operation storage operation = _changeOperation(
+            subLoanId,
+            operationId,
+            newParameter,
+            counterparty
+        );
         _treatOperations(subLoanId, operation.timestamp, counterparty);
     }
 
@@ -300,7 +301,7 @@ contract LendingMarketV2 is
         uint256 operationId,
         address counterparty
     ) external {
-        LoanV2.Operation storage operation = _voidOperation(subLoanId, operationId);
+        LoanV2.Operation storage operation = _voidOperation(subLoanId, operationId,counterparty);
         _treatOperations(subLoanId, operation.timestamp, counterparty);
     }
 
@@ -497,7 +498,7 @@ contract LendingMarketV2 is
             repaymentAmount, // parameter
             repayer // account
         );
-        _processOperations(subLoan, DO_OPERATION_POST_PROCESSING);
+        _processOperations(subLoan);
     }
 
     /**
@@ -517,7 +518,7 @@ contract LendingMarketV2 is
             discountAmount,
             address(0) // account
         );
-        _processOperations(subLoan, DO_OPERATION_POST_PROCESSING);
+        _processOperations(subLoan);
     }
 
     /**
@@ -532,7 +533,7 @@ contract LendingMarketV2 is
             0,
             address(0)
         );
-        _processOperations(subLoan, DO_OPERATION_POST_PROCESSING);
+        _processOperations(subLoan);
     }
 
     /**
@@ -583,15 +584,17 @@ contract LendingMarketV2 is
             operation.account = account;
         }
 
-        emit OperationAdded(
-            subLoan.id,
-            operationId,
-            kind,
-            timestamp,
-            parameter,
-            account,
-            "" // addendum
-        );
+        if (timestamp > _blockTimestamp()) {
+            emit OperationPended(
+                subLoan.id,
+                operationId,
+                kind,
+                timestamp,
+                parameter,
+                account,
+                "" // addendum
+            );
+        }
 
         return operationId;
     }
@@ -602,7 +605,8 @@ contract LendingMarketV2 is
     function _changeOperation(
         uint256 subLoanId,
         uint256 operationId,
-        uint256 newParameter
+        uint256 newParameter,
+        address counterparty
     ) internal returns (LoanV2.Operation storage operation){
         operation = _getExistingOperationInStorage(subLoanId, operationId);
         _checkOperationParameter(uint256(operation.kind), newParameter);
@@ -618,6 +622,7 @@ contract LendingMarketV2 is
             operation.timestamp,
             newParameter,
             oldParameter,
+            counterparty,
             "" // addendum
         );
     }
@@ -627,7 +632,8 @@ contract LendingMarketV2 is
      */
     function _voidOperation(
         uint256 subLoanId,
-        uint256 operationId
+        uint256 operationId,
+        address counterparty
     ) internal returns (LoanV2.Operation storage operation){
         operation = _getExistingOperationInStorage(subLoanId, operationId);
         if (operation.status == LoanV2.OperationStatus.Voided) {
@@ -640,6 +646,7 @@ contract LendingMarketV2 is
             uint256(operation.kind),
             operation.timestamp,
             operation.parameter,
+            counterparty,
             "" // addendum
         );
     }
@@ -745,14 +752,15 @@ contract LendingMarketV2 is
 
     /// @dev TODO
     function _processOperations(
-        LoanV2.ProcessingSubLoan memory subLoan,
-        uint256 doOperationPostProcessing
+        LoanV2.ProcessingSubLoan memory subLoan
     ) internal {
         LoanV2.OperationalState storage opState = _getLendingMarketStorage().subLoanOperationalStates[subLoan.id];
         uint256 pastOperationId = opState.pastOperationId;
-        uint256 operationId = opState.operations[pastOperationId].nextOperationId;
-        if (operationId == 0) {
+        uint256 operationId = 0;
+        if (pastOperationId == 0) {
             operationId = opState.earliestOperationId;
+        } else {
+            operationId = opState.operations[pastOperationId].nextOperationId;
         }
         if (operationId == 0) {
             return;
@@ -760,19 +768,16 @@ contract LendingMarketV2 is
         uint256 currentTimestamp = _blockTimestamp();
         while (operationId != 0) {
             LoanV2.ProcessingOperation memory operation = _getExistingOperation(subLoan.id, operationId);
-            uint256 oldStatus = operation.status;
-            _processSingleOperation(subLoan, operation, currentTimestamp);
-            _acceptOperationStatusChange(subLoan, operation, oldStatus);
             if (operation.status == uint256(LoanV2.OperationStatus.Pending)) {
                 break;
             }
+            _processSingleOperation(subLoan, operation, currentTimestamp);
+            _postProcessOperation(subLoan, operation);
             pastOperationId = operationId;
-            if (doOperationPostProcessing != 0) {
-                _postProcessOperation(subLoan, operation);
-            }
             if (operation.kind == uint256(LoanV2.OperationKind.Revocation)) {
                 break;
             }
+            operationId = opState.operations[operationId].nextOperationId;
         }
         opState.pastOperationId = uint16(pastOperationId); // Safe cast due to prior checks
         _updateSubLoan(subLoan);
@@ -783,7 +788,7 @@ contract LendingMarketV2 is
         _initiateSubLoan(subLoan);
         subLoan.counterparty = counterparty;
         _getLendingMarketStorage().subLoanOperationalStates[subLoan.id].pastOperationId = 0;
-        _processOperations(subLoan, SKIP_OPERATION_POST_PROCESSING);
+        _processOperations(subLoan);
     }
 
     /// @dev TODO
@@ -792,7 +797,7 @@ contract LendingMarketV2 is
         if (timestamp < _blockTimestamp()) {
             _replayOperations(subLoan, counterparty);
         } else {
-            _processOperations(subLoan, DO_OPERATION_POST_PROCESSING);
+            _processOperations(subLoan);
         }
     }
 
@@ -817,38 +822,9 @@ contract LendingMarketV2 is
             revert OperationTimestampInvalid();
         }
         if (operationTimestamp <= currentTimestamp) {
+            // TODO: We might not accrue the interest for all operations
             _accrueInterest(subLoan, operation.timestamp);
             _applyOperation(subLoan, operation);
-        }
-    }
-
-    /**
-     * @dev TODO
-     */
-    function _acceptOperationStatusChange(
-        LoanV2.ProcessingSubLoan memory subLoan,
-        LoanV2.ProcessingOperation memory operation,
-        uint256 oldOperationStatus
-    ) internal {
-        uint256 newOperationStatus = operation.status;
-        if (oldOperationStatus == newOperationStatus) {
-            return;
-        }
-
-        uint256 operationId = operation.id;
-
-        _getOperationInStorage(subLoan.id, operationId).status = LoanV2.OperationStatus(newOperationStatus);
-
-        if (newOperationStatus == uint256(LoanV2.OperationStatus.Applied)) {
-            emit OperationApplied(
-                subLoan.id,
-                operationId,
-                operation.kind,
-                operation.timestamp,
-                operation.parameter,
-                operation.account,
-                "" // addendum
-            );
         }
     }
 
@@ -859,11 +835,17 @@ contract LendingMarketV2 is
         LoanV2.ProcessingSubLoan memory subLoan,
         LoanV2.ProcessingOperation memory operation
     ) internal {
-        if (operation.status != uint256(LoanV2.OperationStatus.Applied)) {
+        uint256 operationStatus = operation.status;
+        if (
+            operationStatus != uint256(LoanV2.OperationStatus.Applied) ||
+            operationStatus == operation.initialStatus
+        ) {
             return;
-        } else if (operation.kind == uint256(LoanV2.OperationKind.Repayment)) {
+        }
+        if (operation.kind == uint256(LoanV2.OperationKind.Repayment)) {
             _postProcessRepayment(subLoan, operation);
         }
+        _acceptOperationApplying(subLoan.id, operation);
     }
 
     /**
@@ -946,6 +928,7 @@ contract LendingMarketV2 is
         }
 
         if (notExecuted != 0) {
+            operation.initialStatus = operation.status;
             operation.status = uint256(LoanV2.OperationStatus.Applied);
         }
     }
@@ -1167,6 +1150,27 @@ contract LendingMarketV2 is
         oldSubLoan.discountLateFee = uint64(newSubLoan.discountLateFee);
         oldSubLoan.trackedTimestamp = uint32(newSubLoan.trackedTimestamp);
         oldSubLoan.freezeTimestamp = uint32(newSubLoan.freezeTimestamp);
+    }
+
+    /**
+     * @dev TODO
+     */
+    function _acceptOperationApplying(
+        uint256 subLoanId,
+        LoanV2.ProcessingOperation memory operation
+    ) internal {
+        uint256 operationId = operation.id;
+        _getOperationInStorage(subLoanId, operationId).status = LoanV2.OperationStatus.Applied;
+
+        emit OperationApplied(
+            subLoanId,
+            operationId,
+            operation.kind,
+            operation.timestamp,
+            operation.parameter,
+            operation.account,
+            "" // addendum
+        );
     }
 
     /**
@@ -1618,7 +1622,8 @@ contract LendingMarketV2 is
     function _convertOperation(LoanV2.Operation storage operationInStorage) internal view returns (LoanV2.ProcessingOperation memory) {
         LoanV2.ProcessingOperation memory operation;
         // operation.id = 0;
-        operation.status = uint256(operationInStorage.status);
+        operation.initialStatus = uint256(operationInStorage.status);
+        operation.status = operation.initialStatus;
         operation.kind = uint256(operationInStorage.kind);
         operation.timestamp = operationInStorage.timestamp;
         operation.parameter = operationInStorage.parameter;
