@@ -170,6 +170,6 @@ interface ICreditLineTypes {
         uint16 closedLoanCount;
         uint64 totalActiveLoanAmount;
         uint64 totalClosedLoanAmount;
-        // uint96 __reserved; // Reserved for future use until the end of the storage slot.
+        // uint96 __reserved; // Reserved until the end of the storage slot.
     }
 }
