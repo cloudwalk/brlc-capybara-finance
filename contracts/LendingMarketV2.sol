@@ -1205,6 +1205,8 @@ contract LendingMarketV2 is
         emit SubLoanRepaidAmountChanged(
             newSubLoan.id,
             newSubLoan.borrower,
+            newSubLoan.status,
+        uint256(oldSubLoan.status),
             newRepaidAmount,
             oldRepaidAmount,
             _calculateTrackedBalance(newSubLoan),
@@ -1228,6 +1230,8 @@ contract LendingMarketV2 is
         emit SubLoanDiscountAmountChanged(
             newSubLoan.id,
             newSubLoan.borrower,
+            newSubLoan.status,
+            uint256(oldSubLoan.status),
             newDiscountAmount,
             oldDiscountAmount,
             _calculateTrackedBalance(newSubLoan),

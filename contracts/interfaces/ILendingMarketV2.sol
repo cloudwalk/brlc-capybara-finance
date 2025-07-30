@@ -80,6 +80,8 @@ interface ILendingMarketPrimaryV2 {
     event SubLoanRepaidAmountChanged(
         uint256 indexed subLoanId,
         address indexed borrower,
+        uint256 newSubLoanStatus,
+        uint256 oldSubLoanStatus,
         uint256 newRepaidAmount,
         uint256 oldRepaidAmount,
         uint256 trackedBalance,
@@ -97,6 +99,8 @@ interface ILendingMarketPrimaryV2 {
     event SubLoanDiscountAmountChanged(
         uint256 indexed subLoanId,
         address indexed borrower,
+        uint256 newSubLoanStatus,
+        uint256 oldSubLoanStatus,
         uint256 newDiscountAmount,
         uint256 oldDiscountAmount,
         uint256 trackedBalance,
