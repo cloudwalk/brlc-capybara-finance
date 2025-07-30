@@ -174,7 +174,7 @@ interface ILendingMarketPrimaryV2 {
     /**
      * @dev TODO
      */
-    event OperationAdded(
+    event OperationPended(
         uint256 indexed subLoanId,
         uint256 indexed operationId,
         uint256 indexed kind,
@@ -207,6 +207,7 @@ interface ILendingMarketPrimaryV2 {
         uint256 timestamp,
         uint256 newParameter,
         uint256 oldParameter,
+        address counterparty,
         bytes addendum
     );
 
@@ -219,11 +220,13 @@ interface ILendingMarketPrimaryV2 {
         uint256 indexed kind,
         uint256 timestamp,
         uint256 parameter,
+        address counterparty,
         bytes addendum
     );
 
     // TODO: add more events if needed
     // TODO: add more parameters to the existing events if needed
+    // TODO: consider replacing a single repaymentAmount with its parts, same for
 
     // ------------------ Transactional functions ----------------- //
 
