@@ -23,7 +23,7 @@ library Loan {
     /**
      * @dev A struct that defines the stored state of a loan.
      *
-     * The fields:
+     * Fields:
      * 
      * - programId -------------- The unique identifier of the program.
      * - borrowedAmount --------- The initial borrowed amount of the loan, excluding the addon.
@@ -75,7 +75,7 @@ library Loan {
     /**
      * @dev A struct that defines the terms of a loan.
      *
-     * The fields:
+     * Fields:
      * 
      * - token ------------------ The address of the token to be used for the loan.
      * - addonAmount ------------ The amount of the loan addon (extra charges or fees).
@@ -99,7 +99,7 @@ library Loan {
     /**
      * @dev A struct that defines the preview of the loan.
      *
-     * The fields:
+     * Fields:
      * 
      * - periodIndex ------------ The period index that matches the preview timestamp.
      * - trackedBalance --------- The tracked balance of the loan at the previewed period.
@@ -117,7 +117,7 @@ library Loan {
     /**
      * @dev A struct that defines the extended preview of a loan.
      *
-     * The fields:
+     * Fields:
      * 
      * - periodIndex ------------ The period index that matches the preview timestamp.
      * - trackedBalance --------- The tracked balance of the loan at the previewed period.

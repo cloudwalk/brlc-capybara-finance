@@ -42,7 +42,7 @@ interface ICreditLineTypes {
     /**
      * @dev A struct that defines credit line configuration.
      *
-     * The fields:
+     * Fields:
      *
      * - minBorrowedAmount --------- The minimum amount of tokens the borrower can take as a loan.
      * - maxBorrowedAmount --------- The maximum amount of tokens the borrower can take as a loan.
@@ -83,7 +83,7 @@ interface ICreditLineTypes {
     /**
      * @dev A struct that defines borrower configuration.
      *
-     * The fields:
+     * Fields:
      *
      * - expiration ------------- The expiration date of the configuration.
      * - minDurationInPeriods --- The minimum duration of the loan determined in periods.
@@ -122,7 +122,7 @@ interface ICreditLineTypes {
     /**
      * @dev A legacy struct that defines borrower configuration.
      *
-     * The fields:
+     * Fields:
      *
      * - expiration ------------- The expiration date of the configuration.
      * - minDurationInPeriods --- The minimum duration of the loan determined in periods.
@@ -157,7 +157,7 @@ interface ICreditLineTypes {
     /**
      * @dev Defines a borrower state.
      *
-     * The fields:
+     * Fields:
      *
      * - activeLoanCount -------- the number of active loans currently held by the borrower.
      * - closedLoanCount -------- the number of loans that have been closed, with or without a full repayment.
