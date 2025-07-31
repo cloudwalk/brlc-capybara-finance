@@ -52,12 +52,6 @@ interface ILendingMarketPrimaryV2 {
         bytes addendum
     );
 
-    /// @dev TODO
-    event SubLoanRevoked(
-        uint256 indexed subLoanId,
-        bytes addendum
-    );
-
     /**
      * @dev Emitted when a loan is fully revoked by revocation of all its sub-loans.
      * @param firstSubLoanId The ID of the first sub-loan of the  loan.
@@ -73,20 +67,21 @@ interface ILendingMarketPrimaryV2 {
      * @dev Emitted when the repaid amount of a sub-loan is changed.
      * @param subLoanId The unique identifier of the sub-loan.
      * @param borrower The address of the borrower of the loan.
-     * @param newSubLoanStatus TODO.
-     * @param oldSubLoanStatus TODO.
      * @param newRepaidAmount TODO.
      * @param oldRepaidAmount TODO.
      * @param trackedBalance TODO.
+     * @param flags A bit field containing additional information about the sub-loan.
+     *        Bits from 0 to 7 is the current status of the sub-loan.
+     *        Bit 8 is weather the sub-loan is frozen (the bit equals 1) or not (the bit equals 0). TODO
+     * @param addendum Empty. Reserved for future possible additional information.
      */
     event SubLoanRepaidAmountChanged(
         uint256 indexed subLoanId,
         address indexed borrower,
-        uint256 newSubLoanStatus,
-        uint256 oldSubLoanStatus,
         uint256 newRepaidAmount,
         uint256 oldRepaidAmount,
         uint256 trackedBalance,
+        bytes32 flags,
         bytes addendum
     );
 
@@ -94,88 +89,21 @@ interface ILendingMarketPrimaryV2 {
      * @dev Emitted when a the discount amount of a sub-loan is changed.
      * @param subLoanId The unique identifier of the sub-loan.
      * @param borrower The address of the borrower of the loan.
-     * @param newSubLoanStatus TODO.
-     * @param oldSubLoanStatus TODO.
      * @param newDiscountAmount TODO.
      * @param oldDiscountAmount TODO.
      * @param trackedBalance TODO.
+     * @param flags A bit field containing additional information about the sub-loan.
+     *        Bits from 0 to 7 is the current status of the sub-loan.
+     *        Bit 8 is weather the sub-loan is frozen (the bit equals 1) or not (the bit equals 0). TODO
+     * @param addendum Empty. Reserved for future possible additional information.
      */
     event SubLoanDiscountAmountChanged(
         uint256 indexed subLoanId,
         address indexed borrower,
-        uint256 newSubLoanStatus,
-        uint256 oldSubLoanStatus,
         uint256 newDiscountAmount,
         uint256 oldDiscountAmount,
         uint256 trackedBalance,
-        bytes addendum
-    );
-
-    /**
-     * @dev Emitted when the remuneratory interest rate of a sub-loan is changed.
-     * @param subLoanId The unique identifier of the sub-loan.
-     * @param borrower The address of the borrower of the loan.
-     * @param newRate TODO.
-     * @param oldRate TODO.
-     * @param trackedBalance TODO.
-     */
-    event SubLoanInterestRateRemuneratoryChanged(
-        uint256 indexed subLoanId,
-        address indexed borrower,
-        uint256 newRate,
-        uint256 oldRate,
-        uint256 trackedBalance,
-        bytes addendum
-    );
-
-    /**
-     * @dev Emitted when the moratory interest rate of a sub-loan is changed.
-     * @param subLoanId The unique identifier of the sub-loan.
-     * @param borrower The address of the borrower of the loan.
-     * @param newRate TODO.
-     * @param oldRate TODO.
-     * @param trackedBalance TODO.
-     */
-    event SubLoanInterestRateMoratoryChanged(
-        uint256 indexed subLoanId,
-        address indexed borrower,
-        uint256 newRate,
-        uint256 oldRate,
-        uint256 trackedBalance,
-        bytes addendum
-    );
-
-    /**
-     * @dev Emitted when the late fee rate of a sub-loan is changed.
-     * @param subLoanId The unique identifier of the sub-loan.
-     * @param borrower The address of the borrower of the loan.
-     * @param newRate TODO.
-     * @param oldRate TODO.
-     * @param trackedBalance TODO.
-     */
-    event SubLoanLateFeeRateChanged(
-        uint256 indexed subLoanId,
-        address indexed borrower,
-        uint256 newRate,
-        uint256 oldRate,
-        uint256 trackedBalance,
-        bytes addendum
-    );
-
-    /**
-     * @dev Emitted when the duration in days of a sub-loan is changed.
-     * @param subLoanId The unique identifier of the sub-loan.
-     * @param borrower The address of the borrower of the loan.
-     * @param newDuration TODO.
-     * @param oldDuration TODO.
-     * @param trackedBalance TODO.
-     */
-    event SubLoanDurationChanged(
-        uint256 indexed subLoanId,
-        address indexed borrower,
-        uint256 newDuration,
-        uint256 oldDuration,
-        uint256 trackedBalance,
+        bytes32 flags,
         bytes addendum
     );
 

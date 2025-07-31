@@ -1088,7 +1088,6 @@ contract LendingMarketV2 is
 
         _acceptRepaymentChange(newSubLoan, oldSubLoan);
         _acceptDiscountChange(newSubLoan, oldSubLoan);
-        _acceptSubLoanParametersChange(newSubLoan, oldSubLoan);
         _acceptSubLoanStatusChange(newSubLoan, oldSubLoan);
 
         // Update storage with the unchecked type conversion is used for all stored values due to prior checks
@@ -1166,11 +1165,10 @@ contract LendingMarketV2 is
         emit SubLoanRepaidAmountChanged(
             newSubLoan.id,
             newSubLoan.borrower,
-            newSubLoan.status,
-        uint256(oldSubLoan.status),
             newRepaidAmount,
             oldRepaidAmount,
             _calculateTrackedBalance(newSubLoan),
+            bytes32(_calculateSubLoanEventFlags(newSubLoan)),
             "" // addendum
         );
     }
@@ -1191,68 +1189,12 @@ contract LendingMarketV2 is
         emit SubLoanDiscountAmountChanged(
             newSubLoan.id,
             newSubLoan.borrower,
-            newSubLoan.status,
-            uint256(oldSubLoan.status),
             newDiscountAmount,
             oldDiscountAmount,
             _calculateTrackedBalance(newSubLoan),
+            bytes32(_calculateSubLoanEventFlags(newSubLoan)),
             "" // addendum
         );
-    }
-
-    /**
-     * @dev TODO
-     */
-    function _acceptSubLoanParametersChange(
-        LoanV2.ProcessingSubLoan memory newSubLoan,
-        LoanV2.SubLoan storage oldSubLoan
-    ) internal {
-
-        // TODO Consider emitting events in this function during operation post processing
-
-        if (newSubLoan.interestRateRemuneratory != oldSubLoan.interestRateRemuneratory) {
-            emit SubLoanInterestRateRemuneratoryChanged(
-                newSubLoan.id,
-                newSubLoan.borrower,
-                newSubLoan.interestRateRemuneratory,
-                oldSubLoan.interestRateRemuneratory,
-                _calculateTrackedBalance(newSubLoan),
-                "" // addendum
-            );
-        }
-
-        if (newSubLoan.interestRateMoratory != oldSubLoan.interestRateMoratory) {
-            emit SubLoanInterestRateMoratoryChanged(
-                newSubLoan.id,
-                newSubLoan.borrower,
-                newSubLoan.interestRateMoratory,
-                oldSubLoan.interestRateMoratory,
-                _calculateTrackedBalance(newSubLoan),
-                "" // addendum
-            );
-        }
-
-        if (newSubLoan.lateFeeRate != oldSubLoan.lateFeeRate) {
-            emit SubLoanLateFeeRateChanged(
-                newSubLoan.id,
-                newSubLoan.borrower,
-                newSubLoan.lateFeeRate,
-                oldSubLoan.lateFeeRate,
-                _calculateTrackedBalance(newSubLoan),
-                "" // addendum
-            );
-        }
-
-        if (newSubLoan.duration != oldSubLoan.duration) {
-            emit SubLoanDurationChanged(
-                newSubLoan.id,
-                newSubLoan.borrower,
-                newSubLoan.duration,
-                oldSubLoan.duration,
-                _calculateTrackedBalance(newSubLoan),
-                "" // addendum
-            );
-        }
     }
 
     /**
@@ -1270,11 +1212,6 @@ contract LendingMarketV2 is
 
             ILiquidityPool(liquidityPool).onAfterLoanRevocation(newSubLoan.id);
             ICreditLine(creditLine).onAfterLoanRevocation(newSubLoan.id);
-
-            emit SubLoanRevoked(
-                newSubLoan.id,
-                "" // addendum
-            );
         }
     }
 
@@ -1377,6 +1314,13 @@ contract LendingMarketV2 is
             ++result;
         }
         subLoan.trackedLateFee = uint64(_roundMath(result)); // Safe cast due to prior checks
+    }
+
+    /**
+     * @dev TODO
+     */
+    function _calculateSubLoanEventFlags(LoanV2.ProcessingSubLoan memory subLoan) internal pure returns (uint256) {
+        return (subLoan.status & 0xFF) + ((subLoan.freezeTimestamp > 0) ? 1 : 0) << 8;
     }
 
     /**
