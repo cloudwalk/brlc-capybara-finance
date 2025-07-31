@@ -7,7 +7,7 @@ import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/P
 import { AccessControlExtUpgradeable } from "./AccessControlExtUpgradeable.sol";
 
 /**
- * @title PausableExtUpgradeable base contract.
+ * @title PausableExtUpgradeable base contract
  * @author CloudWalk Inc. (See https://www.cloudwalk.io)
  * @dev Extends the OpenZeppelin's {PausableUpgradeable} contract by adding the {PAUSER_ROLE} role and implementing
  *      the external pausing and unpausing functions.

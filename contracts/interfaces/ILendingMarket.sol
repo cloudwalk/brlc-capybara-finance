@@ -39,7 +39,7 @@ interface ILendingMarketPrimary {
      * @param durationInPeriods The duration of the loan in periods.
      */
     event LoanTaken(
-        uint256 indexed loanId, // Tools: this comment prevents Prettier from formatting into a single line.
+        uint256 indexed loanId, // Tools: prevent Prettier one-liner
         address indexed borrower,
         uint256 principalAmount,
         uint256 durationInPeriods
@@ -91,7 +91,7 @@ interface ILendingMarketPrimary {
      * @param installmentCount The total number of installments.
      */
     event InstallmentLoanRevoked(
-        uint256 indexed firstInstallmentId, // Tools: this comment prevents Prettier from formatting into a single line.
+        uint256 indexed firstInstallmentId, // Tools: prevent Prettier one-liner
         uint256 installmentCount
     );
 
@@ -102,7 +102,7 @@ interface ILendingMarketPrimary {
      * @param newTrackedBalance The new tracked balance of the loan after the discount.
      */
     event LoanDiscounted(
-        uint256 indexed loanId, // Tools: this comment prevents Prettier from formatting into a single line.
+        uint256 indexed loanId, // Tools: prevent Prettier one-liner
         uint256 discountAmount,
         uint256 newTrackedBalance
     );
@@ -152,7 +152,7 @@ interface ILendingMarketPrimary {
      * @param oldDuration The old duration of the loan in periods.
      */
     event LoanDurationUpdated(
-        uint256 indexed loanId, // Tools: this comment prevents Prettier from formatting into a single line.
+        uint256 indexed loanId, // Tools: prevent Prettier one-liner
         uint256 indexed newDuration,
         uint256 indexed oldDuration
     );
@@ -266,7 +266,7 @@ interface ILendingMarketPrimary {
      * @param discountAmounts The amounts to discount for each loan in the batch.
      */
     function discountLoanForBatch(
-        uint256[] calldata loanIds, // Tools: this comment prevents Prettier from formatting into a single line.
+        uint256[] calldata loanIds, // Tools: prevent Prettier one-liner
         uint256[] calldata discountAmounts
     ) external;
 
@@ -330,7 +330,7 @@ interface ILendingMarketPrimary {
      * @param receiver The address of the receiver of the tokens due to the repayment undoing.
      */
     function undoRepaymentFor(
-        uint256 loanId, // Tools: this comment prevents Prettier from formatting into a single line.
+        uint256 loanId, // Tools: prevent Prettier one-liner
         uint256 repaymentAmount,
         uint256 repaymentTimestamp,
         address receiver
@@ -466,7 +466,7 @@ interface ILendingMarketConfiguration {
      * @param creditLine The address of the credit line registered.
      */
     event CreditLineRegistered(
-        address indexed lender, // Tools: this comment prevents Prettier from formatting into a single line.
+        address indexed lender, // Tools: prevent Prettier one-liner
         address indexed creditLine
     );
 
@@ -483,7 +483,7 @@ interface ILendingMarketConfiguration {
      *
      */
     event LiquidityPoolRegistered(
-        address indexed lender, // Tools: this comment prevents Prettier from formatting into a single line.
+        address indexed lender, // Tools: prevent Prettier one-liner
         address indexed liquidityPool
     );
 
@@ -493,7 +493,7 @@ interface ILendingMarketConfiguration {
      * @param programId The unique identifier of the program.
      */
     event ProgramCreated(
-        address indexed lender, // Tools: this comment prevents Prettier from formatting into a single line.
+        address indexed lender, // Tools: prevent Prettier one-liner
         uint32 indexed programId
     );
 
@@ -504,7 +504,7 @@ interface ILendingMarketConfiguration {
      * @param liquidityPool The address of the liquidity pool associated with the program.
      */
     event ProgramUpdated(
-        uint32 indexed programId, // Tools: this comment prevents Prettier from formatting into a single line.
+        uint32 indexed programId, // Tools: prevent Prettier one-liner
         address indexed creditLine,
         address indexed liquidityPool
     );
@@ -523,7 +523,7 @@ interface ILendingMarketConfiguration {
      * @param isAlias True if the account is configured as an alias, otherwise false.
      */
     event LenderAliasConfigured(
-        address indexed lender, // Tools: this comment prevents Prettier from formatting into a single line.
+        address indexed lender, // Tools: prevent Prettier one-liner
         address indexed account,
         bool isAlias
     );

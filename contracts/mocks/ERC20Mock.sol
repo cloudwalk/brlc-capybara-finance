@@ -22,7 +22,7 @@ contract ERC20Mock is ERC20, IERC20Mintable {
      * @param amount The amount of tokens to mint.
      */
     event MockMintingFromReserve(
-        address sender, // Tools: this comment prevents Prettier from formatting into a single line.
+        address sender, // Tools: prevent Prettier one-liner
         address account,
         uint256 amount
     );
@@ -34,7 +34,7 @@ contract ERC20Mock is ERC20, IERC20Mintable {
      * @param amount The amount of tokens to burn.
      */
     event MockBurningToReserve(
-        address sender, // Tools: this comment prevents Prettier from formatting into a single line.
+        address sender, // Tools: prevent Prettier one-liner
         uint256 amount
     );
 
