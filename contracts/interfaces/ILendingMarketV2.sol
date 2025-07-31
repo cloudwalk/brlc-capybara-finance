@@ -30,6 +30,7 @@ interface ILendingMarketPrimaryV2 {
         uint256 borrowedAmount,
         uint256 addonAmount,
         uint256 duration,
+        // TODO: Ask if more parameters are needed: rates, etc.
         bytes addendum
     );
 
@@ -46,9 +47,9 @@ interface ILendingMarketPrimaryV2 {
         uint256 indexed firstSubLoanId,
         address indexed borrower,
         uint256 indexed programId,
-        uint256 subLoanCount,
         uint256 totalBorrowedAmount,
         uint256 totalAddonAmount,
+        uint256 subLoanCount,
         bytes addendum
     );
 
@@ -63,49 +64,7 @@ interface ILendingMarketPrimaryV2 {
         bytes addendum
     );
 
-    /**
-     * @dev Emitted when the repaid amount of a sub-loan is changed.
-     * @param subLoanId The unique identifier of the sub-loan.
-     * @param borrower The address of the borrower of the loan.
-     * @param newRepaidAmount TODO.
-     * @param oldRepaidAmount TODO.
-     * @param trackedBalance TODO.
-     * @param flags A bit field containing additional information about the sub-loan.
-     *        Bits from 0 to 7 is the current status of the sub-loan.
-     *        Bit 8 is weather the sub-loan is frozen (the bit equals 1) or not (the bit equals 0). TODO
-     * @param addendum Empty. Reserved for future possible additional information.
-     */
-    event SubLoanRepaidAmountChanged(
-        uint256 indexed subLoanId,
-        address indexed borrower,
-        uint256 newRepaidAmount,
-        uint256 oldRepaidAmount,
-        uint256 trackedBalance,
-        bytes32 flags,
-        bytes addendum
-    );
-
-    /**
-     * @dev Emitted when a the discount amount of a sub-loan is changed.
-     * @param subLoanId The unique identifier of the sub-loan.
-     * @param borrower The address of the borrower of the loan.
-     * @param newDiscountAmount TODO.
-     * @param oldDiscountAmount TODO.
-     * @param trackedBalance TODO.
-     * @param flags A bit field containing additional information about the sub-loan.
-     *        Bits from 0 to 7 is the current status of the sub-loan.
-     *        Bit 8 is weather the sub-loan is frozen (the bit equals 1) or not (the bit equals 0). TODO
-     * @param addendum Empty. Reserved for future possible additional information.
-     */
-    event SubLoanDiscountAmountChanged(
-        uint256 indexed subLoanId,
-        address indexed borrower,
-        uint256 newDiscountAmount,
-        uint256 oldDiscountAmount,
-        uint256 trackedBalance,
-        bytes32 flags,
-        bytes addendum
-    );
+    // TODO: We don't have any events for state changes. Ask what we need to add.
 
     /**
      * @dev TODO
@@ -163,7 +122,6 @@ interface ILendingMarketPrimaryV2 {
      * @param addonAmounts The off-chain calculated addon amounts for each sub-loan.
      * @param durations The desired duration of each sub-loan in days.
      * @return firstSubLoanId The unique identifier of the first sub-loan of the loan.
-     * @return subLoanCount The total number of sub-loans.
      */
     function takeLoan(
         address borrower,
@@ -171,7 +129,23 @@ interface ILendingMarketPrimaryV2 {
         uint256[] calldata borrowedAmounts,
         uint256[] calldata addonAmounts,
         uint256[] calldata durations
-    ) external returns (uint256 firstSubLoanId, uint256 subLoanCount);
+    ) external returns (uint256 firstSubLoanId);
+
+    /**
+     * @dev Repays a batch of sub-loans.
+     *
+     * Can be called only by an account with a special role.
+     * Using `type(uint256).max` for the `repaymentAmount` will repay the remaining balance of the loan.
+     *
+     * @param subLoanIds The unique identifiers of the sub-loans to repay.
+     * @param repaymentAmounts The amounts to repay for each sub-loan in the batch.
+     * @param repayers The addresses of the token sources for the repayments (borrower or third-party).
+     */
+    function repaySubLoanBatch(
+        uint256[] calldata subLoanIds,
+        uint256[] calldata repaymentAmounts,
+        address[] calldata repayers // TODO: if address is zero, then it's a borrower
+    ) external;
 
     /**
      * @dev Discounts a batch of sub-loans.
@@ -182,25 +156,9 @@ interface ILendingMarketPrimaryV2 {
      * @param subLoanIds The unique identifiers of the sub-loans to discount.
      * @param discountAmounts The amounts to discount for each sub-loan in the batch.
      */
-    function discountSubLoanBatch(
+    function discountSubLoanBatch( // TODO: Ask if discount can be greater than the principal amount
         uint256[] calldata subLoanIds, // Tools: this comment prevents Prettier from formatting into a single line.
         uint256[] calldata discountAmounts
-    ) external;
-
-    /**
-     * @dev Repays a batch of sub-loans.
-     *
-     * Can be called only by an account with a special role.
-     * Using `type(uint256).max` for the `repaymentAmount` will repay the remaining balance of the loan.
-     *
-     * @param subLoanIds The unique identifiers of the sub-loans to repay.
-     * @param repaymentAmounts The amounts to repay for each sub-loan in the batch.
-     * @param repayer The address of the token source for the repayments (borrower or third-party).
-     */
-    function repaySubLoanBatch(
-        uint256[] calldata subLoanIds,
-        uint256[] calldata repaymentAmounts,
-        address repayer
     ) external;
 
     /**
@@ -209,14 +167,9 @@ interface ILendingMarketPrimaryV2 {
      */
     function revokeLoan(uint256 subLoanId) external;
 
-    /**
-     * @dev TODO
-     */
-    function modifySubLoanOperations(
-        uint256 subLoanId,
-        address counterparty,
-        uint256[] calldata voidedOperationIds,
-        LoanV2.AddedOperation[] calldata addedOperations
+    function udapteOperations(
+        VoidOperationRequest[] calldata voidOperationRequests,
+        AddedOperationRequest[] calldata addedOperationRequests
     ) external;
 
     // ------------------ View functions -------------------------- //
@@ -240,7 +193,7 @@ interface ILendingMarketPrimaryV2 {
      * @param subLoanIds The unique identifiers of the sub-loans to get
      * @return The stored states of the sub-loans
      */
-    function getSubLoanBatch(uint256[] calldata subLoanIds) external view returns (LoanV2.SubLoan[] memory);
+    function getSubLoanStateBatch(uint256[] calldata subLoanIds) external view returns (LoanV2.SubLoan[] memory);
 
     /**
      * @dev Gets the sub-loan preview at a specific timestamp for a batch of sub-loans.
@@ -248,7 +201,7 @@ interface ILendingMarketPrimaryV2 {
      * @param timestamp The timestamp to get the sub-loan preview for. If 0, the current timestamp is used.
      * @return The previews of the sub-loans (see the `LoanV2.SubLoanPreview` struct).
      */
-    function getLoanPreviewBatch(
+    function getSubLoanPreviewBatch(
         uint256[] calldata subLoanIds,
         uint256 timestamp
     ) external view returns (LoanV2.SubLoanPreview[] memory);
@@ -256,14 +209,14 @@ interface ILendingMarketPrimaryV2 {
     /**
      * @dev Gets the preview of a loan at a specific timestamp.
      *
-     * @param subLoanId The unique identifier of any sub-loan of the loan to check.
+     * @param subLoanIds The unique identifiers of any sub-loan of the loan to get.
      * @param timestamp The timestamp to get the loan preview for. If 0, the current timestamp is used.
      * @return The preview state of the loan (see the `LoanV2.LoanPreview` structure).
      */
-    function getLoanPreview(
-        uint256 subLoanId,
+    function getLoanPreviewBatch(
+        uint256[] calldata subLoanIds,
         uint256 timestamp
-    ) external view returns (LoanV2.LoanPreview memory);
+    ) external view returns (LoanV2.LoanPreview[] memory);
 
     /// @dev TODO
     // TODO: Consider using a separate structure to return
@@ -347,25 +300,6 @@ interface ILendingMarketConfigurationV2 {
         uint32 indexed programId, // Tools: this comment prevents Prettier from formatting into a single line.
         address indexed creditLine,
         address indexed liquidityPool
-    );
-
-    /**
-     * @dev Emitted when a lender alias is configured.
-     *
-     * NOTES:
-     *
-     * 1. This event is deprecated since version 1.9.0 and in no longer used. Kept for historical reason.
-     * 2. Aliases logic has been replaced with granting of the admin role.
-     * 3. All previously configured aliases have been revoked with an appropriate event since version 1.9.0.
-     *
-     * @param lender The address of the lender account.
-     * @param account The address of the alias account.
-     * @param isAlias True if the account is configured as an alias, otherwise false.
-     */
-    event LenderAliasConfigured(
-        address indexed lender, // Tools: this comment prevents Prettier from formatting into a single line.
-        address indexed account,
-        bool isAlias
     );
 
     // ------------------ Transactional functions ----------------- //
