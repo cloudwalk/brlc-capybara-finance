@@ -19,9 +19,9 @@ interface ILendingMarketPrimaryV2 {
      * @dev Emitted when a sub-loan is taken.
      * @param subLoanId The unique identifier of the sub-loan.
      * @param borrower The address of the borrower of the sub-loan.
-     * @param programId TODO
-     * @param borrowedAmount TODO
-     * @param addonAmount TODO
+     * @param programId The identifier of the program.
+     * @param borrowedAmount The amount of tokens borrowed.
+     * @param addonAmount The addon amount of the sub-loan.
      * @param duration The duration of the sub-loan in days.
      */
     event SubLoanTaken(
@@ -55,7 +55,7 @@ interface ILendingMarketPrimaryV2 {
     /**
      * @dev Emitted when a loan is fully revoked by revocation of all its sub-loans.
      * @param firstSubLoanId The ID of the first sub-loan of the  loan.
-     * @param borrower TODO.
+     * @param borrower The address of the borrower of the loan.
      * @param subLoanCount The total number of sub-loans.
      */
     event LoanRevoked(
@@ -91,27 +91,21 @@ interface ILendingMarketPrimaryV2 {
      * 
      * @param subLoanId The unique identifier of the sub-loan.
      * @param borrower The address of the borrower of the loan.
-     * @param packedMainParameters The packed main parameters of the sub-loan.
-     * @param packedRepaidParts The packed repaid parts of the sub-loan.
-     * @param packedDiscountParts The packed discount parts of the sub-loan.
-     * @param packedTrackedParts The packed tracked parts of the sub-loan.
-     * @param newRepaidAmount The new repaid amount as a sum of all repaid parts.
-     * @param oldRepaidAmount The old repaid amount as a sum of all repaid parts.
-     * @param oldPackedRepaidParts The old packed repaid parts of the sub-loan.
+     * @param newPackedMainParameters The current packed main parameters of the sub-loan.
+     * @param newPackedRepaidParts The current packed repaid parts of the sub-loan.
+     * @param newPackedDiscountParts The current packed discount parts of the sub-loan.
+     * @param newPackedTrackedParts The current packed tracked parts of the sub-loan.
+     * @param oldPackedRepaidParts The previous packed repaid parts of the sub-loan.
      */
     event SubLoanRepaymentUpdated (
         uint256 indexed subLoanId,
         address indexed borrower,
-        bytes32 packedMainParameters,
-        bytes32 packedRepaidParts,
-        bytes32 packedDiscountParts,
-        bytes32 packedTrackedParts,
-        uint256 newRepaidAmount,
-        uint256 oldRepaidAmount,
+        bytes32 newPackedMainParameters,
+        bytes32 newPackedRepaidParts,
+        bytes32 newPackedDiscountParts,
+        bytes32 newPackedTrackedParts,
         bytes32 oldPackedRepaidParts
     );
-
-    // TODO: Ask other teams, maybe the packed fields are redundant in the events, and can be remove.
 
     /**
      * @dev Emitted when the discount amount of a sub-loan is updated.
@@ -120,166 +114,96 @@ interface ILendingMarketPrimaryV2 {
      * 
      * @param subLoanId The unique identifier of the sub-loan.
      * @param borrower The address of the borrower of the loan.
-     * @param packedMainParameters The packed main parameters of the sub-loan.
-     * @param packedRepaidParts The packed repaid parts of the sub-loan.
-     * @param packedDiscountParts The packed discount parts of the sub-loan.
-     * @param packedTrackedParts The packed tracked parts of the sub-loan.
-     * @param newDiscountAmount The new discount amount as a sum of all discount parts.
-     * @param oldDiscountAmount The old discount amount as a sum of all discount parts.
-     * @param oldPackedDiscountParts The old packed discount parts of the sub-loan.
+     * @param newPackedMainParameters The current packed main parameters of the sub-loan.
+     * @param newPackedRepaidParts The current packed repaid parts of the sub-loan.
+     * @param newPackedDiscountParts The current packed discount parts of the sub-loan.
+     * @param newPackedTrackedParts The current packed tracked parts of the sub-loan.
+     * @param oldPackedDiscountParts The previous packed discount parts of the sub-loan.
      */
     event SubLoanDiscountUpdated (
         uint256 indexed subLoanId,
         address indexed borrower,
-        bytes32 packedMainParameters,
-        bytes32 packedRepaidParts,
-        bytes32 packedDiscountParts,        
-        bytes32 packedTrackedParts,
-        uint256 newDiscountAmount,
-        uint256 oldDiscountAmount,
+        bytes32 newPackedMainParameters,
+        bytes32 newPackedRepaidParts,
+        bytes32 newPackedDiscountParts,
+        bytes32 newPackedTrackedParts,
         bytes32 oldPackedDiscountParts
     );
 
     /**
      * @dev Emitted when the remuneratory interest rate of a sub-loan is updated.
-     * 
-     * See notes about the event parameters in the `SubLoanRepaymentUpdated` event.
-     * 
      * @param subLoanId The unique identifier of the sub-loan.
      * @param borrower The address of the borrower of the loan.
-     * @param packedMainParameters The packed main parameters of the sub-loan.
-     * @param packedRepaidParts The packed repaid parts of the sub-loan.
-     * @param packedDiscountParts The packed discount parts of the sub-loan.
-     * @param packedTrackedParts The packed tracked parts of the sub-loan.
-     * @param newRate The new remuneratory interest rate.
-     * @param oldRate The old remuneratory interest rate.
+     * @param newRate The current remuneratory interest rate.
+     * @param oldRate The previous remuneratory interest rate.
      */
     event SubLoanInterestRateRemuneratoryUpdated(
         uint256 indexed subLoanId,
         address indexed borrower,
-        bytes32 packedMainParameters,
-        bytes32 packedRepaidParts,
-        bytes32 packedDiscountParts,
-        bytes32 packedTrackedParts,
         uint256 newRate,
         uint256 oldRate
     );
 
     /**
      * @dev Emitted when the moratory interest rate of a sub-loan is updated.
-     * 
-     * See notes about the event parameters in the `SubLoanRepaymentUpdated` event.
-     * 
      * @param subLoanId The unique identifier of the sub-loan.
      * @param borrower The address of the borrower of the loan.
-     * @param packedMainParameters The packed main parameters of the sub-loan.
-     * @param packedRepaidParts The packed repaid parts of the sub-loan.
-     * @param packedDiscountParts The packed discount parts of the sub-loan.
-     * @param packedTrackedParts The packed tracked parts of the sub-loan.
-     * @param newRate The new moratory interest rate.
-     * @param oldRate The old moratory interest rate.
+     * @param newRate The current moratory interest rate.
+     * @param oldRate The previous moratory interest rate.
      */
     event SubLoanInterestRateMoratoryUpdated(
         uint256 indexed subLoanId,
         address indexed borrower,
-        bytes32 packedMainParameters,
-        bytes32 packedRepaidParts,
-        bytes32 packedDiscountParts,
-        bytes32 packedTrackedParts,
         uint256 newRate,
         uint256 oldRate
     );
 
     /**
      * @dev Emitted when the late fee rate of a sub-loan is updated.
-     * 
-     * See notes about the event parameters in the `SubLoanRepaymentUpdated` event.
-     * 
      * @param subLoanId The unique identifier of the sub-loan.
      * @param borrower The address of the borrower of the loan.
-     * @param packedMainParameters The packed main parameters of the sub-loan.
-     * @param packedRepaidParts The packed repaid parts of the sub-loan.
-     * @param packedDiscountParts The packed discount parts of the sub-loan.
-     * @param packedTrackedParts The packed tracked parts of the sub-loan.
-     * @param newRate The new late fee rate.
-     * @param oldRate The old late fee rate.
+     * @param newRate The current late fee rate.
+     * @param oldRate The previous late fee rate.
      */
     event SubLoanLateFeeRateUpdated(
         uint256 indexed subLoanId,
         address indexed borrower,
-        bytes32 packedMainParameters,
-        bytes32 packedRepaidParts,
-        bytes32 packedDiscountParts,
-        bytes32 packedTrackedParts,
         uint256 newRate,
         uint256 oldRate
     );
 
     /**
      * @dev Emitted when the duration in days of a sub-loan is updated.
-     * 
-     * See notes about the event parameters in the `SubLoanRepaymentUpdated` event.
-     * 
      * @param subLoanId The unique identifier of the sub-loan.
      * @param borrower The address of the borrower of the loan.
-     * @param packedMainParameters The packed main parameters of the sub-loan.
-     * @param packedRepaidParts The packed repaid parts of the sub-loan.
-     * @param packedDiscountParts The packed discount parts of the sub-loan.
-     * @param packedTrackedParts The packed tracked parts of the sub-loan.
-     * @param newDuration The new duration.
-     * @param oldDuration The old duration.
+     * @param newDuration The current duration.
+     * @param oldDuration The previous duration.
      */
     event SubLoanDurationUpdated(
         uint256 indexed subLoanId,
         address indexed borrower,
-        bytes32 packedMainParameters,
-        bytes32 packedRepaidParts,
-        bytes32 packedDiscountParts,
-        bytes32 packedTrackedParts,
         uint256 newDuration,
         uint256 oldDuration
     );
 
     /**
      * @dev Emitted when a sub-loan is frozen.
-     * 
-     * See notes about the event parameters in the `SubLoanRepaymentUpdated` event.
-     * 
      * @param subLoanId The unique identifier of the sub-loan.
      * @param borrower The address of the borrower of the loan.
-     * @param packedMainParameters The packed main parameters of the sub-loan.
-     * @param packedRepaidParts The packed repaid parts of the sub-loan.
-     * @param packedDiscountParts The packed discount parts of the sub-loan.
-     * @param packedTrackedParts The packed tracked parts of the sub-loan.
      */
     event SubLoanFrozen(
         uint256 indexed subLoanId,
-        address indexed borrower,
-        bytes32 packedMainParameters,
-        bytes32 packedRepaidParts,
-        bytes32 packedDiscountParts,
-        bytes32 packedTrackedParts
+        address indexed borrower
     );
 
     /**
      * @dev Emitted when a sub-loan is frozen.
-     * 
-     * See notes about the event parameters in the `SubLoanRepaymentUpdated` event.
-     * 
      * @param subLoanId The unique identifier of the sub-loan.
      * @param borrower The address of the borrower of the loan.
-     * @param packedMainParameters The packed main parameters of the sub-loan.
-     * @param packedRepaidParts The packed repaid parts of the sub-loan.
-     * @param packedDiscountParts The packed discount parts of the sub-loan.
-     * @param packedTrackedParts The packed tracked parts of the sub-loan.
      */
     event SubLoanUnfrozen(
         uint256 indexed subLoanId,
-        address indexed borrower,
-        bytes32 packedMainParameters,
-        bytes32 packedRepaidParts,
-        bytes32 packedDiscountParts,
-        bytes32 packedTrackedParts
+        address indexed borrower
     );
 
     /**
@@ -291,37 +215,46 @@ interface ILendingMarketPrimaryV2 {
      * 
      * @param subLoanId The unique identifier of the sub-loan.
      * @param borrower The address of the borrower of the loan.
-     * @param packedMainParameters The packed main parameters of the sub-loan.
-     * @param packedRepaidParts The packed repaid parts of the sub-loan.
-     * @param packedDiscountParts The packed discount parts of the sub-loan.
      */
     event SubLoanRevoked(
         uint256 indexed subLoanId,
-        address indexed borrower,
-        bytes32 packedMainParameters,
-        bytes32 packedRepaidParts,
-        bytes32 packedDiscountParts
+        address indexed borrower
     );
 
     /**
-     * @dev TODO
+     * @dev Emitted when an operation is pended.
+     * 
+     * @param subLoanId The unique identifier of the sub-loan.
+     * @param operationId The unique identifier of the operation.
+     * @param kind The kind of the operation according to the `LoanV2.OperationKind` enum.
+     * @param timestamp The timestamp when the operaion will be applied.
+     * @param parameter The parameter of the operation.
+     * @param account The account related to the operation, e.g. the repayer.
      */
     event OperationPended(
         uint256 indexed subLoanId,
         uint256 indexed operationId,
-        uint256 indexed kind,
+        LoanV2.OperationKind indexed kind,
         uint256 timestamp,
         uint256 parameter, //TODO: consider another name, same for similar events
         address account //TODO: consider another name, same for similar events
     );
 
     /**
-     * @dev TODO
+     * @dev Emitted when an operation is applied.
+     * 
+     * @param subLoanId The unique identifier of the sub-loan.
+     * @param operationId The unique identifier of the operation.
+     * @param kind The kind of the operation according to the `LoanV2.OperationKind` enum.
+     * @param timestamp The timestamp when the operation was applied.
+     * @param parameter The parameter of the operation.
+     * @param account The account related to the operation, e.g. the repayer.
+     * @param appliedValue The applied value of the operation.
      */
     event OperationApplied(
         uint256 indexed subLoanId,
         uint256 indexed operationId,
-        uint256 indexed kind,
+        LoanV2.OperationKind indexed kind,
         uint256 timestamp,
         uint256 parameter,
         address account,
@@ -329,17 +262,26 @@ interface ILendingMarketPrimaryV2 {
     );
 
     /**
-     * @dev TODO
+     * @dev Emitted when an operation is voided.
+     * 
+     * @param subLoanId The unique identifier of the sub-loan.
+     * @param operationId The unique identifier of the operation.
+     * @param kind The kind of the operation according to the `LoanV2.OperationKind` enum.
+     * @param timestamp The timestamp when the operation was applied.
+     * @param parameter The parameter of the operation.
+     * @param counterparty The account related to the operation voiding, e.g. the receiver
+     * @param appliedValue The applied value of the operation.
+     * @param previousStatus The previous status of the sub-loan before the voiding operation.
      */
     event OperationVoided(
         uint256 indexed subLoanId,
         uint256 indexed operationId,
-        uint256 indexed kind,
+        LoanV2.OperationKind indexed kind,
         uint256 timestamp,
         uint256 parameter,
         address counterparty,
         uint256 appliedValue,
-        uint256 previousStatus
+        LoanV2.OperationStatus previousStatus
     );
 
     // TODO: add more events if needed

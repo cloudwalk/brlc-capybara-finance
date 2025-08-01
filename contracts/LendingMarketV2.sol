@@ -539,7 +539,7 @@ contract LendingMarketV2 is
             emit OperationPended(
                 subLoan.id,
                 operationId,
-                kind,
+            LoanV2.OperationKind(kind),
                 timestamp,
                 parameter,
                 account
@@ -568,12 +568,12 @@ contract LendingMarketV2 is
         emit OperationVoided(
             subLoanId,
             operationId,
-            uint256(operation.kind),
+            operation.kind,
             operation.timestamp,
             operation.parameter,
             counterparty,
             operation.appliedValue,
-            previousStatus
+            LoanV2.OperationStatus(previousStatus)
         );
     }
 
@@ -1100,7 +1100,7 @@ contract LendingMarketV2 is
         emit OperationApplied(
             subLoanId,
             operationId,
-            operation.kind,
+            LoanV2.OperationKind(operation.kind),
             operation.timestamp,
             operation.parameter,
             operation.account,
@@ -1144,8 +1144,6 @@ contract LendingMarketV2 is
             _packRepaidParts(newSubLoan),
             _packDiscountParts(newSubLoan),
             _packTrackedParts(newSubLoan),
-            newRepaidSumAmount,
-            oldRepaidSumAmount,
             _packedRepaidPartsInStorage(oldSubLoan)
         );
     }
@@ -1170,8 +1168,6 @@ contract LendingMarketV2 is
             _packRepaidParts(newSubLoan),
             _packDiscountParts(newSubLoan),
             _packTrackedParts(newSubLoan),
-            newDiscountSumAmount,
-            oldDiscountSumAmount,
             _packDiscountPartsInStorage(oldSubLoan)
         );
     }
@@ -1189,10 +1185,6 @@ contract LendingMarketV2 is
             emit SubLoanInterestRateRemuneratoryUpdated(
                 newSubLoan.id,
                 newSubLoan.borrower,
-                _packMainParameters(newSubLoan),
-                _packRepaidParts(newSubLoan),
-                _packDiscountParts(newSubLoan),
-                _packTrackedParts(newSubLoan),
                 newValue,
                 oldValue
             );
@@ -1204,10 +1196,6 @@ contract LendingMarketV2 is
             emit SubLoanInterestRateMoratoryUpdated(
                 newSubLoan.id,
                 newSubLoan.borrower,
-                _packMainParameters(newSubLoan),
-                _packRepaidParts(newSubLoan),
-                _packDiscountParts(newSubLoan),
-                _packTrackedParts(newSubLoan),
                 newValue,
                 oldValue
             );
@@ -1219,10 +1207,6 @@ contract LendingMarketV2 is
             emit SubLoanLateFeeRateUpdated(
                 newSubLoan.id,
                 newSubLoan.borrower,
-                _packMainParameters(newSubLoan),
-                _packRepaidParts(newSubLoan),
-                _packDiscountParts(newSubLoan),
-                _packTrackedParts(newSubLoan),
                 newValue,
                 oldValue
             );
@@ -1234,10 +1218,6 @@ contract LendingMarketV2 is
             emit SubLoanDurationUpdated(
                 newSubLoan.id,
                 newSubLoan.borrower,
-                _packMainParameters(newSubLoan),
-                _packRepaidParts(newSubLoan),
-                _packDiscountParts(newSubLoan),
-                _packTrackedParts(newSubLoan),
                 newValue,
                 oldValue
             );
@@ -1247,20 +1227,12 @@ contract LendingMarketV2 is
             if (newSubLoan.freezeTimestamp != 0) {
                 emit SubLoanFrozen(
                     newSubLoan.id,
-                    newSubLoan.borrower,
-                    _packMainParameters(newSubLoan),
-                    _packRepaidParts(newSubLoan),
-                    _packDiscountParts(newSubLoan),
-                    _packTrackedParts(newSubLoan)
+                    newSubLoan.borrower
                 );
             } else {
                 emit SubLoanUnfrozen(
                     newSubLoan.id,
-                    newSubLoan.borrower,
-                    _packMainParameters(newSubLoan),
-                    _packRepaidParts(newSubLoan),
-                    _packDiscountParts(newSubLoan),
-                    _packTrackedParts(newSubLoan)
+                    newSubLoan.borrower
                 );
             }
         }
@@ -1285,10 +1257,7 @@ contract LendingMarketV2 is
 
             emit SubLoanRevoked(
                 newSubLoan.id,
-                newSubLoan.borrower,
-                _packMainParameters(newSubLoan),
-                _packRepaidParts(newSubLoan),
-                _packDiscountParts(newSubLoan)
+                newSubLoan.borrower
             );
         }
     }
