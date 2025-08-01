@@ -303,9 +303,6 @@ interface ILendingMarketPrimaryV2 {
         bytes32 packedDiscountParts
     );
 
-
-    // TODO: We don't have any events for individual sub-loan value changes. Ask what we need to add.
-
     /**
      * @dev TODO
      */
