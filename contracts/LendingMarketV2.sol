@@ -1115,42 +1115,38 @@ contract LendingMarketV2 is
         LoanV2.ProcessingSubLoan memory newSubLoan,
         LoanV2.SubLoan storage oldSubLoan
     ) internal {
-        uint256 oldRepaidAmount = _calculateRepaidAmountInStorage(oldSubLoan);
-        uint256 newRepaidAmount = _calculateRepaidAmount(newSubLoan);
-        int256 repaidAmountChange = int256(newRepaidAmount) - int256(oldRepaidAmount);
-        if (repaidAmountChange == 0) {
+        uint256 oldRepaidSumAmount = _calculateRepaidAmountInStorage(oldSubLoan);
+        uint256 newRepaidSumAmount = _calculateRepaidAmount(newSubLoan);
+        if (newRepaidSumAmount == oldRepaidSumAmount) {
             return;
         }
         (, address liquidityPool) = _getCreditLineAndLiquidityPool(newSubLoan.programId);
         address token = _getLendingMarketStorage().token;
         address counterparty = newSubLoan.counterparty;
-        if (repaidAmountChange > 0) {
-            ILiquidityPool(liquidityPool).onAfterLoanRepaymentUndoing(newSubLoan.id, uint256(repaidAmountChange));
+        if (newRepaidSumAmount > oldRepaidSumAmount) {
+            uint256 repaymentChange = newRepaidSumAmount - oldRepaidSumAmount;
+            ILiquidityPool(liquidityPool).onAfterLoanRepaymentUndoing(newSubLoan.id, repaymentChange);
             if (counterparty != address(0)) {
-                IERC20(token).safeTransferFrom(liquidityPool, counterparty, uint256(repaidAmountChange));
+                IERC20(token).safeTransferFrom(liquidityPool, counterparty, repaymentChange);
             }
         } else {
-            ILiquidityPool(liquidityPool).onAfterLoanPayment(newSubLoan.id, uint256(-repaidAmountChange));
+            uint256 repaymentChange = oldRepaidSumAmount - newRepaidSumAmount;
+            ILiquidityPool(liquidityPool).onAfterLoanPayment(newSubLoan.id, repaymentChange);
             if (counterparty != address(0)) {
-                IERC20(token).safeTransferFrom(counterparty, liquidityPool, uint256(-repaidAmountChange));
+                IERC20(token).safeTransferFrom(counterparty, liquidityPool, repaymentChange);
             }
         }
 
-        bytes32 oldPackedRepaidAmounts = _packAmounts(
-            oldSubLoan.repaidPrincipal,
-            oldSubLoan.repaidInterestRemuneratory,
-            oldSubLoan.repaidInterestMoratory,
-            oldSubLoan.repaidLateFee
-        );
         emit SubLoanRepaymentUpdated(
             newSubLoan.id,
             newSubLoan.borrower,
-            _calculateSubLoanPackedMainParameters(newSubLoan),
-            _calculateSubLoanPackedRepaidAmounts(newSubLoan),
-            _calculateSubLoanPackedDiscountAmounts(newSubLoan),
-            _calculateSubLoanPackedTrackedAmounts(newSubLoan),
-            repaidAmountChange,
-            oldPackedRepaidAmounts
+            _packMainParameters(newSubLoan),
+            _packRepaidParts(newSubLoan),
+            _packDiscountParts(newSubLoan),
+            _packTrackedParts(newSubLoan),
+            newRepaidSumAmount,
+            oldRepaidSumAmount,
+            _packedRepaidPartsInStorage(oldSubLoan)
         );
     }
 
@@ -1161,27 +1157,22 @@ contract LendingMarketV2 is
         LoanV2.ProcessingSubLoan memory newSubLoan,
         LoanV2.SubLoan storage oldSubLoan
     ) internal {
-        uint256 oldDiscountAmount = _calculateDiscountAmountInStorage(oldSubLoan);
-        uint256 newDiscountAmount = _calculateDiscountAmount(newSubLoan);
-        int256 discountAmountChange = int256(newDiscountAmount) - int256(oldDiscountAmount);
-        if (discountAmountChange == 0) {
+        uint256 oldDiscountSumAmount = _calculateDiscountAmountInStorage(oldSubLoan);
+        uint256 newDiscountSumAmount = _calculateDiscountAmount(newSubLoan);
+        if (newDiscountSumAmount == oldDiscountSumAmount) {
             return;
         }
 
         emit SubLoanDiscountUpdated(
             newSubLoan.id,
             newSubLoan.borrower,
-            _calculateSubLoanPackedMainParameters(newSubLoan),
-            _calculateSubLoanPackedRepaidAmounts(newSubLoan),
-            _calculateSubLoanPackedDiscountAmounts(newSubLoan),
-            _calculateSubLoanPackedTrackedAmounts(newSubLoan),
-            discountAmountChange,
-            _packAmounts(
-                oldSubLoan.discountPrincipal,
-                oldSubLoan.discountInterestRemuneratory,
-                oldSubLoan.discountInterestMoratory,
-                oldSubLoan.discountLateFee
-            )
+            _packMainParameters(newSubLoan),
+            _packRepaidParts(newSubLoan),
+            _packDiscountParts(newSubLoan),
+            _packTrackedParts(newSubLoan),
+            newDiscountSumAmount,
+            oldDiscountSumAmount,
+            _packDiscountPartsInStorage(oldSubLoan)
         );
     }
 
@@ -1192,55 +1183,63 @@ contract LendingMarketV2 is
         LoanV2.ProcessingSubLoan memory newSubLoan,
         LoanV2.SubLoan storage oldSubLoan
     ) internal {
-        int256 change = int256(newSubLoan.interestRateRemuneratory) - int256(uint256(oldSubLoan.interestRateRemuneratory));
-        if (change != 0) {
+        uint256 newValue = newSubLoan.interestRateRemuneratory;
+        uint256 oldValue = uint256(oldSubLoan.interestRateRemuneratory);
+        if (newValue == oldValue) {
             emit SubLoanInterestRateRemuneratoryUpdated(
                 newSubLoan.id,
                 newSubLoan.borrower,
-                _calculateSubLoanPackedMainParameters(newSubLoan),
-                _calculateSubLoanPackedRepaidAmounts(newSubLoan),
-                _calculateSubLoanPackedDiscountAmounts(newSubLoan),
-                _calculateSubLoanPackedTrackedAmounts(newSubLoan),
-                change
+                _packMainParameters(newSubLoan),
+                _packRepaidParts(newSubLoan),
+                _packDiscountParts(newSubLoan),
+                _packTrackedParts(newSubLoan),
+                newValue,
+                oldValue
             );
         }
 
-        change = int256(newSubLoan.interestRateMoratory) - int256(uint256(oldSubLoan.interestRateMoratory));
-        if (change != 0) {
+        newValue = newSubLoan.interestRateMoratory;
+        oldValue = uint256(oldSubLoan.interestRateMoratory);
+        if (newValue == oldValue) {
             emit SubLoanInterestRateMoratoryUpdated(
                 newSubLoan.id,
                 newSubLoan.borrower,
-                _calculateSubLoanPackedMainParameters(newSubLoan),
-                _calculateSubLoanPackedRepaidAmounts(newSubLoan),
-                _calculateSubLoanPackedDiscountAmounts(newSubLoan),
-                _calculateSubLoanPackedTrackedAmounts(newSubLoan),
-                change
+                _packMainParameters(newSubLoan),
+                _packRepaidParts(newSubLoan),
+                _packDiscountParts(newSubLoan),
+                _packTrackedParts(newSubLoan),
+                newValue,
+                oldValue
             );
         }
 
-        change = int256(newSubLoan.lateFeeRate) - int256(uint256(oldSubLoan.lateFeeRate));
-        if (change != 0) {
+        newValue = newSubLoan.lateFeeRate;
+        oldValue = uint256(oldSubLoan.lateFeeRate);
+        if (newValue == oldValue) {
             emit SubLoanLateFeeRateUpdated(
                 newSubLoan.id,
                 newSubLoan.borrower,
-                _calculateSubLoanPackedMainParameters(newSubLoan),
-                _calculateSubLoanPackedRepaidAmounts(newSubLoan),
-                _calculateSubLoanPackedDiscountAmounts(newSubLoan),
-                _calculateSubLoanPackedTrackedAmounts(newSubLoan),
-                change
+                _packMainParameters(newSubLoan),
+                _packRepaidParts(newSubLoan),
+                _packDiscountParts(newSubLoan),
+                _packTrackedParts(newSubLoan),
+                newValue,
+                oldValue
             );
         }
 
-        change = int256(newSubLoan.duration) - int256(uint256(oldSubLoan.duration));
-        if (change != 0) {
+        newValue = newSubLoan.duration;
+        oldValue = uint256(oldSubLoan.duration);
+        if (newValue == oldValue) {
             emit SubLoanDurationUpdated(
                 newSubLoan.id,
                 newSubLoan.borrower,
-                _calculateSubLoanPackedMainParameters(newSubLoan),
-                _calculateSubLoanPackedRepaidAmounts(newSubLoan),
-                _calculateSubLoanPackedDiscountAmounts(newSubLoan),
-                _calculateSubLoanPackedTrackedAmounts(newSubLoan),
-                change
+                _packMainParameters(newSubLoan),
+                _packRepaidParts(newSubLoan),
+                _packDiscountParts(newSubLoan),
+                _packTrackedParts(newSubLoan),
+                newValue,
+                oldValue
             );
         }
 
@@ -1249,19 +1248,19 @@ contract LendingMarketV2 is
                 emit SubLoanFrozen(
                     newSubLoan.id,
                     newSubLoan.borrower,
-                    _calculateSubLoanPackedMainParameters(newSubLoan),
-                    _calculateSubLoanPackedRepaidAmounts(newSubLoan),
-                    _calculateSubLoanPackedDiscountAmounts(newSubLoan),
-                    _calculateSubLoanPackedTrackedAmounts(newSubLoan)
+                    _packMainParameters(newSubLoan),
+                    _packRepaidParts(newSubLoan),
+                    _packDiscountParts(newSubLoan),
+                    _packTrackedParts(newSubLoan)
                 );
             } else {
                 emit SubLoanUnfrozen(
                     newSubLoan.id,
                     newSubLoan.borrower,
-                    _calculateSubLoanPackedMainParameters(newSubLoan),
-                    _calculateSubLoanPackedRepaidAmounts(newSubLoan),
-                    _calculateSubLoanPackedDiscountAmounts(newSubLoan),
-                    _calculateSubLoanPackedTrackedAmounts(newSubLoan)
+                    _packMainParameters(newSubLoan),
+                    _packRepaidParts(newSubLoan),
+                    _packDiscountParts(newSubLoan),
+                    _packTrackedParts(newSubLoan)
                 );
             }
         }
@@ -1287,9 +1286,9 @@ contract LendingMarketV2 is
             emit SubLoanRevoked(
                 newSubLoan.id,
                 newSubLoan.borrower,
-                _calculateSubLoanPackedMainParameters(newSubLoan),
-                _calculateSubLoanPackedRepaidAmounts(newSubLoan),
-                _calculateSubLoanPackedDiscountAmounts(newSubLoan)
+                _packMainParameters(newSubLoan),
+                _packRepaidParts(newSubLoan),
+                _packDiscountParts(newSubLoan)
             );
         }
     }
@@ -1393,70 +1392,6 @@ contract LendingMarketV2 is
             ++result;
         }
         subLoan.trackedLateFee = uint64(_roundMath(result)); // Safe cast due to prior checks
-    }
-
-    /**
-     * @dev TODO
-     */
-    function _calculateSubLoanPackedMainParameters(LoanV2.ProcessingSubLoan memory subLoan) internal pure returns (bytes32) {
-        return bytes32(
-            (subLoan.status & type(uint8).max) +
-            // skip 8 bits
-            ((subLoan.duration & type(uint16).max) << 16) +
-            ((subLoan.interestRateRemuneratory & type(uint32).max) << 32) +
-            ((subLoan.interestRateMoratory & type(uint32).max) << 64) +
-            ((subLoan.lateFeeRate & type(uint32).max) << 96) +
-            ((subLoan.trackedTimestamp & type(uint32).max) << 128) +
-            ((subLoan.freezeTimestamp & type(uint32).max) << 160)
-        );
-    }
-
-    /**
-     * @dev TODO
-     */
-    function _packAmounts(uint256 amount1, uint256 amount2, uint256 amount3, uint256 amount4) internal pure returns (bytes32) {
-        return bytes32(
-            (amount1 & type(uint64).max) +
-            ((amount2 & type(uint64).max) << 64) +
-            ((amount3 & type(uint64).max) << 128) +
-            ((amount4 & type(uint64).max) << 192)
-        );
-    }
-
-    /**
-     * @dev TODO
-     */
-    function _calculateSubLoanPackedRepaidAmounts(LoanV2.ProcessingSubLoan memory subLoan) internal pure returns (bytes32) {
-        return _packAmounts(
-            subLoan.repaidPrincipal,
-            subLoan.repaidInterestRemuneratory,
-            subLoan.repaidInterestMoratory,
-            subLoan.repaidLateFee
-        );
-    }
-
-    /**
-     * @dev TODO
-     */
-    function _calculateSubLoanPackedDiscountAmounts(LoanV2.ProcessingSubLoan memory subLoan) internal pure returns (bytes32) {
-        return _packAmounts(
-            subLoan.discountPrincipal,
-            subLoan.discountInterestRemuneratory,
-            subLoan.discountInterestMoratory,
-            subLoan.discountLateFee
-        );
-    }
-
-    /**
-     * @dev TODO
-     */
-    function _calculateSubLoanPackedTrackedAmounts(LoanV2.ProcessingSubLoan memory subLoan) internal pure returns (bytes32) {
-        return _packAmounts(
-            subLoan.trackedPrincipal,
-            subLoan.trackedInterestRemuneratory,
-            subLoan.trackedInterestMoratory,
-            subLoan.trackedLateFee
-        );
     }
 
     /**
@@ -1870,6 +1805,118 @@ contract LendingMarketV2 is
         preview.day = singleLoanPreview.day;
 
         return preview;
+    }
+
+    /**
+     * @dev TODO
+     * 
+     * The packed main parameters of a sub-loan is a bitfield with the following bits:
+     * 
+     * - 8 bits from 0 to 7: the sub-loan status.
+     * - 8 bits from 8 to 15: reserved.
+     * - 16 bits from 16 to 31: the sub-loan duration.
+     * - 32 bits from 32 to 63: the remuneratory interest rate.
+     * - 32 bits from 64 to 95: the moratory interest rate.
+     * - 32 bits from 96 to 127: the late fee rate.
+     * - 32 bits from 128 to 159: the tracked timestamp.
+     * - 32 bits from 160 to 191: the freeze timestamp.
+     * - 40 bits from 192 to 231: the first sub-loan ID.
+     * - 16 bits from 232 to 247: the sub-loan count.
+     */
+    function _packMainParameters(LoanV2.ProcessingSubLoan memory subLoan) internal view returns (bytes32) {
+        LoanV2.SubLoan storage subLoanStored = _getSubLoanInStorage(subLoan.id);
+
+        return bytes32(
+            (subLoan.status & type(uint8).max) +
+            // skip 8 bits
+            ((subLoan.duration & type(uint16).max) << 16) +
+            ((subLoan.interestRateRemuneratory & type(uint32).max) << 32) +
+            ((subLoan.interestRateMoratory & type(uint32).max) << 64) +
+            ((subLoan.lateFeeRate & type(uint32).max) << 96) +
+            ((subLoan.trackedTimestamp & type(uint32).max) << 128) +
+            ((subLoan.freezeTimestamp & type(uint32).max) << 160) +
+            ((subLoanStored.firstSubLoanId) << 192) +
+            ((subLoanStored.subLoanCount) << 232)
+        );
+    }
+
+    /**
+     * @dev TODO
+     * 
+     * The packed amount parts of a sub-loan is a bitfield with the following bits:
+     * 
+     * - 64 bits from 0 to 63: the principal.
+     * - 64 bits from 64 to 127: the remuneratory interest.
+     * - 64 bits from 128 to 191: the moratory interest.
+     * - 64 bits from 192 to 255: the late fee.
+     */
+    function _packAmountParts(uint256 part1, uint256 part2, uint256 part3, uint256 part4) internal pure returns (bytes32) {
+        return bytes32(
+            (part1 & type(uint64).max) +
+            ((part2 & type(uint64).max) << 64) +
+            ((part3 & type(uint64).max) << 128) +
+            ((part4 & type(uint64).max) << 192)
+        );
+    }
+
+    /**
+     * @dev TODO
+     */
+    function _packRepaidParts(LoanV2.ProcessingSubLoan memory subLoan) internal pure returns (bytes32) {
+        return _packAmountParts(
+            subLoan.repaidPrincipal,
+            subLoan.repaidInterestRemuneratory,
+            subLoan.repaidInterestMoratory,
+            subLoan.repaidLateFee
+        );
+    }
+
+    /**
+     * @dev TODO
+     */
+    function _packedRepaidPartsInStorage(LoanV2.SubLoan storage subLoan) internal view returns (bytes32) {
+        return _packAmountParts(
+            subLoan.repaidPrincipal,
+            subLoan.repaidInterestRemuneratory,
+            subLoan.repaidInterestMoratory,
+            subLoan.repaidLateFee
+        );
+    }
+
+    /**
+     * @dev TODO
+     */
+    function _packDiscountParts(LoanV2.ProcessingSubLoan memory subLoan) internal pure returns (bytes32) {
+        return _packAmountParts(
+            subLoan.discountPrincipal,
+            subLoan.discountInterestRemuneratory,
+            subLoan.discountInterestMoratory,
+            subLoan.discountLateFee
+        );
+    }
+
+    /**
+     * @dev TODO
+     */
+    function _packDiscountPartsInStorage(LoanV2.SubLoan storage subLoan) internal view returns (bytes32) {
+        return _packAmountParts(
+            subLoan.discountPrincipal,
+            subLoan.discountInterestRemuneratory,
+            subLoan.discountInterestMoratory,
+            subLoan.discountLateFee
+        );
+    }
+
+    /**
+     * @dev TODO
+     */
+    function _packTrackedParts(LoanV2.ProcessingSubLoan memory subLoan) internal pure returns (bytes32) {
+        return _packAmountParts(
+            subLoan.trackedPrincipal,
+            subLoan.trackedInterestRemuneratory,
+            subLoan.trackedInterestMoratory,
+            subLoan.trackedLateFee
+        );
     }
 
     /**
