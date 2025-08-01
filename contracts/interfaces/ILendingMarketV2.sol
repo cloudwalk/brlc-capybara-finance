@@ -111,6 +111,8 @@ interface ILendingMarketPrimaryV2 {
         bytes32 oldPackedRepaidParts
     );
 
+    // TODO: Ask other teams, maybe the packed fields are redundant in the events, and can be remove.
+
     /**
      * @dev Emitted when the discount amount of a sub-loan is updated.
      * 
