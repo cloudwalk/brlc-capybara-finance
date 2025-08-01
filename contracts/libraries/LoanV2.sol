@@ -97,10 +97,10 @@ library LoanV2 {
 
         // Slot3
         SubLoanStatus status;
+        uint16 duration;
         uint32 interestRateRemuneratory;
         uint32 interestRateMoratory;
         uint32 lateFeeRate;
-        uint16 duration;
         uint32 trackedTimestamp;
         uint32 freezeTimestamp;
         uint64 __reserved;
@@ -150,6 +150,7 @@ library LoanV2 {
         uint256 repaidInterestRemuneratory;
         uint256 repaidInterestMoratory;
         uint256 repaidLateFee;
+        uint256 discountPrincipal;
         uint256 discountInterestRemuneratory;
         uint256 discountInterestMoratory;
         uint256 discountLateFee;
@@ -169,7 +170,8 @@ library LoanV2 {
         uint16 prevOperationId;
         uint32 timestamp;
         uint64 parameter;
-        // uint112 __reserved; // Reserved until the end of the storage slot
+        uint64 appliedValue;
+        // uint48 __reserved; // Reserved until the end of the storage slot
 
         // Slot2
         address account;
@@ -186,24 +188,35 @@ library LoanV2 {
         uint256 kind;
         uint256 timestamp;
         uint256 parameter;
+        uint256 appliedValue;
         address account;
     }
 
     /**
      * @dev TODO
      */
-    struct AddedOperation {
+    struct VoidOperationRequest {
+        uint256 subLoanId;
+        uint256 operationId;
+        address counterparty;
+    }
+
+    /**
+     * @dev TODO
+     */
+    struct AddedOperationRequest {
+        uint256 subLoanId;
         uint256 kind;
         uint256 timestamp;
         uint256 parameter;
-        address account;
+        uint256 account;
     }
 
     /**
      * @dev TODO
      */
     struct OperationalState {
-        // Slot 1
+        // Slot 1*
         uint16 operationCount;
         uint16 earliestOperationId;
         uint16 latestOperationId;
