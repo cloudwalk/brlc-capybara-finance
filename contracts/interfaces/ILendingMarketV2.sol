@@ -30,9 +30,8 @@ interface ILendingMarketPrimaryV2 {
         uint256 indexed programId,
         uint256 borrowedAmount,
         uint256 addonAmount,
-        uint256 duration,
+        uint256 duration
         // TODO: Ask if more parameters are needed: rates, etc.
-        bytes addendum
     );
 
     /**
@@ -50,8 +49,7 @@ interface ILendingMarketPrimaryV2 {
         uint256 indexed programId,
         uint256 totalBorrowedAmount,
         uint256 totalAddonAmount,
-        uint256 subLoanCount,
-        bytes addendum
+        uint256 subLoanCount
     );
 
     /**
@@ -63,8 +61,7 @@ interface ILendingMarketPrimaryV2 {
     event LoanRevoked(
         uint256 indexed firstSubLoanId, // Tools: this comment prevents Prettier from formatting into a single line.
         address indexed borrower,
-        uint256 subLoanCount,
-        bytes addendum
+        uint256 subLoanCount
     );
 
     /**
@@ -77,7 +74,6 @@ interface ILendingMarketPrimaryV2 {
      * @param packedTrackedAmounts The packed tracked amounts of the sub-loan.
      * @param repaidAmountChange The change in the repaid amount.
      * @param oldPackedRepaidAmounts The old packed repaid amounts of the sub-loan.
-     * @param addendum The possible additional information. Empty for now.
      */
     event SubLoanRepaymentUpdated (
         uint256 indexed subLoanId,
@@ -87,8 +83,7 @@ interface ILendingMarketPrimaryV2 {
         bytes32 packedDiscountAmounts,
         bytes32 packedTrackedAmounts,
         int256 repaidAmountChange,
-        bytes32 oldPackedRepaidAmounts,
-        bytes addendum
+        bytes32 oldPackedRepaidAmounts
     );
 
     /**
@@ -101,7 +96,6 @@ interface ILendingMarketPrimaryV2 {
      * @param packedTrackedAmounts The packed tracked amounts of the sub-loan.
      * @param discountAmountChange The change in the discount amount.    
      * @param oldPackedDiscountAmounts The old packed discount amounts of the sub-loan.
-     * @param addendum The possible additional information. Empty for now.
      */
     event SubLoanDiscountUpdated (
         uint256 indexed subLoanId,
@@ -111,8 +105,7 @@ interface ILendingMarketPrimaryV2 {
         bytes32 packedDiscountAmounts,        
         bytes32 packedTrackedAmounts,
         int256 discountAmountChange,
-        bytes32 oldPackedDiscountAmounts,
-        bytes addendum
+        bytes32 oldPackedDiscountAmounts
     );
 
     /**
@@ -124,7 +117,6 @@ interface ILendingMarketPrimaryV2 {
      * @param packedDiscountAmounts The packed discount amounts of the sub-loan.
      * @param packedTrackedAmounts The packed tracked amounts of the sub-loan.
      * @param rateChange The change in the remuneratory interest rate.
-     * @param addendum The possible additional information. Empty for now.
      */
     event SubLoanInterestRateRemuneratoryUpdated(
         uint256 indexed subLoanId,
@@ -133,8 +125,7 @@ interface ILendingMarketPrimaryV2 {
         bytes32 packedRepaidAmounts,
         bytes32 packedDiscountAmounts,
         bytes32 packedTrackedAmounts,
-        int256 rateChange,
-        bytes addendum
+        int256 rateChange
     );
 
     /**
@@ -146,7 +137,6 @@ interface ILendingMarketPrimaryV2 {
      * @param packedDiscountAmounts The packed discount amounts of the sub-loan.
      * @param packedTrackedAmounts The packed tracked amounts of the sub-loan.
      * @param rateChange The change in the moratory interest rate.
-     * @param addendum The possible additional information. Empty for now.
      */
     event SubLoanInterestRateMoratoryUpdated(
         uint256 indexed subLoanId,
@@ -155,8 +145,7 @@ interface ILendingMarketPrimaryV2 {
         bytes32 packedRepaidAmounts,
         bytes32 packedDiscountAmounts,
         bytes32 packedTrackedAmounts,
-        int256 rateChange,
-        bytes addendum
+        int256 rateChange
     );
 
     /**
@@ -168,7 +157,6 @@ interface ILendingMarketPrimaryV2 {
      * @param packedDiscountAmounts The packed discount amounts of the sub-loan.
      * @param packedTrackedAmounts The packed tracked amounts of the sub-loan.
      * @param rateChange The change in the late fee rate.
-     * @param addendum The possible additional information. Empty for now.
      */
     event SubLoanLateFeeRateUpdated(
         uint256 indexed subLoanId,
@@ -177,8 +165,7 @@ interface ILendingMarketPrimaryV2 {
         bytes32 packedRepaidAmounts,
         bytes32 packedDiscountAmounts,
         bytes32 packedTrackedAmounts,
-        int256 rateChange,
-        bytes addendum
+        int256 rateChange
     );
 
     /**
@@ -190,7 +177,6 @@ interface ILendingMarketPrimaryV2 {
      * @param packedDiscountAmounts The packed discount amounts of the sub-loan.
      * @param packedTrackedAmounts The packed tracked amounts of the sub-loan.
      * @param durationChange The change in the duration.
-     * @param addendum The possible additional information. Empty for now.
      */
     event SubLoanDurationUpdated(
         uint256 indexed subLoanId,
@@ -199,8 +185,7 @@ interface ILendingMarketPrimaryV2 {
         bytes32 packedRepaidAmounts,
         bytes32 packedDiscountAmounts,
         bytes32 packedTrackedAmounts,
-        int256 durationChange,
-        bytes addendum
+        int256 durationChange
     );
 
     /**
@@ -211,7 +196,6 @@ interface ILendingMarketPrimaryV2 {
      * @param packedRepaidAmounts The packed repaid amounts of the sub-loan.
      * @param packedDiscountAmounts The packed discount amounts of the sub-loan.
      * @param packedTrackedAmounts The packed tracked amounts of the sub-loan.
-     * @param addendum The possible additional information. Empty for now.
      */
     event SubLoanFrozen(
         uint256 indexed subLoanId,
@@ -219,8 +203,7 @@ interface ILendingMarketPrimaryV2 {
         bytes32 packedMainParameters,
         bytes32 packedRepaidAmounts,
         bytes32 packedDiscountAmounts,
-        bytes32 packedTrackedAmounts,
-        bytes addendum
+        bytes32 packedTrackedAmounts
     );
 
     /**
@@ -231,7 +214,6 @@ interface ILendingMarketPrimaryV2 {
      * @param packedRepaidAmounts The packed repaid amounts of the sub-loan.
      * @param packedDiscountAmounts The packed discount amounts of the sub-loan.
      * @param packedTrackedAmounts The packed tracked amounts of the sub-loan.
-     * @param addendum The possible additional information. Empty for now.
      */
     event SubLoanUnfrozen(
         uint256 indexed subLoanId,
@@ -239,8 +221,7 @@ interface ILendingMarketPrimaryV2 {
         bytes32 packedMainParameters,
         bytes32 packedRepaidAmounts,
         bytes32 packedDiscountAmounts,
-        bytes32 packedTrackedAmounts,
-        bytes addendum
+        bytes32 packedTrackedAmounts
     );
 
     /**
@@ -253,15 +234,13 @@ interface ILendingMarketPrimaryV2 {
      * @param packedMainParameters The packed main parameters of the sub-loan.
      * @param packedRepaidAmounts The packed repaid amounts of the sub-loan.
      * @param packedDiscountAmounts The packed discount amounts of the sub-loan.
-     * @param addendum The possible additional information. Empty for now.
      */
     event SubLoanRevoked(
         uint256 indexed subLoanId,
         address indexed borrower,
         bytes32 packedMainParameters,
         bytes32 packedRepaidAmounts,
-        bytes32 packedDiscountAmounts,
-        bytes addendum
+        bytes32 packedDiscountAmounts
     );
 
 
@@ -276,8 +255,7 @@ interface ILendingMarketPrimaryV2 {
         uint256 indexed kind,
         uint256 timestamp,
         uint256 parameter, //TODO: consider another name, same for similar events
-        address account, //TODO: consider another name, same for similar events
-        bytes addendum
+        address account //TODO: consider another name, same for similar events
     );
 
     /**
@@ -290,8 +268,7 @@ interface ILendingMarketPrimaryV2 {
         uint256 timestamp,
         uint256 parameter,
         address account,
-        uint256 appliedValue,
-        bytes addendum
+        uint256 appliedValue
     );
 
     /**
@@ -305,8 +282,7 @@ interface ILendingMarketPrimaryV2 {
         uint256 parameter,
         address counterparty,
         uint256 appliedValue,
-        uint256 previousStatus,
-        bytes addendum
+        uint256 previousStatus
     );
 
     // TODO: add more events if needed

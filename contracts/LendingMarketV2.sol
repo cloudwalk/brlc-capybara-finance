@@ -173,8 +173,7 @@ contract LendingMarketV2 is
             programId,
             subLoanCount,
             totalBorrowedAmount,
-            totalAddonAmount,
-            "" // addendum
+            totalAddonAmount
         );
 
         _transferTokensOnLoanTaking(firstSubLoanId, totalBorrowedAmount, totalAddonAmount);
@@ -236,8 +235,7 @@ contract LendingMarketV2 is
         emit LoanRevoked(
             firstSubLoanId,
             subLoan.borrower,
-            subLoanCount,
-            "" // addendum
+            subLoanCount
         );
 
         LoanV2.LoanPreview memory loanPreview = _getLoanPreview(firstSubLoanId, 0);
@@ -423,8 +421,7 @@ contract LendingMarketV2 is
             programId,
             borrowedAmount,
             addonAmount,
-            terms.duration,
-            "" //
+            terms.duration
         );
 
         return id;
@@ -545,8 +542,7 @@ contract LendingMarketV2 is
                 kind,
                 timestamp,
                 parameter,
-                account,
-                "" // addendum
+                account
             );
         }
 
@@ -577,8 +573,7 @@ contract LendingMarketV2 is
             operation.parameter,
             counterparty,
             operation.appliedValue,
-            previousStatus,
-            "" // addendum
+            previousStatus
         );
     }
 
@@ -1109,8 +1104,7 @@ contract LendingMarketV2 is
             operation.timestamp,
             operation.parameter,
             operation.account,
-            operation.appliedValue,
-            "" // addendum
+            operation.appliedValue
         );
     }
 
@@ -1156,8 +1150,7 @@ contract LendingMarketV2 is
             _calculateSubLoanPackedDiscountAmounts(newSubLoan),
             _calculateSubLoanPackedTrackedAmounts(newSubLoan),
             repaidAmountChange,
-            oldPackedRepaidAmounts,
-            "" // addendum
+            oldPackedRepaidAmounts
         );
     }
 
@@ -1188,8 +1181,7 @@ contract LendingMarketV2 is
                 oldSubLoan.discountInterestRemuneratory,
                 oldSubLoan.discountInterestMoratory,
                 oldSubLoan.discountLateFee
-            ),
-            "" // addendum
+            )
         );
     }
 
@@ -1209,8 +1201,7 @@ contract LendingMarketV2 is
                 _calculateSubLoanPackedRepaidAmounts(newSubLoan),
                 _calculateSubLoanPackedDiscountAmounts(newSubLoan),
                 _calculateSubLoanPackedTrackedAmounts(newSubLoan),
-                change,
-                "" // addendum
+                change
             );
         }
 
@@ -1223,8 +1214,7 @@ contract LendingMarketV2 is
                 _calculateSubLoanPackedRepaidAmounts(newSubLoan),
                 _calculateSubLoanPackedDiscountAmounts(newSubLoan),
                 _calculateSubLoanPackedTrackedAmounts(newSubLoan),
-                change,
-                "" // addendum
+                change
             );
         }
 
@@ -1237,8 +1227,7 @@ contract LendingMarketV2 is
                 _calculateSubLoanPackedRepaidAmounts(newSubLoan),
                 _calculateSubLoanPackedDiscountAmounts(newSubLoan),
                 _calculateSubLoanPackedTrackedAmounts(newSubLoan),
-                change,
-                "" // addendum
+                change
             );
         }
 
@@ -1251,8 +1240,7 @@ contract LendingMarketV2 is
                 _calculateSubLoanPackedRepaidAmounts(newSubLoan),
                 _calculateSubLoanPackedDiscountAmounts(newSubLoan),
                 _calculateSubLoanPackedTrackedAmounts(newSubLoan),
-                change,
-                "" // addendum
+                change
             );
         }
 
@@ -1264,8 +1252,7 @@ contract LendingMarketV2 is
                     _calculateSubLoanPackedMainParameters(newSubLoan),
                     _calculateSubLoanPackedRepaidAmounts(newSubLoan),
                     _calculateSubLoanPackedDiscountAmounts(newSubLoan),
-                    _calculateSubLoanPackedTrackedAmounts(newSubLoan),
-                    "" // addendum
+                    _calculateSubLoanPackedTrackedAmounts(newSubLoan)
                 );
             } else {
                 emit SubLoanUnfrozen(
@@ -1274,8 +1261,7 @@ contract LendingMarketV2 is
                     _calculateSubLoanPackedMainParameters(newSubLoan),
                     _calculateSubLoanPackedRepaidAmounts(newSubLoan),
                     _calculateSubLoanPackedDiscountAmounts(newSubLoan),
-                    _calculateSubLoanPackedTrackedAmounts(newSubLoan),
-                    "" // addendum
+                    _calculateSubLoanPackedTrackedAmounts(newSubLoan)
                 );
             }
         }
@@ -1303,8 +1289,7 @@ contract LendingMarketV2 is
                 newSubLoan.borrower,
                 _calculateSubLoanPackedMainParameters(newSubLoan),
                 _calculateSubLoanPackedRepaidAmounts(newSubLoan),
-                _calculateSubLoanPackedDiscountAmounts(newSubLoan),
-                "" // addendum
+                _calculateSubLoanPackedDiscountAmounts(newSubLoan)
             );
         }
     }
