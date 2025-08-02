@@ -234,7 +234,6 @@ contract LendingMarketV2 is
 
         emit LoanRevoked(
             firstSubLoanId,
-            subLoan.borrower,
             subLoanCount
         );
 
@@ -421,7 +420,8 @@ contract LendingMarketV2 is
             programId,
             borrowedAmount,
             addonAmount,
-            terms.duration
+            terms.duration,
+            _packRates(terms)
         );
 
         return id;
@@ -1139,12 +1139,9 @@ contract LendingMarketV2 is
 
         emit SubLoanRepaymentUpdated(
             newSubLoan.id,
-            newSubLoan.borrower,
-            _packMainParameters(newSubLoan),
             _packRepaidParts(newSubLoan),
-            _packDiscountParts(newSubLoan),
-            _packTrackedParts(newSubLoan),
-            _packedRepaidPartsInStorage(oldSubLoan)
+            _packedRepaidPartsInStorage(oldSubLoan),
+            _packTrackedParts(newSubLoan)
         );
     }
 
@@ -1163,12 +1160,9 @@ contract LendingMarketV2 is
 
         emit SubLoanDiscountUpdated(
             newSubLoan.id,
-            newSubLoan.borrower,
-            _packMainParameters(newSubLoan),
-            _packRepaidParts(newSubLoan),
             _packDiscountParts(newSubLoan),
-            _packTrackedParts(newSubLoan),
-            _packDiscountPartsInStorage(oldSubLoan)
+            _packDiscountPartsInStorage(oldSubLoan),
+            _packTrackedParts(newSubLoan)
         );
     }
 
@@ -1184,7 +1178,6 @@ contract LendingMarketV2 is
         if (newValue == oldValue) {
             emit SubLoanInterestRateRemuneratoryUpdated(
                 newSubLoan.id,
-                newSubLoan.borrower,
                 newValue,
                 oldValue
             );
@@ -1195,7 +1188,6 @@ contract LendingMarketV2 is
         if (newValue == oldValue) {
             emit SubLoanInterestRateMoratoryUpdated(
                 newSubLoan.id,
-                newSubLoan.borrower,
                 newValue,
                 oldValue
             );
@@ -1206,7 +1198,6 @@ contract LendingMarketV2 is
         if (newValue == oldValue) {
             emit SubLoanLateFeeRateUpdated(
                 newSubLoan.id,
-                newSubLoan.borrower,
                 newValue,
                 oldValue
             );
@@ -1217,7 +1208,6 @@ contract LendingMarketV2 is
         if (newValue == oldValue) {
             emit SubLoanDurationUpdated(
                 newSubLoan.id,
-                newSubLoan.borrower,
                 newValue,
                 oldValue
             );
@@ -1225,15 +1215,9 @@ contract LendingMarketV2 is
 
         if (newSubLoan.freezeTimestamp != oldSubLoan.freezeTimestamp) {
             if (newSubLoan.freezeTimestamp != 0) {
-                emit SubLoanFrozen(
-                    newSubLoan.id,
-                    newSubLoan.borrower
-                );
+                emit SubLoanFrozen(newSubLoan.id);
             } else {
-                emit SubLoanUnfrozen(
-                    newSubLoan.id,
-                    newSubLoan.borrower
-                );
+                emit SubLoanUnfrozen(newSubLoan.id);
             }
         }
     }
@@ -1255,10 +1239,7 @@ contract LendingMarketV2 is
             ILiquidityPool(liquidityPool).onAfterLoanRevocation(newSubLoan.id);
             ICreditLine(creditLine).onAfterLoanRevocation(newSubLoan.id);
 
-            emit SubLoanRevoked(
-                newSubLoan.id,
-                newSubLoan.borrower
-            );
+            emit SubLoanRevoked(newSubLoan.id);
         }
     }
 
@@ -1778,34 +1759,18 @@ contract LendingMarketV2 is
 
     /**
      * @dev TODO
-     * 
-     * The packed main parameters of a sub-loan is a bitfield with the following bits:
-     * 
-     * - 8 bits from 0 to 7: the sub-loan status.
-     * - 8 bits from 8 to 15: reserved.
-     * - 16 bits from 16 to 31: the sub-loan duration.
-     * - 32 bits from 32 to 63: the remuneratory interest rate.
-     * - 32 bits from 64 to 95: the moratory interest rate.
-     * - 32 bits from 96 to 127: the late fee rate.
-     * - 32 bits from 128 to 159: the tracked timestamp.
-     * - 32 bits from 160 to 191: the freeze timestamp.
-     * - 40 bits from 192 to 231: the first sub-loan ID.
-     * - 16 bits from 232 to 247: the sub-loan count.
+     *
+     * The packed rates is a bitfield with the following bits:
+     *
+     * - 32 bits from 0 to 31: the remuneratory interest rate.
+     * - 32 bits from 32 to 63: the moratory interest rate.
+     * - 32 bits from 64 to 95: the late fee rate.
      */
-    function _packMainParameters(LoanV2.ProcessingSubLoan memory subLoan) internal view returns (bytes32) {
-        LoanV2.SubLoan storage subLoanStored = _getSubLoanInStorage(subLoan.id);
-
+    function _packRates(LoanV2.Terms memory terms) internal view returns (bytes32) {
         return bytes32(
-            (subLoan.status & type(uint8).max) +
-            // skip 8 bits
-            ((subLoan.duration & type(uint16).max) << 16) +
-            ((subLoan.interestRateRemuneratory & type(uint32).max) << 32) +
-            ((subLoan.interestRateMoratory & type(uint32).max) << 64) +
-            ((subLoan.lateFeeRate & type(uint32).max) << 96) +
-            ((subLoan.trackedTimestamp & type(uint32).max) << 128) +
-            ((subLoan.freezeTimestamp & type(uint32).max) << 160) +
-            ((subLoanStored.firstSubLoanId) << 192) +
-            ((subLoanStored.subLoanCount) << 232)
+            (terms.interestRateRemuneratory & type(uint32).max) +
+            ((terms.interestRateMoratory & type(uint32).max) << 32) +
+            ((terms.lateFeeRate & type(uint32).max) << 64)
         );
     }
 
