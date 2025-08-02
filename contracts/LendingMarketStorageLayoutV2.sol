@@ -49,7 +49,7 @@ abstract contract LendingMarketStorageLayoutV2 {
         mapping(uint256 subLoanId => LoanV2.SubLoan) subLoans;
         mapping(uint256 programId => address) programCreditLines;
         mapping(uint256 programId => address) programLiquidityPools;
-        mapping(uint256 subLoanId => LoanV2.OperationalState) subLoanOperationalStates;
+        mapping(uint256 subLoanId => mapping(uint256 operationId => LoanV2.Operation)) subLoanOperations;
     }
 
     // ------------------ Internal functions ---------------------- //
