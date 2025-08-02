@@ -27,7 +27,9 @@ library LoanV2 {
         Nonexistent,
         Pending,
         Applied,
-        Voided
+        Skipped, // TODO Unused, but need to reserve value 3 for future usage, because statuses >3 are voided
+        Canceled,
+        Revoked
     }
 
     /**

@@ -495,8 +495,7 @@ contract LendingMarketV2 is
         uint256 parameter,
         address account
     ) internal returns (uint256) {
-        _checkOperationParameter(kind, parameter);
-        _checkOperationAccount(kind, account);
+        _checkOperationParameters(kind, parameter, account);  // TODO: move to the calling function
         if (timestamp < subLoan.startTimestamp) {
             revert OperationTimestampTooEarly();
         }
@@ -559,22 +558,30 @@ contract LendingMarketV2 is
     ) internal returns (LoanV2.Operation storage operation){
         operation = _getExistingOperationInStorage(subLoanId, operationId);
         uint256 previousStatus = uint256(operation.status);
-        if (previousStatus == uint256(LoanV2.OperationStatus.Voided)) {
-            revert OperationVoidedAlready();
+        if (previousStatus == uint256(LoanV2.OperationStatus.Pending)) {
+            operation.status = LoanV2.OperationStatus.Canceled;
+
+            emit OperationCanceled(
+                subLoanId,
+                operationId,
+                operation.kind
+            );
+        } else if (previousStatus == uint256(LoanV2.OperationStatus.Applied)) {
+            operation.status = LoanV2.OperationStatus.Revoked;
+
+            emit OperationRevoked(
+                subLoanId,
+                operationId,
+                operation.kind,
+                counterparty
+            );
+        } else {
+            if (previousStatus == uint256(LoanV2.OperationStatus.Canceled)) {
+                revert OperationCanceledAlready();
+            } else {
+                revert OperationRevokedAlready();
+            }
         }
-
-        operation.status = LoanV2.OperationStatus.Voided;
-
-        emit OperationVoided(
-            subLoanId,
-            operationId,
-            operation.kind,
-            operation.timestamp,
-            operation.parameter,
-            counterparty,
-            operation.appliedValue,
-            LoanV2.OperationStatus(previousStatus)
-        );
     }
 
     /**
@@ -736,10 +743,8 @@ contract LendingMarketV2 is
         uint256 currentTimestamp
     ) internal pure {
         if (
-            operation.status == uint256(LoanV2.OperationStatus.Nonexistent) ||
-            operation.status == uint256(LoanV2.OperationStatus.Voided) ||
-            operation.kind == uint256(LoanV2.OperationKind.Nonexistent) ||
-            operation.kind > uint256(LoanV2.OperationKind.NonexistentLimit)
+            operation.status != uint256(LoanV2.OperationStatus.Pending) &&
+            operation.status != uint256(LoanV2.OperationStatus.Applied)
         ) {
             return;
         }
@@ -1405,33 +1410,22 @@ contract LendingMarketV2 is
     }
 
     /// TODO
-    function _checkOperationKind(uint256 kind) internal pure {
+    function _checkOperationParameters(
+        uint256 kind,
+        uint256 parameter,
+        address account
+    ) internal pure {
         if (
-            kind >= uint256(LoanV2.OperationKind.NonexistentLimit) ||
-            kind <= uint256(LoanV2.OperationKind.Nonexistent)
+            kind == uint256(LoanV2.OperationKind.Nonexistent) ||
+            kind >= uint256(LoanV2.OperationKind.NonexistentLimit)
         ) {
             revert OperationKindInvalid();
         }
+
         if (kind == uint256(LoanV2.OperationKind.Revocation)) {
             revert OperationKindUnacceptable();
         }
-    }
 
-    /// TODO
-    function _checkOperationAccount(uint256 kind, address account) internal pure {
-        if (kind == uint256(LoanV2.OperationKind.Repayment) && account == address(0)) {
-            revert RapayerAddressZero();
-        }
-        if (kind != uint256(LoanV2.OperationKind.Repayment) && account != address(0)) {
-            revert OperationAccountNotZero();
-        }
-    }
-
-    /// TODO
-    function _checkOperationParameter(
-        uint256 kind,
-        uint256 parameter
-    ) internal pure {
         if (
             kind == uint256(LoanV2.OperationKind.Freezing) ||
             kind == uint256(LoanV2.OperationKind.Unfreezing)
@@ -1457,6 +1451,14 @@ contract LendingMarketV2 is
             if (parameter == 0 || parameter > type(uint16).max) {
                 revert DurationInvalid();
             }
+        }
+
+        if (kind == uint256(LoanV2.OperationKind.Repayment)) {
+            if (account == address(0)) {
+                revert RapayerAddressZero();
+            }
+        } else if (account != address(0)){
+            revert OperationAccountNotZero();
         }
     }
 
