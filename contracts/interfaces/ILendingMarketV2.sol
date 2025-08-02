@@ -216,26 +216,31 @@ interface ILendingMarketPrimaryV2 {
     );
 
     /**
-     * @dev Emitted when an operation is voided.
-     * 
+     * @dev Emitted when a previously applied operation is voided.
+     *
      * @param subLoanId The unique identifier of the sub-loan.
      * @param operationId The unique identifier of the operation.
      * @param kind The kind of the operation according to the `LoanV2.OperationKind` enum.
-     * @param timestamp The timestamp when the operation was applied.
-     * @param parameter The parameter of the operation.
      * @param counterparty The account related to the operation voiding, e.g. the receiver
-     * @param appliedValue The applied value of the operation.
-     * @param previousStatus The previous status of the sub-loan before the voiding operation.
      */
-    event OperationVoided(
+    event OperationRevoked(
         uint256 indexed subLoanId,
         uint256 indexed operationId,
         LoanV2.OperationKind indexed kind,
-        uint256 timestamp,
-        uint256 parameter,
-        address counterparty,
-        uint256 appliedValue,
-        LoanV2.OperationStatus previousStatus
+        address counterparty
+    );
+
+    /**
+     * @dev Emitted when a pending operation is voided.
+     *
+     * @param subLoanId The unique identifier of the sub-loan.
+     * @param operationId The unique identifier of the operation.
+     * @param kind The kind of the operation according to the `LoanV2.OperationKind` enum.
+     */
+    event OperationCanceled(
+        uint256 indexed subLoanId,
+        uint256 indexed operationId,
+        LoanV2.OperationKind indexed kind
     );
 
     // TODO: add more events if needed
@@ -543,7 +548,10 @@ interface ILendingMarketErrorsV2 {
     error OperationNonexistent(); // TODO: add parameters
 
     /// @dev TODO
-    error OperationVoidedAlready(); // TODO: add parameters
+    error OperationCanceledAlready(); // TODO: add parameters
+
+    /// @dev TODO
+    error OperationRevokedAlready(); // TODO: add parameters
 
     /// @dev TODO
     error SubLoanStatusFullyRepaid();
