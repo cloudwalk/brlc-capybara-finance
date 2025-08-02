@@ -105,7 +105,10 @@ library LoanV2 {
         uint32 lateFeeRate;
         uint32 trackedTimestamp;
         uint32 freezeTimestamp;
-        uint64 __reserved;
+        uint16 operationCount;
+        uint16 earliestOperationId;
+        uint16 latestOperationId;
+        uint16 pastOperationId;
         // uint8 __reserved; // Reserved until the end of the storage slot
 
         // Slot 4 //trackedBalance
@@ -212,21 +215,6 @@ library LoanV2 {
         uint256 timestamp;
         uint256 parameter;
         uint256 account;
-    }
-
-    /**
-     * @dev TODO
-     */
-    struct OperationalState {
-        // Slot 1*
-        uint16 operationCount;
-        uint16 earliestOperationId;
-        uint16 latestOperationId;
-        uint16 pastOperationId;
-        // uint192 __reserved; // Reserved until the end of the storage slot
-
-        // Slot 2
-        mapping(uint256 operationIndex => Operation) operations;
     }
 
     /**

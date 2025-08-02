@@ -325,14 +325,16 @@ contract LendingMarketV2 is
     }
 
     function getSubLoanOperations(uint256 subLoanId) external view returns (LoanV2.ProcessingOperation[] memory) {
-        LoanV2.OperationalState storage opState = _getLendingMarketStorage().subLoanOperationalStates[subLoanId];
-        LoanV2.ProcessingOperation[] memory operations = new LoanV2.ProcessingOperation[](opState.operationCount);
-        uint256 operationId = opState.earliestOperationId;
+        LendingMarketStorageV2 storage storageStruct = _getLendingMarketStorage();
+        LoanV2.SubLoan storage subLoan = storageStruct.subLoans[subLoanId];
+        LoanV2.ProcessingOperation[] memory operations = new LoanV2.ProcessingOperation[](subLoan.operationCount);
+        uint256 operationId = subLoan.earliestOperationId;
         uint256 i = 0;
+        // TODO: Usage of the `_getExistingOperation()` function is redundant
         while (operationId != 0) {
             operations[i] = _getExistingOperation(subLoanId, operationId);
             ++i;
-            operationId = opState.operations[operationId].nextOperationId;
+            operationId = storageStruct.subLoanOperations[subLoanId][operationId].nextOperationId;
         }
         return operations;
     }
@@ -381,6 +383,8 @@ contract LendingMarketV2 is
 
         LoanV2.SubLoan storage subLoan = _getSubLoanInStorage(id);
 
+        // TODO: Check if the following fields are set correctly and comments about zero fields are correct too
+
         // Slot1
         subLoan.programId = uint24(programId);
         subLoan.borrowedAmount = uint64(borrowedAmount); // Safe cast due to prior checks
@@ -397,12 +401,18 @@ contract LendingMarketV2 is
 
         // Slot 3
         subLoan.status = LoanV2.SubLoanStatus.Ongoing;
+        subLoan.duration = uint16(terms.duration); // Safe cast due to prior checks
         subLoan.interestRateRemuneratory = uint32(terms.interestRateRemuneratory); // Safe cast due to prior checks
         subLoan.interestRateMoratory = uint32(terms.interestRateMoratory);
         subLoan.lateFeeRate = uint32(terms.lateFeeRate); // Safe cast due to prior checks
-        subLoan.duration = uint16(terms.duration); // Safe cast due to prior checks
         subLoan.trackedTimestamp = blockTimestamp;
-        // Other loan fields are zero: freezeTimestamp, discountAmount
+        // subLoan.freezeTimestamp = 0;
+        // subLoan.firstSubLoanId = 0;
+        // subLoan.subLoanCount = 0;
+        // subLoan.operationCount = 0;
+        // subLoan.earliestOperationId = 0;
+        // subLoan.latestOperationId = 0;
+        // subLoan.pastOperationId = 0;
 
         // Slot 4
         subLoan.trackedPrincipal = uint64(borrowedAmount + addonAmount); // Safe cast due to prior checks
@@ -441,7 +451,7 @@ contract LendingMarketV2 is
         repaymentAmount = _normalizeAmount(repaymentAmount);
         LoanV2.ProcessingSubLoan memory subLoan = _getOngoingSubLoan(subLoanId);
         _addOperation(
-            subLoan,
+            subLoan.id,
             uint256(LoanV2.OperationKind.Repayment),
             _blockTimestamp(), // timestamp
             repaymentAmount, // parameter
@@ -461,7 +471,7 @@ contract LendingMarketV2 is
     ) internal {
         LoanV2.ProcessingSubLoan memory subLoan = _getOngoingSubLoan(subLoanId);
         _addOperation(
-            subLoan,
+            subLoan.id,
             uint256(LoanV2.OperationKind.Discounting),
             _blockTimestamp(),
             discountAmount,
@@ -476,7 +486,7 @@ contract LendingMarketV2 is
      */
     function _revokeSubLoan(LoanV2.ProcessingSubLoan memory subLoan) internal {
         _addOperation(
-            subLoan,
+            subLoan.id,
             uint256(LoanV2.OperationKind.Repayment),
             _blockTimestamp(),
             0,
@@ -489,41 +499,42 @@ contract LendingMarketV2 is
      * @dev TODO
      */
     function _addOperation(
-        LoanV2.ProcessingSubLoan memory subLoan,
+        uint256 subLoanId,
         uint256 kind,
         uint256 timestamp,
         uint256 parameter,
         address account
     ) internal returns (uint256) {
+        LendingMarketStorageV2 storage storageStruct = _getLendingMarketStorage();
+        LoanV2.SubLoan storage subLoan = storageStruct.subLoans[subLoanId];
         _checkOperationParameters(kind, parameter, account);  // TODO: move to the calling function
         if (timestamp < subLoan.startTimestamp) {
             revert OperationTimestampTooEarly();
         }
-        LoanV2.OperationalState storage opState = _getLendingMarketStorage().subLoanOperationalStates[subLoan.id];
-        uint256 operationId = uint256(opState.operationCount) + 1;
+        uint256 operationId = uint256(subLoan.operationCount) + 1;
         _checkOperationId(operationId);
-        opState.operationCount = uint16(operationId);
-        uint256 prevOperationId = _findEarlierOperation(opState, timestamp);
+        subLoan.operationCount = uint16(operationId);
+        uint256 prevOperationId = _findEarlierOperation(subLoanId, timestamp);
         uint256 nextOperationId;
         // TODO: Check and fix the logic of inserting a new operation in the chain
         if (prevOperationId == 0) {
             // Add at the beginning of the operation list
-            nextOperationId = opState.earliestOperationId;
-            opState.operations[nextOperationId].prevOperationId = uint16(operationId);
-            opState.earliestOperationId = uint16(operationId);
+            nextOperationId = subLoan.earliestOperationId;
+            storageStruct.subLoanOperations[subLoanId][nextOperationId].prevOperationId = uint16(operationId);
+            subLoan.earliestOperationId = uint16(operationId);
         } else {
             // Insert in the middle or at the end of the operation list
-            if (prevOperationId == opState.latestOperationId) {
+            if (prevOperationId == subLoan.latestOperationId) {
                 // Add at the end of the operation list
-                opState.operations[prevOperationId].nextOperationId = uint16(operationId);
-                opState.latestOperationId = uint16(operationId);
+                storageStruct.subLoanOperations[subLoanId][prevOperationId].nextOperationId = uint16(operationId);
+                subLoan.latestOperationId = uint16(operationId);
             } else {
-                nextOperationId = opState.operations[prevOperationId].nextOperationId;
-                opState.operations[prevOperationId].nextOperationId = uint16(operationId);
-                opState.operations[nextOperationId].prevOperationId = uint16(operationId);
+                nextOperationId = storageStruct.subLoanOperations[subLoanId][prevOperationId].nextOperationId;
+                storageStruct.subLoanOperations[subLoanId][prevOperationId].nextOperationId = uint16(operationId);
+                storageStruct.subLoanOperations[subLoanId][nextOperationId].prevOperationId = uint16(operationId);
             }
         }
-        LoanV2.Operation storage operation = opState.operations[operationId];
+        LoanV2.Operation storage operation = storageStruct.subLoanOperations[subLoanId][operationId];
         operation.prevOperationId = uint16(prevOperationId); // Safe cast due to prior checks
         operation.nextOperationId = uint16(nextOperationId); // Safe cast due to prior checks
         operation.status = LoanV2.OperationStatus.Pending;
@@ -536,7 +547,7 @@ contract LendingMarketV2 is
 
         if (timestamp > _blockTimestamp()) {
             emit OperationPended(
-                subLoan.id,
+                subLoanId,
                 operationId,
             LoanV2.OperationKind(kind),
                 timestamp,
@@ -675,10 +686,14 @@ contract LendingMarketV2 is
     }
 
     /// @dev TODO
-    function _findEarlierOperation(LoanV2.OperationalState storage opState, uint256 timestamp) internal view returns (uint256) {
-        uint256 operationId = opState.latestOperationId;
-        while (operationId != 0 && opState.operations[operationId].timestamp > timestamp) {
-            operationId = opState.operations[operationId].prevOperationId;
+    function _findEarlierOperation( 
+        uint256 subLoanId,
+        uint256 timestamp
+    ) internal view returns (uint256) {
+        uint256 operationId = _getSubLoanInStorage(subLoanId).latestOperationId;
+        LendingMarketStorageV2 storage storageStruct = _getLendingMarketStorage();
+        while (operationId != 0 && storageStruct.subLoanOperations[subLoanId][operationId].timestamp > timestamp) {
+            operationId = storageStruct.subLoanOperations[subLoanId][operationId].prevOperationId;
         }
         return operationId;
     }
@@ -687,13 +702,14 @@ contract LendingMarketV2 is
     function _processOperations(
         LoanV2.ProcessingSubLoan memory subLoan
     ) internal {
-        LoanV2.OperationalState storage opState = _getLendingMarketStorage().subLoanOperationalStates[subLoan.id];
-        uint256 pastOperationId = opState.pastOperationId;
+        LendingMarketStorageV2 storage storageStruct = _getLendingMarketStorage();
+        LoanV2.SubLoan storage subLoanStored = storageStruct.subLoans[subLoan.id];
+        uint256 pastOperationId = subLoanStored.pastOperationId;
         uint256 operationId = 0;
         if (pastOperationId == 0) {
-            operationId = opState.earliestOperationId;
+            operationId = subLoanStored.earliestOperationId;
         } else {
-            operationId = opState.operations[pastOperationId].nextOperationId;
+            operationId = storageStruct.subLoanOperations[subLoan.id][pastOperationId].nextOperationId;
         }
         if (operationId == 0) {
             return;
@@ -710,9 +726,9 @@ contract LendingMarketV2 is
             if (operation.kind == uint256(LoanV2.OperationKind.Revocation)) {
                 break;
             }
-            operationId = opState.operations[operationId].nextOperationId;
+            operationId = storageStruct.subLoanOperations[subLoan.id][operationId].nextOperationId;
         }
-        opState.pastOperationId = uint16(pastOperationId); // Safe cast due to prior checks
+        subLoanStored.pastOperationId = uint16(pastOperationId); // Safe cast due to prior checks
         _updateSubLoan(subLoan);
     }
 
@@ -720,7 +736,7 @@ contract LendingMarketV2 is
     function _replayOperations(LoanV2.ProcessingSubLoan memory subLoan, address counterparty) internal {
         _initiateSubLoan(subLoan);
         subLoan.counterparty = counterparty;
-        _getLendingMarketStorage().subLoanOperationalStates[subLoan.id].pastOperationId = 0;
+        _getLendingMarketStorage().subLoans[subLoan.id].pastOperationId = 0;
         _processOperations(subLoan);
     }
 
@@ -1626,7 +1642,7 @@ contract LendingMarketV2 is
      * @dev TODO
      */
     function _getOperationInStorage(uint256 subLoanId, uint256 operationId) internal view returns (LoanV2.Operation storage) {
-        return _getLendingMarketStorage().subLoanOperationalStates[subLoanId].operations[operationId];
+        return _getLendingMarketStorage().subLoanOperations[subLoanId][operationId];
     }
 
     /**
