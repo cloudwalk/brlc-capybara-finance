@@ -214,7 +214,7 @@ library LoanV2 {
         uint256 kind;
         uint256 timestamp;
         uint256 parameter;
-        uint256 account;
+        address account;
     }
 
     /**
