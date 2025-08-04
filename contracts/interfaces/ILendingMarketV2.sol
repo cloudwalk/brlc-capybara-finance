@@ -561,6 +561,9 @@ interface ILendingMarketErrorsV2 {
 
     /// @dev TODO
     error OperationParameterNotZero(); // TODO: add parameters
+
+    /// @dev TODO
+    error OperationRequestArrayCounterpartyDifference(); // TODO: select a better name
 }
 
 /**

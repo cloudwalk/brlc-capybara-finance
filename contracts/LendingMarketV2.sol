@@ -42,8 +42,17 @@ contract LendingMarketV2 is
     Versionable,
     UUPSExtUpgradeable
 {
+    // ------------------ Types ----------------------------------- //
+
     using SafeERC20 for IERC20;
     using SafeCast for uint256;
+
+    /// @dev Represents a sub-loan that is affected by an operation. For internal use only.
+    struct OperationAffectedSubLoan{
+        uint256 subLoanId;
+        uint256 minOperationTimestamp;
+        address counterparty;
+    }
 
     // ------------------ Constants ------------------------------- //
 
@@ -251,7 +260,67 @@ contract LendingMarketV2 is
         LoanV2.VoidOperationRequest[] calldata voidOperationRequests,
         LoanV2.AddedOperationRequest[] calldata addedOperationRequests
     ) external {
-        // TODO: implement
+        // TODO: Simplify and maybe split this function into parts
+        uint256 affectedSubLoanCount = 0;
+        uint256 count = voidOperationRequests.length;
+        OperationAffectedSubLoan[] memory affectedSubLoans =
+            new OperationAffectedSubLoan[](count + addedOperationRequests.length);
+        for (uint256 i = 0; i < count; ++i) {
+            LoanV2.VoidOperationRequest memory voidingRequest = voidOperationRequests[i];
+            OperationAffectedSubLoan memory affectedSubLoan = _findOperationAffectedSubLoan(
+                affectedSubLoans,
+                affectedSubLoanCount,
+                voidingRequest.subLoanId
+            );
+            if (affectedSubLoan.subLoanId == 0) {
+                ++affectedSubLoanCount;
+                affectedSubLoan.subLoanId = voidingRequest.subLoanId;
+                affectedSubLoan.counterparty = voidingRequest.counterparty;
+                affectedSubLoan.minOperationTimestamp = type(uint256).max;
+            } else if (affectedSubLoan.counterparty != voidingRequest.counterparty) {
+                revert OperationRequestArrayCounterpartyDifference();
+            }
+            LoanV2.Operation storage operation = _voidOperation(
+                voidingRequest.subLoanId,
+                voidingRequest.operationId,
+                voidingRequest.counterparty
+            );
+            if (operation.status == LoanV2.OperationStatus.Revoked) {
+                if (operation.timestamp > affectedSubLoan.minOperationTimestamp) {
+                    affectedSubLoan.minOperationTimestamp = operation.timestamp;
+                }
+            }
+        }
+        count = addedOperationRequests.length;
+        for (uint256 i = 0; i < count; ++i) {
+            LoanV2.AddedOperationRequest memory addingRequest = addedOperationRequests[i];
+            OperationAffectedSubLoan memory affectedSubLoan = _findOperationAffectedSubLoan(
+                affectedSubLoans,
+                affectedSubLoanCount,
+                addingRequest.subLoanId
+            );
+            if (affectedSubLoan.subLoanId == 0) {
+                ++affectedSubLoanCount;
+                affectedSubLoan.subLoanId = addingRequest.subLoanId;
+                affectedSubLoan.minOperationTimestamp = type(uint256).max;
+            }
+            _checkOperationParameters(addingRequest.kind, addingRequest.parameter, addingRequest.account);
+            _addOperation(
+                addingRequest.subLoanId,
+                addingRequest.kind,
+                addingRequest.timestamp,
+                addingRequest.parameter,
+                addingRequest.account
+            );
+            if (addingRequest.timestamp > affectedSubLoan.minOperationTimestamp) {
+                affectedSubLoan.minOperationTimestamp = addingRequest.timestamp;
+            }
+        }
+
+        for (uint256 i = 0; i < affectedSubLoanCount; ++i) {
+            OperationAffectedSubLoan memory affectedSubLoan = affectedSubLoans[i];
+            _treatOperations(affectedSubLoan.subLoanId, affectedSubLoan.minOperationTimestamp, affectedSubLoan.counterparty);
+        }
     }
 
     // ------------------ View functions -------------------------- //
@@ -742,7 +811,7 @@ contract LendingMarketV2 is
 
     /// @dev TODO
     function _treatOperations(uint256 subLoanId, uint256 timestamp, address counterparty) internal {
-        LoanV2.ProcessingSubLoan memory subLoan = _getUnrevokedSubLoan(subLoanId);
+        LoanV2.ProcessingSubLoan memory subLoan = _getNonRevokedSubLoan(subLoanId);
         if (timestamp < _blockTimestamp()) {
             _replayOperations(subLoan, counterparty);
         } else {
@@ -1615,7 +1684,7 @@ contract LendingMarketV2 is
     /**
      * @dev TODO
      */
-    function _getUnrevokedSubLoan(uint256 subLoanId) internal view returns (LoanV2.ProcessingSubLoan memory) {
+    function _getNonRevokedSubLoan(uint256 subLoanId) internal view returns (LoanV2.ProcessingSubLoan memory) {
         LoanV2.ProcessingSubLoan memory subLoan = _getSubLoan(subLoanId);
         uint256 status = subLoan.status;
         if (status == uint256(LoanV2.SubLoanStatus.Nonexistent)) {
@@ -1631,7 +1700,7 @@ contract LendingMarketV2 is
      * @dev TODO
      */
     function _getOngoingSubLoan(uint256 subLoanId) internal view returns (LoanV2.ProcessingSubLoan memory) {
-        LoanV2.ProcessingSubLoan memory subLoan = _getUnrevokedSubLoan(subLoanId);
+        LoanV2.ProcessingSubLoan memory subLoan = _getNonRevokedSubLoan(subLoanId);
         if (subLoan.status == uint256(LoanV2.SubLoanStatus.FullyRepaid)) {
             revert SubLoanStatusFullyRepaid();
         }
@@ -1643,6 +1712,23 @@ contract LendingMarketV2 is
      */
     function _getOperationInStorage(uint256 subLoanId, uint256 operationId) internal view returns (LoanV2.Operation storage) {
         return _getLendingMarketStorage().subLoanOperations[subLoanId][operationId];
+    }
+
+    /**
+     * @dev TODO
+     */
+    function _findOperationAffectedSubLoan(
+        OperationAffectedSubLoan[] memory affectedSubLoans,
+        uint256 affectedSubLoanCount,
+        uint256 subLoanId
+    ) internal pure returns (OperationAffectedSubLoan memory) {
+        for (uint256 i = 0; i < affectedSubLoanCount; ++i) {
+            OperationAffectedSubLoan memory affectedSubLoan = affectedSubLoans[i];
+            if (affectedSubLoans[i].subLoanId == subLoanId || affectedSubLoans[i].subLoanId == 0) {
+                return affectedSubLoans[i];
+            }
+        }
+        return affectedSubLoans[0];
     }
 
     /**
