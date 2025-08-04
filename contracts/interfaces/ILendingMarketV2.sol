@@ -85,13 +85,11 @@ interface ILendingMarketPrimaryV2 {
      * @param subLoanId The unique identifier of the sub-loan.
      * @param newPackedRepaidParts The current packed repaid parts of the sub-loan.
      * @param oldPackedRepaidParts The previous packed repaid parts of the sub-loan.
-     * @param newPackedTrackedParts The current packed tracked parts of the sub-loan.
      */
     event SubLoanRepaymentUpdated (
         uint256 indexed subLoanId,
         bytes32 newPackedRepaidParts,
-        bytes32 oldPackedRepaidParts,
-        bytes32 newPackedTrackedParts
+        bytes32 oldPackedRepaidParts
     );
 
     /**
@@ -102,13 +100,11 @@ interface ILendingMarketPrimaryV2 {
      * @param subLoanId The unique identifier of the sub-loan.
      * @param newPackedDiscountParts The current packed discount parts of the sub-loan.
      * @param oldPackedDiscountParts The previous packed discount parts of the sub-loan.
-     * @param newPackedTrackedParts The current packed tracked parts of the sub-loan.
      */
     event SubLoanDiscountUpdated (
         uint256 indexed subLoanId,
         bytes32 newPackedDiscountParts,
-        bytes32 oldPackedDiscountParts,
-        bytes32 newPackedTrackedParts
+        bytes32 oldPackedDiscountParts
     );
 
     /**
