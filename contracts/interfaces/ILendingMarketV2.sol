@@ -65,16 +65,16 @@ interface ILendingMarketPrimaryV2 {
 
     /**
      * @dev Emitted when the repaid amount of a sub-loan is updated.
-     * 
+     *
      * Notes about the event parameters:
      *
      *  Any `...packed...Parts` value is a bitfield with the following bits:
-     * 
+     *
      * - 64 bits from 0 to 63: the principal.
      * - 64 bits from 64 to 127: the remuneratory interest.
      * - 64 bits from 128 to 191: the moratory interest.
      * - 64 bits from 192 to 255: the late fee.
-     * 
+     *
      * @param subLoanId The unique identifier of the sub-loan.
      * @param newPackedRepaidParts The current packed repaid parts of the sub-loan.
      * @param oldPackedRepaidParts The previous packed repaid parts of the sub-loan.
@@ -89,9 +89,9 @@ interface ILendingMarketPrimaryV2 {
 
     /**
      * @dev Emitted when the discount amount of a sub-loan is updated.
-     * 
+     *
      * See notes about the event parameters in the `SubLoanRepaymentUpdated` event.
-     * 
+     *
      * @param subLoanId The unique identifier of the sub-loan.
      * @param newPackedDiscountParts The current packed discount parts of the sub-loan.
      * @param oldPackedDiscountParts The previous packed discount parts of the sub-loan.
@@ -166,18 +166,18 @@ interface ILendingMarketPrimaryV2 {
 
     /**
      * @dev Emitted when a sub-loan is revoked.
-     * 
+     *
      * See notes about the event parameters in the `SubLoanRepaymentUpdated` event.
-     * 
+     *
      * There is no tracked amounts due to they are all zero for a revoked sub-loan.
-     * 
+     *
      * @param subLoanId The unique identifier of the sub-loan.
      */
     event SubLoanRevoked(uint256 indexed subLoanId);
 
     /**
      * @dev Emitted when an operation is pended.
-     * 
+     *
      * @param subLoanId The unique identifier of the sub-loan.
      * @param operationId The unique identifier of the operation.
      * @param kind The kind of the operation according to the `LoanV2.OperationKind` enum.
@@ -196,7 +196,7 @@ interface ILendingMarketPrimaryV2 {
 
     /**
      * @dev Emitted when an operation is applied.
-     * 
+     *
      * @param subLoanId The unique identifier of the sub-loan.
      * @param operationId The unique identifier of the operation.
      * @param kind The kind of the operation according to the `LoanV2.OperationKind` enum.
