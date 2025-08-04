@@ -17,11 +17,12 @@ interface ILendingMarketPrimaryV2 {
 
     /**
      * @dev Emitted when a loan is taken in the form of multiple sub-loans.
+     *
      * @param firstSubLoanId The ID of the first sub-loan of the loan.
      * @param borrower The address of the borrower.
-     * @param programId The ID of the lending program.
-     * @param totalBorrowedAmount The total amount borrowed in the loan.
-     * @param totalAddonAmount The total addon amount of the loan.
+     * @param programId The ID of the lending program that was used to take the loan.
+     * @param totalBorrowedAmount The total amount borrowed in the loan as the sum of all sub-loans.
+     * @param totalAddonAmount The total addon amount of the loan as the sum of all sub-loans.
      * @param subLoanCount The total number of sub-loans.
      */
     event LoanTaken(
@@ -35,6 +36,7 @@ interface ILendingMarketPrimaryV2 {
 
     /**
      * @dev Emitted when a loan is fully revoked by revocation of all its sub-loans.
+     *
      * @param firstSubLoanId The ID of the first sub-loan of the  loan.
      * @param subLoanCount The total number of sub-loans.
      */
@@ -45,13 +47,18 @@ interface ILendingMarketPrimaryV2 {
 
     /**
      * @dev Emitted when a sub-loan is taken.
+     *
      * @param subLoanId The unique identifier of the sub-loan.
      * @param borrower The address of the borrower of the sub-loan.
-     * @param programId The identifier of the program.
-     * @param borrowedAmount The amount of tokens borrowed.
+     * @param programId The ID of the lending program that was used to take the sub-loan.
+     * @param borrowedAmount The amount of tokens borrowed for the sub-loan.
      * @param addonAmount The addon amount of the sub-loan.
      * @param duration The duration of the sub-loan in days.
-     * @param packedRates TODO
+     * @param packedRates The packed rates of the sub-loan. A bitfield with the following bits:
+     * 
+     * - 64 bits from 0 to 63: the remuneratory interest rate.
+     * - 64 bits from 64 to 127: the moratory interest rate.
+     * - 64 bits from 128 to 191: the late fee rate.
      */
     event SubLoanTaken(
         uint256 indexed subLoanId, // Tools: this comment prevents Prettier from formatting into a single line.
@@ -70,10 +77,10 @@ interface ILendingMarketPrimaryV2 {
      *
      *  Any `...packed...Parts` value is a bitfield with the following bits:
      *
-     * - 64 bits from 0 to 63: the principal.
-     * - 64 bits from 64 to 127: the remuneratory interest.
-     * - 64 bits from 128 to 191: the moratory interest.
-     * - 64 bits from 192 to 255: the late fee.
+     * - 64 bits from 0 to 63: related to the principal.
+     * - 64 bits from 64 to 127: related to the remuneratory interest.
+     * - 64 bits from 128 to 191: related to the moratory interest.
+     * - 64 bits from 192 to 255: related to the late fee.
      *
      * @param subLoanId The unique identifier of the sub-loan.
      * @param newPackedRepaidParts The current packed repaid parts of the sub-loan.
@@ -106,6 +113,7 @@ interface ILendingMarketPrimaryV2 {
 
     /**
      * @dev Emitted when the remuneratory interest rate of a sub-loan is updated.
+     *
      * @param subLoanId The unique identifier of the sub-loan.
      * @param newRate The current remuneratory interest rate.
      * @param oldRate The previous remuneratory interest rate.
@@ -118,6 +126,7 @@ interface ILendingMarketPrimaryV2 {
 
     /**
      * @dev Emitted when the moratory interest rate of a sub-loan is updated.
+     *
      * @param subLoanId The unique identifier of the sub-loan.
      * @param newRate The current moratory interest rate.
      * @param oldRate The previous moratory interest rate.
@@ -130,6 +139,7 @@ interface ILendingMarketPrimaryV2 {
 
     /**
      * @dev Emitted when the late fee rate of a sub-loan is updated.
+     *
      * @param subLoanId The unique identifier of the sub-loan.
      * @param newRate The current late fee rate.
      * @param oldRate The previous late fee rate.
@@ -142,6 +152,7 @@ interface ILendingMarketPrimaryV2 {
 
     /**
      * @dev Emitted when the duration in days of a sub-loan is updated.
+     *
      * @param subLoanId The unique identifier of the sub-loan.
      * @param newDuration The current duration.
      * @param oldDuration The previous duration.
@@ -154,20 +165,20 @@ interface ILendingMarketPrimaryV2 {
 
     /**
      * @dev Emitted when a sub-loan is frozen.
+     *
      * @param subLoanId The unique identifier of the sub-loan.
      */
     event SubLoanFrozen(uint256 indexed subLoanId);
 
     /**
      * @dev Emitted when a sub-loan is frozen.
+     *
      * @param subLoanId The unique identifier of the sub-loan.
      */
     event SubLoanUnfrozen(uint256 indexed subLoanId);
 
     /**
      * @dev Emitted when a sub-loan is revoked.
-     *
-     * See notes about the event parameters in the `SubLoanRepaymentUpdated` event.
      *
      * There is no tracked amounts due to they are all zero for a revoked sub-loan.
      *
@@ -176,13 +187,34 @@ interface ILendingMarketPrimaryV2 {
     event SubLoanRevoked(uint256 indexed subLoanId);
 
     /**
-     * @dev Emitted when an operation is pended.
+     * @dev Emitted when an operation is applied.
      *
      * @param subLoanId The unique identifier of the sub-loan.
-     * @param operationId The unique identifier of the operation.
-     * @param kind The kind of the operation according to the `LoanV2.OperationKind` enum.
+     * @param operationId The unique identifier of the operation within the sub-loan.
+     * @param kind The kind of the operation like repayment, discount, setting a new rate, etc.
+     * @param timestamp The timestamp when the operation was applied.
+     * @param inputValue The input value of the operation like the amount to repay, new rate, new duration, etc.
+     * @param account The account related to the operation, e.g. the repayer.
+     * @param appliedValue The applied value of the operation like the amount repaid, set rate, set duration, etc.
+     */
+    event OperationApplied(
+        uint256 indexed subLoanId,
+        uint256 indexed operationId,
+        LoanV2.OperationKind indexed kind,
+        uint256 timestamp,
+        uint256 inputValue, //TODO: consider another name, same for similar events
+        address account, //TODO: consider another name, same for similar events
+        uint256 appliedValue
+    );
+
+    /**
+     * @dev Emitted when an operation is added to the list of sub-loan operations, but not yet applied.
+     *
+     * @param subLoanId The unique identifier of the sub-loan.
+     * @param operationId The unique identifier of the operation within the sub-loan.
+     * @param kind The kind of the operation like repayment, discount, setting a new rate, etc.
      * @param timestamp The timestamp when the operaion will be applied.
-     * @param inputValue TODO
+     * @param inputValue The input value of the operation like the amount to repay, new rate, new duration, etc.
      * @param account The account related to the operation, e.g. the repayer.
      */
     event OperationPended(
@@ -190,29 +222,8 @@ interface ILendingMarketPrimaryV2 {
         uint256 indexed operationId,
         LoanV2.OperationKind indexed kind,
         uint256 timestamp,
-        uint256 inputValue, //TODO: consider another name, same for similar events
-        address account //TODO: consider another name, same for similar events
-    );
-
-    /**
-     * @dev Emitted when an operation is applied.
-     *
-     * @param subLoanId The unique identifier of the sub-loan.
-     * @param operationId The unique identifier of the operation.
-     * @param kind The kind of the operation according to the `LoanV2.OperationKind` enum.
-     * @param timestamp The timestamp when the operation was applied.
-     * @param inputValue TODO
-     * @param account The account related to the operation, e.g. the repayer.
-     * @param appliedValue The applied value of the operation.
-     */
-    event OperationApplied(
-        uint256 indexed subLoanId,
-        uint256 indexed operationId,
-        LoanV2.OperationKind indexed kind,
-        uint256 timestamp,
         uint256 inputValue,
-        address account,
-        uint256 appliedValue
+        address account
     );
 
     /**
@@ -220,8 +231,8 @@ interface ILendingMarketPrimaryV2 {
      *
      * @param subLoanId The unique identifier of the sub-loan.
      * @param operationId The unique identifier of the operation.
-     * @param kind The kind of the operation according to the `LoanV2.OperationKind` enum.
-     * @param counterparty The account related to the operation voiding, e.g. the receiver
+     * @param kind The kind of the operation like repayment, discount, setting a new rate, etc.
+     * @param counterparty The account related to the operation voiding, e.g. the receiver.
      */
     event OperationRevoked(
         uint256 indexed subLoanId,
@@ -231,11 +242,11 @@ interface ILendingMarketPrimaryV2 {
     );
 
     /**
-     * @dev Emitted when a pending operation is voided.
+     * @dev Emitted when a previously pending operation is voided.
      *
      * @param subLoanId The unique identifier of the sub-loan.
-     * @param operationId The unique identifier of the operation.
-     * @param kind The kind of the operation according to the `LoanV2.OperationKind` enum.
+     * @param operationId The unique identifier of the operation within the sub-loan.
+     * @param kind The kind of the operation like repayment, discount, setting a new rate, etc.
      */
     event OperationCanceled(
         uint256 indexed subLoanId,
@@ -250,12 +261,12 @@ interface ILendingMarketPrimaryV2 {
     // ------------------ Transactional functions ----------------- //
 
     /**
-     * @dev Takes a loan with multiple sub-loans for a provided account.
+     * @dev Takes a loan with multiple sub-loans for a provided borrower.
      *
      * Can be called only by an account with a special role.
      *
      * @param borrower The account for whom the loan is taken.
-     * @param programId The identifier of the program to take the loan from.
+     * @param programId The identifier of the lending program to take the loan.
      * @param borrowedAmounts The desired amounts of tokens to borrow for each sub-loan.
      * @param addonAmounts The off-chain calculated addon amounts for each sub-loan.
      * @param durations The desired duration of each sub-loan in days.
@@ -273,31 +284,21 @@ interface ILendingMarketPrimaryV2 {
      * @dev Repays a batch of sub-loans.
      *
      * Can be called only by an account with a special role.
-     * Using `type(uint256).max` for the `repaymentAmount` will repay the remaining balance of the loan.
      *
-     * @param subLoanIds The unique identifiers of the sub-loans to repay.
-     * @param repaymentAmounts The amounts to repay for each sub-loan in the batch.
-     * @param repayers The addresses of the token sources for the repayments (borrower or third-party).
+     * @param repaymentRequests The request structures to repay the sub-loans.
      */
-    function repaySubLoanBatch(
-        uint256[] calldata subLoanIds,
-        uint256[] calldata repaymentAmounts,
-        address[] calldata repayers // TODO: if address is zero, then it's a borrower
-    ) external;
+    function repaySubLoanBatch(LoanV2.RepaymentRequest[] calldata repaymentRequests) external;
+
+    // TODO: Ask if discount can be greater than the principal amount
 
     /**
      * @dev Discounts a batch of sub-loans.
      *
      * Can be called only by an account with a special role.
-     * Using `type(uint256).max` for the `discountAmount` will discount the remaining balance of the sub-loan.
      *
-     * @param subLoanIds The unique identifiers of the sub-loans to discount.
-     * @param discountAmounts The amounts to discount for each sub-loan in the batch.
+     * @param discountRequests The request structures to discount the sub-loans.
      */
-    function discountSubLoanBatch( // TODO: Ask if discount can be greater than the principal amount
-        uint256[] calldata subLoanIds, // Tools: this comment prevents Prettier from formatting into a single line.
-        uint256[] calldata discountAmounts
-    ) external;
+    function discountSubLoanBatch(LoanV2.DiscountRequest[] calldata discountRequests) external;
 
     /**
      * @dev Revokes a loan by the ID of any of its sub-loans.
@@ -307,6 +308,14 @@ interface ILendingMarketPrimaryV2 {
 
     /**
      * @dev Modifies a batch of operations.
+     *
+     * This function performs the following steps:
+     * 1. Voids all operations specified in the void requests
+     * 2. Adds all operations specified in the addition requests
+     * 3. Recalculates affected sub-loan states and emits corresponding events
+     *
+     * This atomic batch operation ensures data consistency when modifying multiple operations simultaneously.
+     *
      * @param voidOperationRequests The requests to void the operations.
      * @param addedOperationRequests The requests to add the operations.
      */
@@ -318,18 +327,14 @@ interface ILendingMarketPrimaryV2 {
     // ------------------ View functions -------------------------- //
 
     /**
-     * @dev Gets the credit line associated with a program.
-     * @param programId The unique identifier of the program to check.
-     * @return The address of the credit line associated with the program.
+     * @dev Gets the credit line and liquidity pool associated with a lending program.
+     * @param programId The unique identifier of the lending program to check.
+     * @return creditLine The address of the credit line associated with the lending program.
+     * @return liquidityPool The address of the liquidity pool associated with the lending program.
      */
-    function getProgramCreditLine(uint32 programId) external view returns (address);
-
-    /**
-     * @dev Gets the liquidity pool associated with a program.
-     * @param programId The unique identifier of the program to check.
-     * @return The address of the liquidity pool associated with the program.
-     */
-    function getProgramLiquidityPool(uint32 programId) external view returns (address);
+    function getProgramCreditLineAndLiquidityPool(
+        uint32 programId
+    ) external view returns (address creditLine, address liquidityPool);
 
     /**
      * @dev Gets the stored state for a batch of sub-loans.
@@ -342,7 +347,7 @@ interface ILendingMarketPrimaryV2 {
      * @dev Gets the sub-loan preview at a specific timestamp for a batch of sub-loans.
      * @param subLoanIds The unique identifiers of the sub-loans to get.
      * @param timestamp The timestamp to get the sub-loan preview for. If 0, the current timestamp is used.
-     * @return The previews of the sub-loans (see the `LoanV2.SubLoanPreview` struct).
+     * @return The previews of the sub-loans.
      */
     function getSubLoanPreviewBatch(
         uint256[] calldata subLoanIds,
@@ -354,16 +359,20 @@ interface ILendingMarketPrimaryV2 {
      *
      * @param subLoanIds The unique identifiers of any sub-loan of the loan to get.
      * @param timestamp The timestamp to get the loan preview for. If 0, the current timestamp is used.
-     * @return The preview state of the loan (see the `LoanV2.LoanPreview` structure).
+     * @return The preview state of the loan.
      */
     function getLoanPreviewBatch(
         uint256[] calldata subLoanIds,
         uint256 timestamp
     ) external view returns (LoanV2.LoanPreview[] memory);
 
-    /// @dev TODO
-    // TODO: Consider using a separate structure to return
-    function getSubLoanOperations(uint256 subLoanId) external view returns (LoanV2.ProcessingOperation[] memory);
+    /**
+     * @dev Gets the list of operations for a sub-loan in the order of their timestamp.
+     *
+     * @param subLoanId The unique identifier of the sub-loan to get the operations for.
+     * @return The list of operations for the sub-loan.
+     */
+    function getSubLoanOperations(uint256 subLoanId) external view returns (LoanV2.OperationView[] memory);
 
     /// @dev Returns the rate factor used to for interest rate calculations.
     function interestRateFactor() external view returns (uint256);
