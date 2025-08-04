@@ -3,9 +3,9 @@
 pragma solidity 0.8.24;
 
 /**
- * @title TODO
+ * @title LoanV2 library
  * @author CloudWalk Inc. (See https://www.cloudwalk.io)
- * @dev TODO
+ * @dev This library contains the core data structures and enums used in the LendingMarketV2 contract.
  */
 library LoanV2 {
     /**
@@ -195,6 +195,36 @@ library LoanV2 {
         uint256 inputValue;
         uint256 appliedValue;
         address account;
+    }
+
+    /**
+     * @dev TODO
+     */
+    struct OperationView {
+        uint256 id;
+        uint256 status;
+        uint256 kind;
+        uint256 timestamp;
+        uint256 inputValue;
+        uint256 appliedValue;
+        address account;
+    }
+
+    /**
+     * @dev TODO
+     */
+    struct RepaymentRequest {
+        uint256 subLoanId;
+        uint256 repaymentAmount;
+        address repayer;
+    }
+
+    /**
+     * @dev TODO
+     */
+    struct DiscountRequest {
+        uint256 subLoanId;
+        uint256 discountAmount;
     }
 
     /**
