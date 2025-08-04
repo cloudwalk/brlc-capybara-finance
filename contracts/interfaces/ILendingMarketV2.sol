@@ -182,7 +182,7 @@ interface ILendingMarketPrimaryV2 {
      * @param operationId The unique identifier of the operation.
      * @param kind The kind of the operation according to the `LoanV2.OperationKind` enum.
      * @param timestamp The timestamp when the operaion will be applied.
-     * @param parameter The parameter of the operation.
+     * @param inputValue TODO
      * @param account The account related to the operation, e.g. the repayer.
      */
     event OperationPended(
@@ -190,7 +190,7 @@ interface ILendingMarketPrimaryV2 {
         uint256 indexed operationId,
         LoanV2.OperationKind indexed kind,
         uint256 timestamp,
-        uint256 parameter, //TODO: consider another name, same for similar events
+        uint256 inputValue, //TODO: consider another name, same for similar events
         address account //TODO: consider another name, same for similar events
     );
 
@@ -201,7 +201,7 @@ interface ILendingMarketPrimaryV2 {
      * @param operationId The unique identifier of the operation.
      * @param kind The kind of the operation according to the `LoanV2.OperationKind` enum.
      * @param timestamp The timestamp when the operation was applied.
-     * @param parameter The parameter of the operation.
+     * @param inputValue TODO
      * @param account The account related to the operation, e.g. the repayer.
      * @param appliedValue The applied value of the operation.
      */
@@ -210,7 +210,7 @@ interface ILendingMarketPrimaryV2 {
         uint256 indexed operationId,
         LoanV2.OperationKind indexed kind,
         uint256 timestamp,
-        uint256 parameter,
+        uint256 inputValue,
         address account,
         uint256 appliedValue
     );
@@ -560,7 +560,7 @@ interface ILendingMarketErrorsV2 {
     error SubLoanStatusRevoked();
 
     /// @dev TODO
-    error OperationParameterNotZero(); // TODO: add parameters
+    error OperationInputValueNotZero(); // TODO: add parameters
 
     /// @dev TODO
     error OperationRequestArrayCounterpartyDifference(); // TODO: select a better name

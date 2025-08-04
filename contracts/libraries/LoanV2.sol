@@ -174,7 +174,7 @@ library LoanV2 {
         uint16 nextOperationId;
         uint16 prevOperationId;
         uint32 timestamp;
-        uint64 parameter;
+        uint64 inputValue;
         uint64 appliedValue;
         // uint48 __reserved; // Reserved until the end of the storage slot
 
@@ -192,7 +192,7 @@ library LoanV2 {
         uint256 status;
         uint256 kind;
         uint256 timestamp;
-        uint256 parameter;
+        uint256 inputValue;
         uint256 appliedValue;
         address account;
     }
@@ -213,7 +213,7 @@ library LoanV2 {
         uint256 subLoanId;
         uint256 kind;
         uint256 timestamp;
-        uint256 parameter;
+        uint256 inputValue;
         address account;
     }
 
