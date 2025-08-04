@@ -189,33 +189,20 @@ contract LendingMarketV2 is
     }
 
     /// @inheritdoc ILendingMarketPrimaryV2
-    function repaySubLoanBatch(
-        uint256[] calldata subLoanIds,
-        uint256[] calldata repaymentAmounts,
-        address[] calldata repayers
-    ) external whenNotPaused onlyRole(ADMIN_ROLE) {
-        uint256 len = subLoanIds.length;
-        if (len != repaymentAmounts.length) {
-            revert Error.ArrayLengthMismatch();
-        }
+    function repaySubLoanBatch(LoanV2.RepaymentRequest[] calldata repaymentRequests) external whenNotPaused onlyRole(ADMIN_ROLE) {
+        uint256 len = repaymentRequests.length;
         for (uint256 i = 0; i < len; ++i) {
-            uint256 subLoanId = subLoanIds[i];
-            _repaySubLoan(subLoanId, repaymentAmounts[i], repayers[i]);
+            LoanV2.RepaymentRequest memory repaymentRequest = repaymentRequests[i];
+            _repaySubLoan(repaymentRequest.subLoanId, repaymentRequest.repaymentAmount, repaymentRequest.repayer);
         }
     }
 
     /// @inheritdoc ILendingMarketPrimaryV2
-    function discountSubLoanBatch(
-        uint256[] calldata loanIds, // Tools: this comment prevents Prettier from formatting into a single line.
-        uint256[] calldata discountAmounts
-    ) external whenNotPaused onlyRole(ADMIN_ROLE) {
-        uint256 len = loanIds.length;
-        if (len != discountAmounts.length) {
-            revert Error.ArrayLengthMismatch();
-        }
+    function discountSubLoanBatch(LoanV2.DiscountRequest[] calldata discountRequests) external whenNotPaused onlyRole(ADMIN_ROLE) {
+        uint256 len = discountRequests.length;
         for (uint256 i = 0; i < len; ++i) {
-            uint256 loanId = loanIds[i];
-            _discountLoan(loanId, discountAmounts[i]);
+            LoanV2.DiscountRequest memory discountRequest = discountRequests[i];
+            _discountSubLoan(discountRequest.subLoanId, discountRequest.discountAmount);
         }
     }
 
@@ -326,13 +313,9 @@ contract LendingMarketV2 is
     // ------------------ View functions -------------------------- //
 
     /// @inheritdoc ILendingMarketPrimaryV2
-    function getProgramCreditLine(uint32 programId) external view returns (address) {
-        return _getLendingMarketStorage().programCreditLines[programId];
-    }
-
-    /// @inheritdoc ILendingMarketPrimaryV2
-    function getProgramLiquidityPool(uint32 programId) external view returns (address) {
-        return _getLendingMarketStorage().programLiquidityPools[programId];
+    function getProgramCreditLineAndLiquidityPool(uint32 programId) external view returns (address creditLine, address liquidityPool) {
+        creditLine = _getLendingMarketStorage().programCreditLines[programId];
+        liquidityPool = _getLendingMarketStorage().programLiquidityPools[programId];
     }
 
     /// @inheritdoc ILendingMarketPrimaryV2
@@ -393,16 +376,14 @@ contract LendingMarketV2 is
         return _getLendingMarketStorage().programIdCounter;
     }
 
-    function getSubLoanOperations(uint256 subLoanId) external view returns (LoanV2.ProcessingOperation[] memory) {
+    /// @inheritdoc ILendingMarketPrimaryV2
+    function getSubLoanOperations(uint256 subLoanId) external view returns (LoanV2.OperationView[] memory) {
         LendingMarketStorageV2 storage storageStruct = _getLendingMarketStorage();
         LoanV2.SubLoan storage subLoan = storageStruct.subLoans[subLoanId];
-        LoanV2.ProcessingOperation[] memory operations = new LoanV2.ProcessingOperation[](subLoan.operationCount);
+        LoanV2.OperationView[] memory operations = new LoanV2.OperationView[](subLoan.operationCount);
         uint256 operationId = subLoan.earliestOperationId;
-        uint256 i = 0;
-        // TODO: Usage of the `_getExistingOperation()` function is redundant
-        while (operationId != 0) {
-            operations[i] = _getExistingOperation(subLoanId, operationId);
-            ++i;
+        for (uint256 i = 0; operationId != 0; ++i) {
+            operations[i] = _getOperationView(subLoanId, operationId);
             operationId = storageStruct.subLoanOperations[subLoanId][operationId].nextOperationId;
         }
         return operations;
@@ -534,7 +515,7 @@ contract LendingMarketV2 is
      * @param subLoanId The unique identifier of the sub-loan to discount.
      * @param discountAmount The amount of the discount.
      */
-    function _discountLoan(
+    function _discountSubLoan(
         uint256 subLoanId, // Tools: this comment prevents Prettier from formatting into a single line.
         uint256 discountAmount
     ) internal {
@@ -1655,6 +1636,21 @@ contract LendingMarketV2 is
     /**
      * @dev TODO
      */
+    function _convertOperationToView(LoanV2.Operation storage operationInStorage) internal view returns (LoanV2.OperationView memory) {
+        LoanV2.OperationView memory operation;
+        // operation.id = 0;
+        operation.status = operation.status;
+        operation.kind = uint256(operationInStorage.kind);
+        operation.timestamp = operationInStorage.timestamp;
+        operation.inputValue = operationInStorage.inputValue;
+        operation.appliedValue = operationInStorage.appliedValue;
+        operation.account = operationInStorage.account;
+        return operation;
+    }
+
+    /**
+     * @dev TODO
+     */
     function _getSubLoanInStorage(uint256 subLoanId) internal view returns (LoanV2.SubLoan storage) {
         return _getLendingMarketStorage().subLoans[subLoanId];
     }
@@ -1751,6 +1747,17 @@ contract LendingMarketV2 is
         );
         operation.id = operationId;
         return operation;
+    }
+
+    /**
+     * @dev TODO
+     */
+    function _getOperationView(uint256 subLoanId, uint256 operationId) internal view returns (LoanV2.OperationView memory) {
+        LoanV2.OperationView memory operationView = _convertOperationToView(
+            _getOperationInStorage(subLoanId, operationId)
+        );
+        operationView.id = operationId;
+        return operationView;
     }
 
     /**
