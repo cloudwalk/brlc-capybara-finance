@@ -1188,32 +1188,34 @@ contract LendingMarketV2 is
     ) internal {
         uint256 oldRepaidSumAmount = _calculateRepaidAmountInStorage(oldSubLoan);
         uint256 newRepaidSumAmount = _calculateRepaidAmount(newSubLoan);
-        if (newRepaidSumAmount == oldRepaidSumAmount) {
-            return;
-        }
-        (, address liquidityPool) = _getCreditLineAndLiquidityPool(newSubLoan.programId);
-        address token = _getLendingMarketStorage().token;
-        address counterparty = newSubLoan.counterparty;
-        if (newRepaidSumAmount > oldRepaidSumAmount) {
-            uint256 repaymentChange = newRepaidSumAmount - oldRepaidSumAmount;
-            ILiquidityPool(liquidityPool).onAfterLoanRepaymentUndoing(newSubLoan.id, repaymentChange);
-            if (counterparty != address(0)) {
-                IERC20(token).safeTransferFrom(liquidityPool, counterparty, repaymentChange);
+        if (newRepaidSumAmount != oldRepaidSumAmount) {
+            (, address liquidityPool) = _getCreditLineAndLiquidityPool(newSubLoan.programId);
+            address token = _getLendingMarketStorage().token;
+            address counterparty = newSubLoan.counterparty;
+            if (newRepaidSumAmount > oldRepaidSumAmount) {
+                uint256 repaymentChange = newRepaidSumAmount - oldRepaidSumAmount;
+                ILiquidityPool(liquidityPool).onAfterLoanRepaymentUndoing(newSubLoan.id, repaymentChange);
+                if (counterparty != address(0)) {
+                    IERC20(token).safeTransferFrom(liquidityPool, counterparty, repaymentChange);
+                }
+            } else {
+                uint256 repaymentChange = oldRepaidSumAmount - newRepaidSumAmount;
+                ILiquidityPool(liquidityPool).onAfterLoanPayment(newSubLoan.id, repaymentChange);
+                if (counterparty != address(0)) {
+                    IERC20(token).safeTransferFrom(counterparty, liquidityPool, repaymentChange);
+                }
             }
-        } else {
-            uint256 repaymentChange = oldRepaidSumAmount - newRepaidSumAmount;
-            ILiquidityPool(liquidityPool).onAfterLoanPayment(newSubLoan.id, repaymentChange);
-            if (counterparty != address(0)) {
-                IERC20(token).safeTransferFrom(counterparty, liquidityPool, repaymentChange);
-            }
         }
+        bytes32 oldRepaidParts = _packedRepaidPartsInStorage(oldSubLoan);
+        bytes32 newRepaidParts = _packRepaidParts(newSubLoan);
 
-        emit SubLoanRepaymentUpdated(
-            newSubLoan.id,
-            _packRepaidParts(newSubLoan),
-            _packedRepaidPartsInStorage(oldSubLoan),
-            _packTrackedParts(newSubLoan)
-        );
+        if (oldRepaidParts != newRepaidParts) {
+            emit SubLoanRepaymentUpdated(
+                newSubLoan.id,
+                newRepaidParts,
+                oldRepaidParts
+            );
+        }
     }
 
     /**
@@ -1223,18 +1225,15 @@ contract LendingMarketV2 is
         LoanV2.ProcessingSubLoan memory newSubLoan,
         LoanV2.SubLoan storage oldSubLoan
     ) internal {
-        uint256 oldDiscountSumAmount = _calculateDiscountAmountInStorage(oldSubLoan);
-        uint256 newDiscountSumAmount = _calculateDiscountAmount(newSubLoan);
-        if (newDiscountSumAmount == oldDiscountSumAmount) {
-            return;
+        bytes32 oldDiscountParts = _packDiscountPartsInStorage(oldSubLoan);
+        bytes32 newDiscountParts = _packDiscountParts(newSubLoan);
+        if (newDiscountParts != oldDiscountParts) {
+            emit SubLoanDiscountUpdated(
+                newSubLoan.id,
+                newDiscountParts,
+                oldDiscountParts
+            );
         }
-
-        emit SubLoanDiscountUpdated(
-            newSubLoan.id,
-            _packDiscountParts(newSubLoan),
-            _packDiscountPartsInStorage(oldSubLoan),
-            _packTrackedParts(newSubLoan)
-        );
     }
 
     /**
