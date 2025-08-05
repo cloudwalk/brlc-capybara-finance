@@ -930,6 +930,7 @@ contract LendingMarketV2 is
             _acceptOperationApplying(subLoan, operation);
         }
         if (operationKind == uint256(LoanV2.OperationKind.Repayment)) {
+            _emitTrackedBalanceUpdate(subLoan);
             _transferTokensOnSubLoanRepayment(subLoan, operation);
             emit SubLoanRepayment(
                 subLoan.id,
@@ -938,8 +939,8 @@ contract LendingMarketV2 is
                 bytes32(operation.newSubLoanValue),
                 bytes32(operation.oldSubLoanValue)
             );
-            _emitTrackedBalanceUpdate(subLoan);
         } else if (operationKind == uint256(LoanV2.OperationKind.Discounting)) {
+            _emitTrackedBalanceUpdate(subLoan);
             emit SubLoanDiscount(
                 subLoan.id,
                 subLoan.revision,
@@ -947,8 +948,8 @@ contract LendingMarketV2 is
                 bytes32(operation.newSubLoanValue),
                 bytes32(operation.oldSubLoanValue)
             );
-            _emitTrackedBalanceUpdate(subLoan);
         } else if (operationKind == uint256(LoanV2.OperationKind.SetInterestRateRemuneratory)) {
+            _emitTrackedBalanceUpdate(subLoan);
             emit SubLoanInterestRateRemuneratoryUpdated(
                 subLoan.id,
                 subLoan.revision,
@@ -956,8 +957,8 @@ contract LendingMarketV2 is
                 operation.newSubLoanValue,
                 operation.oldSubLoanValue
             );
-            _emitTrackedBalanceUpdate(subLoan);
         } else if (operationKind == uint256(LoanV2.OperationKind.SetInterestRateMoratory)) {
+            _emitTrackedBalanceUpdate(subLoan);
             emit SubLoanInterestRateMoratoryUpdated(
                 subLoan.id,
                 subLoan.revision,
@@ -965,8 +966,8 @@ contract LendingMarketV2 is
                 operation.newSubLoanValue,
                 operation.oldSubLoanValue
             );
-            _emitTrackedBalanceUpdate(subLoan);
         } else if (operationKind == uint256(LoanV2.OperationKind.SetLateFeeRate)) {
+            _emitTrackedBalanceUpdate(subLoan);
             emit SubLoanLateFeeRateUpdated(
                 subLoan.id,
                 subLoan.revision,
@@ -974,8 +975,8 @@ contract LendingMarketV2 is
                 operation.newSubLoanValue,
                 operation.oldSubLoanValue
             );
-            _emitTrackedBalanceUpdate(subLoan);
         } else if (operationKind == uint256(LoanV2.OperationKind.SetDuration)) {
+            // no tracked balance update needed
             emit SubLoanDurationUpdated(
                 subLoan.id,
                 subLoan.revision,
@@ -983,22 +984,22 @@ contract LendingMarketV2 is
                 operation.newSubLoanValue,
                 operation.oldSubLoanValue
             );
-            // no tracked balance update needed
         } else if (operationKind == uint256(LoanV2.OperationKind.Freezing)) {
+            // no tracked balance update needed
             emit SubLoanFrozen(
                 subLoan.id,
                 subLoan.revision,
                 operation.timestamp
             );
-            // no tracked balance update needed
         } else if (operationKind == uint256(LoanV2.OperationKind.Unfreezing)) {
+            _emitTrackedBalanceUpdate(subLoan);
             emit SubLoanUnfrozen(
                 subLoan.id,
                 subLoan.revision,
                 subLoan.trackedTimestamp
             );
-            _emitTrackedBalanceUpdate(subLoan);
         } else if (operationKind == uint256(LoanV2.OperationKind.Revocation)) {
+            _emitTrackedBalanceUpdate(subLoan);
             emit SubLoanStatusUpdated(
                 subLoan.id,
                 subLoan.revision,
@@ -1006,7 +1007,6 @@ contract LendingMarketV2 is
                 subLoan.trackedTimestamp,
                 LoanV2.SubLoanStatus(operation.oldSubLoanValue)
             );
-            _emitTrackedBalanceUpdate(subLoan);
         }
 
         if (subLoan.status != operation.initialSubLoanStatus) {
@@ -1241,13 +1241,6 @@ contract LendingMarketV2 is
         _acceptDiscountChange(newSubLoan, oldSubLoan);
         _acceptSubLoanParametersChange(newSubLoan, oldSubLoan);
         _acceptSubLoanStatusChange(newSubLoan, oldSubLoan);
-
-        emit SubLoanTrackedBalanceUpdated(
-            newSubLoan.id,
-            newSubLoan.revision,
-            newSubLoan.trackedTimestamp,
-            bytes32(_packTrackedParts(newSubLoan))
-        );
 
         // Update storage with the unchecked type conversion is used for all stored values due to prior checks
         // TODO: use flags in the sub-loan in-memory structure and optimize the saving
