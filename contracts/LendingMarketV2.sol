@@ -1507,9 +1507,9 @@ contract LendingMarketV2 is
         }
 
         if (
-            kind == uint256(LoanV2.OperationKind.ChangeInInterestRateRemuneratory) ||
-            kind == uint256(LoanV2.OperationKind.ChangeInInterestRateMoratory) ||
-            kind == uint256(LoanV2.OperationKind.ChangeInLateFeeRate)
+            kind == uint256(LoanV2.OperationKind.SetInterestRateRemuneratory) ||
+            kind == uint256(LoanV2.OperationKind.SetInterestRateMoratory) ||
+            kind == uint256(LoanV2.OperationKind.SetLateFeeRate)
         ) {
             if (inputValue > type(uint32).max) {
                 revert RateValueInvalid();
@@ -1517,7 +1517,7 @@ contract LendingMarketV2 is
         }
 
         if (
-            kind == uint256(LoanV2.OperationKind.ChangeInDuration)
+            kind == uint256(LoanV2.OperationKind.SetDuration)
         ) {
             if (inputValue == 0 || inputValue > type(uint16).max) {
                 revert DurationInvalid();
