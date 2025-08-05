@@ -243,6 +243,13 @@ contract LendingMarketV2 is
     }
 
     /// @inheritdoc ILendingMarketPrimaryV2
+    function setSubLoanDurationBatch(
+        LoanV2.SubLoanOperationRequest[] calldata operationRequests
+    ) external whenNotPaused onlyRole(ADMIN_ROLE) {
+        _executeOperationBatch(uint256(LoanV2.OperationKind.SetDuration), operationRequests);
+    }
+
+    /// @inheritdoc ILendingMarketPrimaryV2
     function setSubLoanInterestRateRemuneratoryBatch(
         LoanV2.SubLoanOperationRequest[] calldata setParameterRequests
     ) external whenNotPaused onlyRole(ADMIN_ROLE) {
@@ -261,13 +268,6 @@ contract LendingMarketV2 is
         LoanV2.SubLoanOperationRequest[] calldata setParameterRequests
     ) external whenNotPaused onlyRole(ADMIN_ROLE) {
         _executeOperationBatch(uint256(LoanV2.OperationKind.SetLateFeeRate), setParameterRequests);
-    }
-
-    /// @inheritdoc ILendingMarketPrimaryV2
-    function setSubLoanDurationBatch(
-        LoanV2.SubLoanOperationRequest[] calldata operationRequests
-    ) external whenNotPaused onlyRole(ADMIN_ROLE) {
-        _executeOperationBatch(uint256(LoanV2.OperationKind.SetDuration), operationRequests);
     }
 
     /// @inheritdoc ILendingMarketPrimaryV2
