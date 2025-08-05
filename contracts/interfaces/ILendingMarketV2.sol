@@ -93,9 +93,24 @@ interface ILendingMarketPrimaryV2 {
     );
 
     /**
+     * @dev Emitted when the tracked balance of a sub-loan is updated.
+     * 
+     * See notes about the event packed parameters in the `SubLoanRepaymentUpdated` event.
+     *
+     * @param subLoanId The unique identifier of the sub-loan.
+     * @param trackedTimestamp The timestamp when the tracked balance was updated.
+     * @param newPackedTrackedParts The current packed tracked parts of the sub-loan.
+     */
+    event SubLoanTrackedBalanceUpdated (
+        uint256 indexed subLoanId,
+        uint256 trackedTimestamp,
+        bytes32 newPackedTrackedParts
+    );
+
+    /**
      * @dev Emitted when the discount amount of a sub-loan is updated.
      *
-     * See notes about the event parameters in the `SubLoanRepaymentUpdated` event.
+     * See notes about the event packed parameters in the `SubLoanRepaymentUpdated` event.
      *
      * @param subLoanId The unique identifier of the sub-loan.
      * @param newPackedDiscountParts The current packed discount parts of the sub-loan.

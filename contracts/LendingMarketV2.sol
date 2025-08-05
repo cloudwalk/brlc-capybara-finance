@@ -1133,6 +1133,12 @@ contract LendingMarketV2 is
         _acceptSubLoanParametersChange(newSubLoan, oldSubLoan);
         _acceptSubLoanStatusChange(newSubLoan, oldSubLoan);
 
+        emit SubLoanTrackedBalanceUpdated(
+            newSubLoan.id,
+            newSubLoan.trackedTimestamp,
+            _packTrackedParts(newSubLoan)
+        );
+
         // Update storage with the unchecked type conversion is used for all stored values due to prior checks
         // TODO: use flags in the sub-loan in-memory structure and optimize the saving
         oldSubLoan.status = LoanV2.SubLoanStatus(newSubLoan.status);
