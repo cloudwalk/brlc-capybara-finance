@@ -292,6 +292,12 @@ interface ILendingMarketPrimaryV2 {
     ) external returns (uint256 firstSubLoanId);
 
     /**
+     * @dev Revokes a loan by the ID of any of its sub-loans.
+     * @param subLoanId The unique identifier of the sub-loan to revoke.
+     */
+    function revokeLoan(uint256 subLoanId) external;
+
+    /**
      * @dev Repays a batch of sub-loans.
      *
      * Can be called only by an account with a special role.
@@ -312,28 +318,85 @@ interface ILendingMarketPrimaryV2 {
     function discountSubLoanBatch(LoanV2.DiscountRequest[] calldata discountRequests) external;
 
     /**
-     * @dev Revokes a loan by the ID of any of its sub-loans.
-     * @param subLoanId The unique identifier of the sub-loan to revoke.
+     * @dev Sets the remuneratory interest rate of a batch of sub-loans.
+     *
+     * Can be called only by an account with a special role.
+     *
+     * @param operationRequests The operation request structures to set the remuneratory interest rate of the sub-loans.
      */
-    function revokeLoan(uint256 subLoanId) external;
+    function setSubLoanInterestRateRemuneratoryBatch(
+        LoanV2.SubLoanOperationRequest[] calldata operationRequests
+    ) external;
 
     /**
-     * @dev Modifies a batch of operations.
+     * @dev Sets the moratory interest rate of a batch of sub-loans.
+     *
+     * Can be called only by an account with a special role.
+     *
+     * @param operationRequests The operation request structures to set the moratory interest rate of the sub-loans.
+     */
+    function setSubLoanInterestRateMoratoryBatch(
+        LoanV2.SubLoanOperationRequest[] calldata operationRequests
+    ) external;
+
+    /**
+     * @dev Sets the late fee rate of a batch of sub-loans.
+     *
+     * Can be called only by an account with a special role.
+     *
+     * @param operationRequests The operation request structures to set the late fee rate of the sub-loans.
+     */
+    function setSubLoanLateFeeRateBatch(
+        LoanV2.SubLoanOperationRequest[] calldata operationRequests
+    ) external;
+
+    /**
+     * @dev Sets the duration of a batch of sub-loans.
+     *
+     * Can be called only by an account with a special role.
+     *
+     * @param operationRequests The operation request structures to set the duration of the sub-loans.
+     */
+    function setSubLoanDurationBatch(
+        LoanV2.SubLoanOperationRequest[] calldata operationRequests
+    ) external;
+
+    /**
+     * @dev Freezes a batch of sub-loans.
+     *
+     * Can be called only by an account with a special role.
+     *
+     * @param operationRequests The operation request structures to freeze the sub-loans.
+     */
+    function freezeSubLoanBatch(
+        LoanV2.SubLoanOperationRequest[] calldata operationRequests
+    ) external;
+
+    /**
+     * @dev Unfreezes a batch of sub-loans.
+     *
+     * Can be called only by an account with a special role.
+     *
+     * @param operationRequests The operation request structures to unfreeze the sub-loans.
+     */
+    function unfreezeSubLoanBatch(
+        LoanV2.SubLoanOperationRequest[] calldata operationRequests
+    ) external;
+
+    /**
+     * @dev Voids a batch of operations.
+     * 
+     * Can be called only by an account with a special role.
      *
      * This function performs the following steps:
      * 1. Voids all operations specified in the void requests
-     * 2. Adds all operations specified in the addition requests
-     * 3. Recalculates affected sub-loan states and emits corresponding events
+     * 2. Recalculates affected sub-loan states if needed and emits corresponding events
      *
-     * This atomic batch operation ensures data consistency when modifying multiple operations simultaneously.
+     * This atomic batch operation ensures data consistency when voiding multiple operations simultaneously.
      *
      * @param voidOperationRequests The requests to void the operations.
-     * @param addedOperationRequests The requests to add the operations.
      */
-    function modifyOperationBatch(
-        LoanV2.VoidOperationRequest[] calldata voidOperationRequests,
-        LoanV2.AddedOperationRequest[] calldata addedOperationRequests
-    ) external;
+    function voidOperationBatch(LoanV2.VoidOperationRequest[] calldata voidOperationRequests) external;
 
     // ------------------ View functions -------------------------- //
 
@@ -580,7 +643,7 @@ interface ILendingMarketErrorsV2 {
     error SubLoanStatusRevoked();
 
     /// @dev TODO
-    error OperationInputValueNotZero(); // TODO: add parameters
+    error OperationInputValueInvalid(); // TODO: add parameters
 
     /// @dev TODO
     error OperationRequestArrayCounterpartyDifference(); // TODO: select a better name

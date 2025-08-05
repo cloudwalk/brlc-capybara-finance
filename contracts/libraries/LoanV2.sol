@@ -230,6 +230,15 @@ library LoanV2 {
     /**
      * @dev TODO
      */
+    struct SubLoanOperationRequest {
+        uint256 subLoanId;
+        uint256 timestamp;
+        uint256 value;
+    }
+
+    /**
+     * @dev TODO
+     */
     struct VoidOperationRequest {
         uint256 subLoanId;
         uint256 operationId;
