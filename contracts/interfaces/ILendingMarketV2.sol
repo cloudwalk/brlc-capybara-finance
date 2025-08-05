@@ -263,7 +263,6 @@ interface ILendingMarketPrimaryV2 {
      * @param timestamp The timestamp when the operation was applied.
      * @param inputValue The input value of the operation like the amount to repay, new rate, new duration, etc.
      * @param account The account related to the operation, e.g. the repayer.
-     * @param appliedValue The applied value of the operation like the amount repaid, set rate, set duration, etc.
      */
     event OperationApplied(
         uint256 indexed subLoanId,
@@ -271,8 +270,7 @@ interface ILendingMarketPrimaryV2 {
         LoanV2.OperationKind indexed kind,
         uint256 timestamp,
         uint256 inputValue, //TODO: consider another name, same for similar events
-        address account, //TODO: consider another name, same for similar events
-        uint256 appliedValue
+        address account //TODO: consider another name, same for similar events
     );
 
     /**

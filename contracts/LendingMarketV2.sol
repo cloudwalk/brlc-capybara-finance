@@ -597,7 +597,7 @@ contract LendingMarketV2 is
         operation.status = LoanV2.OperationStatus.Pending;
         operation.kind = LoanV2.OperationKind(kind);
         operation.inputValue = uint64(inputValue);
-        // operation.appliedValue = 0; // Until operation is actually applied
+
         if (account != address(0)) {
             operation.account = account;
         }
@@ -751,10 +751,9 @@ contract LendingMarketV2 is
     ) internal {
         (, address liquidityPool) = _getCreditLineAndLiquidityPool(subLoan.programId);
         address repayer = operation.account;
-        uint256 repaymentAmount = operation.appliedValue;
-        if (operation.kind == uint256(LoanV2.OperationKind.Repayment)) {
-            IERC20(_getLendingMarketStorage().token).safeTransferFrom(repayer, liquidityPool, repaymentAmount);
-        }
+        uint256 repaymentAmount = _calculateSumAmountByParts(operation.oldSubLoanValue);
+        repaymentAmount -= _calculateSumAmountByParts(operation.newSubLoanValue);
+        IERC20(_getLendingMarketStorage().token).safeTransferFrom(repayer, liquidityPool, repaymentAmount);
     }
 
     /// @dev TODO
@@ -1092,12 +1091,11 @@ contract LendingMarketV2 is
     ) internal pure {
         uint256 notApplied;
         uint256 operationKind = operation.kind;
-        uint256 appliedValue = operation.inputValue;
         operation.initialSubLoanStatus = subLoan.status;
         if (operationKind == uint256(LoanV2.OperationKind.Repayment)) {
-            appliedValue = _applyRepaymentOrDiscount(subLoan, operation);
+            _applyRepaymentOrDiscount(subLoan, operation);
         } else if (operationKind == uint256(LoanV2.OperationKind.Discounting)) {
-            appliedValue = _applyRepaymentOrDiscount(subLoan, operation);
+            _applyRepaymentOrDiscount(subLoan, operation);
         } else if (operationKind == uint256(LoanV2.OperationKind.SetDuration)) {
             _applySetDuration(subLoan, operation);
         } else if (operationKind == uint256(LoanV2.OperationKind.SetInterestRateRemuneratory)) {
@@ -1119,7 +1117,6 @@ contract LendingMarketV2 is
         if (notApplied != 0) {
             operation.initialStatus = operation.status;
             operation.status = uint256(LoanV2.OperationStatus.Applied);
-            operation.appliedValue = appliedValue;
         }
     }
 
@@ -1427,7 +1424,6 @@ contract LendingMarketV2 is
         uint256 subLoanId = subLoan.id;
         LoanV2.Operation storage operationInStorage = _getOperationInStorage(subLoanId, operationId);
         operationInStorage.status = LoanV2.OperationStatus.Applied;
-        operationInStorage.appliedValue = uint64(operation.appliedValue);
 
         emit OperationApplied(
             subLoanId,
@@ -1435,8 +1431,7 @@ contract LendingMarketV2 is
             LoanV2.OperationKind(operation.kind),
             operation.timestamp,
             operation.inputValue,
-            operation.account,
-            operation.appliedValue
+            operation.account
         );
     }
 
@@ -1567,6 +1562,16 @@ contract LendingMarketV2 is
             subLoan.repaidInterestRemuneratory +
             subLoan.repaidInterestMoratory +
             subLoan.repaidLateFee;
+    }
+
+    /**
+     * @dev TODO
+     */
+    function _calculateSumAmountByParts(uint256 packedParts) internal pure returns (uint256) {
+        return packedParts & type(uint64).max +
+            (packedParts >> 64) & type(uint64).max +
+            (packedParts >> 128) & type(uint64).max +
+            (packedParts >> 192) & type(uint64).max;
     }
 
     /**
@@ -1831,7 +1836,6 @@ contract LendingMarketV2 is
         operation.kind = uint256(operationInStorage.kind);
         operation.timestamp = operationInStorage.timestamp;
         operation.inputValue = operationInStorage.inputValue;
-        operation.appliedValue = operationInStorage.appliedValue;
         operation.account = operationInStorage.account;
         // operation.oldValue = 0 // This will be set during the operation application
         // operation.newValue = 0; // This will be set during the operation application
@@ -1848,7 +1852,6 @@ contract LendingMarketV2 is
         operation.kind = uint256(operationInStorage.kind);
         operation.timestamp = operationInStorage.timestamp;
         operation.inputValue = operationInStorage.inputValue;
-        operation.appliedValue = operationInStorage.appliedValue;
         operation.account = operationInStorage.account;
         return operation;
     }
