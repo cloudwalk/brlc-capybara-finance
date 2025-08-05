@@ -71,7 +71,18 @@ interface ILendingMarketPrimaryV2 {
     );
 
     /**
-     * @dev Emitted when the repaid amount of a sub-loan is updated.
+     * @dev Emitted when a sub-loan is revised or after the sub-loan is taken for the first time.
+     *
+     * @param subLoanId The unique identifier of the sub-loan.
+     * @param subLoanRevision The revision number of the sub-loan.
+     */
+    event SubLoanRevision(
+        uint256 indexed subLoanId, // Tools: this comment prevents Prettier from formatting into a single line.
+        uint256 indexed subLoanRevision
+    );
+
+    /**
+     * @dev Emitted when a sub-loan is repaid.
      *
      * Notes about the event parameters:
      *
@@ -83,41 +94,60 @@ interface ILendingMarketPrimaryV2 {
      * - 64 bits from 192 to 255: related to the late fee.
      *
      * @param subLoanId The unique identifier of the sub-loan.
+     * @param subLoanRevision The revision number of the sub-loan.
+     * @param trackedTimestamp The tracked timestamp of the sub-loan when it was repaid.
      * @param newPackedRepaidParts The current packed repaid parts of the sub-loan.
      * @param oldPackedRepaidParts The previous packed repaid parts of the sub-loan.
      */
-    event SubLoanRepaymentUpdated (
+    event SubLoanRepayment (
         uint256 indexed subLoanId,
+        uint256 indexed subLoanRevision,
+        uint256 trackedTimestamp,
         bytes32 newPackedRepaidParts,
         bytes32 oldPackedRepaidParts
+        // TODO: distinguish between full and partial repayment
     );
 
+    // revision 1
+    // repayment 1 + tracked balance 1
+    // repayment 2 + tracked balance 2
+
+    // revision 2
+    // repayment 2 + tracked balance 2
+
     /**
-     * @dev Emitted when the tracked balance of a sub-loan is updated.
+     * @dev Emitted when the tracked balance of a sub-loan is updated TODO.
      * 
      * See notes about the event packed parameters in the `SubLoanRepaymentUpdated` event.
      *
      * @param subLoanId The unique identifier of the sub-loan.
-     * @param trackedTimestamp The timestamp when the tracked balance was updated.
+     * @param subLoanRevision The revision number of the sub-loan.
+     * @param trackedTimestamp The tracked timestamp of the sub-loan when its tracked balance was updated.
      * @param newPackedTrackedParts The current packed tracked parts of the sub-loan.
      */
     event SubLoanTrackedBalanceUpdated (
         uint256 indexed subLoanId,
+        uint256 indexed subLoanRevision,
         uint256 trackedTimestamp,
         bytes32 newPackedTrackedParts
+        // TODO: distinguish between full and partial repayment
     );
 
     /**
-     * @dev Emitted when the discount amount of a sub-loan is updated.
+     * @dev Emitted when a sub-loan is discounted.
      *
      * See notes about the event packed parameters in the `SubLoanRepaymentUpdated` event.
      *
      * @param subLoanId The unique identifier of the sub-loan.
+     * @param subLoanRevision The revision number of the sub-loan.
+     * @param trackedTimestamp The tracked timestamp of the sub-loan when it was discounted.
      * @param newPackedDiscountParts The current packed discount parts of the sub-loan.
      * @param oldPackedDiscountParts The previous packed discount parts of the sub-loan.
      */
-    event SubLoanDiscountUpdated (
+    event SubLoanDiscount (
         uint256 indexed subLoanId,
+        uint256 indexed subLoanRevision,
+        uint256 trackedTimestamp,
         bytes32 newPackedDiscountParts,
         bytes32 oldPackedDiscountParts
     );
@@ -126,11 +156,15 @@ interface ILendingMarketPrimaryV2 {
      * @dev Emitted when the remuneratory interest rate of a sub-loan is updated.
      *
      * @param subLoanId The unique identifier of the sub-loan.
+     * @param subLoanRevision The revision number of the sub-loan.
+     * @param trackedTimestamp The tracked timestamp of the sub-loan when its remuneratory interest rate was updated.
      * @param newRate The current remuneratory interest rate.
      * @param oldRate The previous remuneratory interest rate.
      */
     event SubLoanInterestRateRemuneratoryUpdated(
         uint256 indexed subLoanId,
+        uint256 indexed subLoanRevision,
+        uint256 trackedTimestamp,
         uint256 newRate,
         uint256 oldRate
     );
@@ -139,11 +173,15 @@ interface ILendingMarketPrimaryV2 {
      * @dev Emitted when the moratory interest rate of a sub-loan is updated.
      *
      * @param subLoanId The unique identifier of the sub-loan.
+     * @param subLoanRevision The revision number of the sub-loan.
+     * @param trackedTimestamp The tracked timestamp of the sub-loan when its moratory interest rate was updated.
      * @param newRate The current moratory interest rate.
      * @param oldRate The previous moratory interest rate.
      */
     event SubLoanInterestRateMoratoryUpdated(
         uint256 indexed subLoanId,
+        uint256 indexed subLoanRevision,
+        uint256 trackedTimestamp,
         uint256 newRate,
         uint256 oldRate
     );
@@ -152,11 +190,15 @@ interface ILendingMarketPrimaryV2 {
      * @dev Emitted when the late fee rate of a sub-loan is updated.
      *
      * @param subLoanId The unique identifier of the sub-loan.
+     * @param subLoanRevision The revision number of the sub-loan.
+     * @param trackedTimestamp The tracked timestamp of the sub-loan when its late fee rate was updated.
      * @param newRate The current late fee rate.
      * @param oldRate The previous late fee rate.
      */
     event SubLoanLateFeeRateUpdated(
         uint256 indexed subLoanId,
+        uint256 indexed subLoanRevision,
+        uint256 trackedTimestamp,
         uint256 newRate,
         uint256 oldRate
     );
@@ -165,11 +207,15 @@ interface ILendingMarketPrimaryV2 {
      * @dev Emitted when the duration in days of a sub-loan is updated.
      *
      * @param subLoanId The unique identifier of the sub-loan.
+     * @param subLoanRevision The revision number of the sub-loan.
+     * @param trackedTimestamp The tracked timestamp of the sub-loan when its duration was updated.
      * @param newDuration The current duration.
      * @param oldDuration The previous duration.
      */
     event SubLoanDurationUpdated(
         uint256 indexed subLoanId,
+        uint256 indexed subLoanRevision,
+        uint256 trackedTimestamp,
         uint256 newDuration,
         uint256 oldDuration
     );
@@ -178,15 +224,27 @@ interface ILendingMarketPrimaryV2 {
      * @dev Emitted when a sub-loan is frozen.
      *
      * @param subLoanId The unique identifier of the sub-loan.
+     * @param subLoanRevision The revision number of the sub-loan.
+     * @param trackedTimestamp The tracked timestamp of the sub-loan when it was frozen.
      */
-    event SubLoanFrozen(uint256 indexed subLoanId);
+    event SubLoanFrozen(
+        uint256 indexed subLoanId,
+        uint256 indexed subLoanRevision,
+        uint256 trackedTimestamp
+    );
 
     /**
      * @dev Emitted when a sub-loan is frozen.
      *
      * @param subLoanId The unique identifier of the sub-loan.
+     * @param subLoanRevision The revision number of the sub-loan.
+     * @param trackedTimestamp The tracked timestamp of the sub-loan when it was unfrozen.
      */
-    event SubLoanUnfrozen(uint256 indexed subLoanId);
+    event SubLoanUnfrozen(
+        uint256 indexed subLoanId,
+        uint256 indexed subLoanRevision,
+        uint256 trackedTimestamp
+    );
 
     /**
      * @dev Emitted when a sub-loan is revoked.
@@ -194,8 +252,14 @@ interface ILendingMarketPrimaryV2 {
      * There is no tracked amounts due to they are all zero for a revoked sub-loan.
      *
      * @param subLoanId The unique identifier of the sub-loan.
+     * @param subLoanRevision The revision number of the sub-loan.
+     * @param trackedTimestamp The tracked timestamp of the sub-loan when it was revoked.
      */
-    event SubLoanRevoked(uint256 indexed subLoanId);
+    event SubLoanRevoked(
+        uint256 indexed subLoanId,
+        uint256 indexed subLoanRevision,
+        uint256 trackedTimestamp
+    );
 
     /**
      * @dev Emitted when an operation is applied.
@@ -647,6 +711,9 @@ interface ILendingMarketErrorsV2 {
 
     /// @dev TODO
     error OperationRequestArrayCounterpartyDifference(); // TODO: select a better name
+
+    /// @dev TODO
+    error SubLoanRevisionExcess(); //TODO: add parameters
 }
 
 /**

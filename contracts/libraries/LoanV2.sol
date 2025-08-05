@@ -99,6 +99,7 @@ library LoanV2 {
 
         // Slot3
         SubLoanStatus status;
+        uint8 revision; // TODO: make uint16, do not forget to check conversion statements
         uint16 duration;
         uint32 interestRateRemuneratory;
         uint32 interestRateMoratory;
@@ -107,9 +108,9 @@ library LoanV2 {
         uint32 freezeTimestamp;
         uint16 operationCount;
         uint16 earliestOperationId;
-        uint16 latestOperationId;
         uint16 pastOperationId;
-        // uint8 __reserved; // Reserved until the end of the storage slot
+        uint16 latestOperationId;
+        // No reserve until the end of the storage slot
 
         // Slot 4 //trackedBalance
         uint64 trackedPrincipal;
@@ -139,6 +140,7 @@ library LoanV2 {
     struct ProcessingSubLoan {
         uint256 id;
         uint256 status;
+        uint256 revision;
         uint256 programId;
         address borrower;
         uint256 flags; // TODO: use it to mark fields that actually changed during processing
@@ -195,6 +197,8 @@ library LoanV2 {
         uint256 inputValue;
         uint256 appliedValue;
         address account;
+        uint256 oldValue;
+        uint256 newValue;
     }
 
     /**
