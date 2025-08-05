@@ -1074,9 +1074,11 @@ contract LendingMarketV2 is
                 } else {
                     _accrueInterestRemuneratory(subLoan, finishDay - startDay);
                     _calculateInitialLateFee(subLoan);
+                    _accrueInterestRemuneratory(subLoan, finishDay  - dueDay);
                     _accrueInterestMoratory(subLoan, finishDay - dueDay);
                 }
             } else {
+                _accrueInterestRemuneratory(subLoan, finishDay  - dueDay);
                 _accrueInterestMoratory(subLoan, finishDay - dueDay);
             }
         }
