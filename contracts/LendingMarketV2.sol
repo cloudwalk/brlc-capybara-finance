@@ -403,6 +403,7 @@ contract LendingMarketV2 is
             revert ProgramLiquidityPoolNotConfigured();
         }
 
+        // TODO: Move the ID generation and checking to a separate function
         uint256 id = _getLendingMarketStorage().subLoanIdCounter++;
         _checkLoanId(id);
 

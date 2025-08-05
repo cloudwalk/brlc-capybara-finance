@@ -269,6 +269,7 @@ interface ILendingMarketPrimaryV2 {
      * @param inputValue The input value of the operation like the amount to repay, new rate, new duration, etc.
      * @param account The account related to the operation, e.g. the repayer.
      */
+    // TODO: Consider replacing operationId => operationTimestamp
     event OperationApplied(
         uint256 indexed subLoanId,
         uint256 indexed operationId,
@@ -346,6 +347,7 @@ interface ILendingMarketPrimaryV2 {
     function takeLoan(
         address borrower,
         uint32 programId,
+        // TODO: Make array of structs
         uint256[] calldata borrowedAmounts,
         uint256[] calldata addonAmounts,
         uint256[] calldata durations
