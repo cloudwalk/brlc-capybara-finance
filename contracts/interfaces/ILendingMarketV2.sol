@@ -149,6 +149,23 @@ interface ILendingMarketPrimaryV2 {
     );
 
     /**
+     * @dev Emitted when the duration in days of a sub-loan is updated.
+     *
+     * @param subLoanId The unique identifier of the sub-loan.
+     * @param subLoanRevision The revision number of the sub-loan.
+     * @param trackedTimestamp The tracked timestamp of the sub-loan when its duration was updated.
+     * @param newDuration The current duration.
+     * @param oldDuration The previous duration.
+     */
+    event SubLoanDurationUpdated(
+        uint256 indexed subLoanId,
+        uint256 indexed subLoanRevision,
+        uint256 trackedTimestamp,
+        uint256 newDuration,
+        uint256 oldDuration
+    );
+
+    /**
      * @dev Emitted when the remuneratory interest rate of a sub-loan is updated.
      *
      * @param subLoanId The unique identifier of the sub-loan.
@@ -197,23 +214,6 @@ interface ILendingMarketPrimaryV2 {
         uint256 trackedTimestamp,
         uint256 newRate,
         uint256 oldRate
-    );
-
-    /**
-     * @dev Emitted when the duration in days of a sub-loan is updated.
-     *
-     * @param subLoanId The unique identifier of the sub-loan.
-     * @param subLoanRevision The revision number of the sub-loan.
-     * @param trackedTimestamp The tracked timestamp of the sub-loan when its duration was updated.
-     * @param newDuration The current duration.
-     * @param oldDuration The previous duration.
-     */
-    event SubLoanDurationUpdated(
-        uint256 indexed subLoanId,
-        uint256 indexed subLoanRevision,
-        uint256 trackedTimestamp,
-        uint256 newDuration,
-        uint256 oldDuration
     );
 
     /**
@@ -378,6 +378,17 @@ interface ILendingMarketPrimaryV2 {
     function discountSubLoanBatch(LoanV2.DiscountRequest[] calldata discountRequests) external;
 
     /**
+     * @dev Sets the duration of a batch of sub-loans.
+     *
+     * Can be called only by an account with a special role.
+     *
+     * @param operationRequests The operation request structures to set the duration of the sub-loans.
+     */
+    function setSubLoanDurationBatch(
+        LoanV2.SubLoanOperationRequest[] calldata operationRequests
+    ) external;
+
+    /**
      * @dev Sets the remuneratory interest rate of a batch of sub-loans.
      *
      * Can be called only by an account with a special role.
@@ -407,17 +418,6 @@ interface ILendingMarketPrimaryV2 {
      * @param operationRequests The operation request structures to set the late fee rate of the sub-loans.
      */
     function setSubLoanLateFeeRateBatch(
-        LoanV2.SubLoanOperationRequest[] calldata operationRequests
-    ) external;
-
-    /**
-     * @dev Sets the duration of a batch of sub-loans.
-     *
-     * Can be called only by an account with a special role.
-     *
-     * @param operationRequests The operation request structures to set the duration of the sub-loans.
-     */
-    function setSubLoanDurationBatch(
         LoanV2.SubLoanOperationRequest[] calldata operationRequests
     ) external;
 
