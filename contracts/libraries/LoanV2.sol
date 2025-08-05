@@ -197,8 +197,9 @@ library LoanV2 {
         uint256 inputValue;
         uint256 appliedValue;
         address account;
-        uint256 oldValue;
-        uint256 newValue;
+        uint256 oldSubLoanValue;
+        uint256 newSubLoanValue;
+        uint256 initialSubLoanStatus; // TODO: try to remove this field, if possible
     }
 
     /**

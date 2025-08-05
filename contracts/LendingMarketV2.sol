@@ -936,8 +936,8 @@ contract LendingMarketV2 is
                 subLoan.id,
                 subLoan.revision,
                 subLoan.trackedTimestamp,
-                bytes32(operation.newValue),
-                bytes32(operation.oldValue)
+                bytes32(operation.newSubLoanValue),
+                bytes32(operation.oldSubLoanValue)
             );
             _emitTrackedBalanceUpdate(subLoan);
         } else if (operationKind == uint256(LoanV2.OperationKind.Discounting)) {
@@ -945,8 +945,8 @@ contract LendingMarketV2 is
                 subLoan.id,
                 subLoan.revision,
                 subLoan.trackedTimestamp,
-                bytes32(operation.newValue),
-                bytes32(operation.oldValue)
+                bytes32(operation.newSubLoanValue),
+                bytes32(operation.oldSubLoanValue)
             );
             _emitTrackedBalanceUpdate(subLoan);
         } else if (operationKind == uint256(LoanV2.OperationKind.SetInterestRateRemuneratory)) {
@@ -954,8 +954,8 @@ contract LendingMarketV2 is
                 subLoan.id,
                 subLoan.revision,
                 subLoan.trackedTimestamp,
-                operation.newValue,
-                operation.oldValue
+                operation.newSubLoanValue,
+                operation.oldSubLoanValue
             );
             _emitTrackedBalanceUpdate(subLoan);
         } else if (operationKind == uint256(LoanV2.OperationKind.SetInterestRateMoratory)) {
@@ -963,8 +963,8 @@ contract LendingMarketV2 is
                 subLoan.id,
                 subLoan.revision,
                 subLoan.trackedTimestamp,
-                operation.newValue,
-                operation.oldValue
+                operation.newSubLoanValue,
+                operation.oldSubLoanValue
             );
             _emitTrackedBalanceUpdate(subLoan);
         } else if (operationKind == uint256(LoanV2.OperationKind.SetLateFeeRate)) {
@@ -972,8 +972,8 @@ contract LendingMarketV2 is
                 subLoan.id,
                 subLoan.revision,
                 subLoan.trackedTimestamp,
-                operation.newValue,
-                operation.oldValue
+                operation.newSubLoanValue,
+                operation.oldSubLoanValue
             );
             _emitTrackedBalanceUpdate(subLoan);
         } else if (operationKind == uint256(LoanV2.OperationKind.SetDuration)) {
@@ -981,8 +981,8 @@ contract LendingMarketV2 is
                 subLoan.id,
                 subLoan.revision,
                 operation.timestamp,
-                operation.newValue,
-                operation.oldValue
+                operation.newSubLoanValue,
+                operation.oldSubLoanValue
             );
             // no tracked balance update needed
         } else if (operationKind == uint256(LoanV2.OperationKind.Freezing)) {
@@ -1000,12 +1000,24 @@ contract LendingMarketV2 is
             );
             _emitTrackedBalanceUpdate(subLoan);
         } else if (operationKind == uint256(LoanV2.OperationKind.Revocation)) {
-            emit SubLoanRevoked(
+            emit SubLoanStatusUpdated(
                 subLoan.id,
                 subLoan.revision,
-                subLoan.trackedTimestamp
+                LoanV2.SubLoanStatus.Revoked,
+                subLoan.trackedTimestamp,
+                LoanV2.SubLoanStatus(operation.oldSubLoanValue)
             );
             _emitTrackedBalanceUpdate(subLoan);
+        }
+
+        if (subLoan.status != operation.initialSubLoanStatus) {
+            emit SubLoanStatusUpdated(
+                subLoan.id,
+                subLoan.revision,
+                LoanV2.SubLoanStatus(subLoan.status),
+                subLoan.trackedTimestamp,
+                LoanV2.SubLoanStatus(operation.initialSubLoanStatus)
+            );
         }
     }
 
@@ -1081,6 +1093,7 @@ contract LendingMarketV2 is
         uint256 notApplied;
         uint256 operationKind = operation.kind;
         uint256 appliedValue = operation.inputValue;
+        operation.initialSubLoanStatus = subLoan.status;
         if (operationKind == uint256(LoanV2.OperationKind.Repayment)) {
             appliedValue = _applyRepaymentOrDiscount(subLoan, operation);
         } else if (operationKind == uint256(LoanV2.OperationKind.Discounting)) {
@@ -1227,16 +1240,6 @@ contract LendingMarketV2 is
 
         // TODO: add events if needed
 
-        // Check full repayment status or its disappearing
-        if (newSubLoan.status != uint256(LoanV2.SubLoanStatus.Revoked)) {
-            uint256 newTrackedBalance = _calculateTrackedBalance(newSubLoan);
-            if (newTrackedBalance == 0) {
-                newSubLoan.status = uint256(LoanV2.SubLoanStatus.FullyRepaid);
-            } else {
-                newSubLoan.status = uint256(LoanV2.SubLoanStatus.Ongoing);
-            }
-        }
-
         _acceptRepaymentChange(newSubLoan, oldSubLoan);
         _acceptDiscountChange(newSubLoan, oldSubLoan);
         _acceptSubLoanParametersChange(newSubLoan, oldSubLoan);
@@ -1282,7 +1285,8 @@ contract LendingMarketV2 is
         uint256 amount = operation.inputValue;
         uint256 operationKind = operation.kind;
         uint256 initialAmount = amount;
-        operation.oldValue = _packRepaidParts(subLoan);
+        operation.oldSubLoanValue = _packRepaidParts(subLoan);
+        // TODO: fix repayment sequence
         amount = _repayOrDiscountPartial(
             subLoan,
             amount,
@@ -1313,7 +1317,11 @@ contract LendingMarketV2 is
         if (amount > 0 && initialAmount < type(uint64).max) {
             revert RepaymentOrDiscountAmountExcess();
         }
-        operation.newValue = _packRepaidParts(subLoan);
+        operation.newSubLoanValue = _packRepaidParts(subLoan);
+        uint256 newPackedTrackedParts = _packTrackedParts(subLoan);
+        if (newPackedTrackedParts == 0 && subLoan.status == uint256(LoanV2.SubLoanStatus.Ongoing)) {
+            subLoan.status = uint256(LoanV2.SubLoanStatus.FullyRepaid);
+        }
 
         return initialAmount - amount;
     }
@@ -1325,8 +1333,8 @@ contract LendingMarketV2 is
         LoanV2.ProcessingSubLoan memory subLoan,
         LoanV2.ProcessingOperation memory operation
     ) internal pure {
-        operation.oldValue = _packTrackedParts(subLoan);
-        operation.newValue = 0;
+        operation.oldSubLoanValue = _packTrackedParts(subLoan);
+        operation.newSubLoanValue = 0;
         subLoan.trackedPrincipal = 0;
         subLoan.trackedInterestRemuneratory = 0;
         subLoan.trackedInterestMoratory = 0;
@@ -1341,9 +1349,9 @@ contract LendingMarketV2 is
         LoanV2.ProcessingSubLoan memory subLoan,
         LoanV2.ProcessingOperation memory operation
     ) internal pure {
-        operation.oldValue = subLoan.duration;
+        operation.oldSubLoanValue = subLoan.duration;
         subLoan.duration = operation.inputValue;
-        operation.newValue = subLoan.duration;
+        operation.newSubLoanValue = subLoan.duration;
     }
 
     /**
@@ -1353,9 +1361,9 @@ contract LendingMarketV2 is
         LoanV2.ProcessingSubLoan memory subLoan,
         LoanV2.ProcessingOperation memory operation
     ) internal pure {
-        operation.oldValue = subLoan.interestRateRemuneratory;
+        operation.oldSubLoanValue = subLoan.interestRateRemuneratory;
         subLoan.interestRateRemuneratory = operation.inputValue;
-        operation.newValue = subLoan.interestRateRemuneratory;
+        operation.newSubLoanValue = subLoan.interestRateRemuneratory;
     }
 
     /**
@@ -1365,9 +1373,9 @@ contract LendingMarketV2 is
         LoanV2.ProcessingSubLoan memory subLoan,
         LoanV2.ProcessingOperation memory operation
     ) internal pure {
-        operation.oldValue = subLoan.interestRateMoratory;
+        operation.oldSubLoanValue = subLoan.interestRateMoratory;
         subLoan.interestRateMoratory = operation.inputValue;
-        operation.newValue = subLoan.interestRateMoratory;
+        operation.newSubLoanValue = subLoan.interestRateMoratory;
     }
 
     /**
@@ -1377,9 +1385,9 @@ contract LendingMarketV2 is
         LoanV2.ProcessingSubLoan memory subLoan,
         LoanV2.ProcessingOperation memory operation
     ) internal pure {
-        operation.oldValue = subLoan.lateFeeRate;
+        operation.oldSubLoanValue = subLoan.lateFeeRate;
         subLoan.lateFeeRate = operation.inputValue;
-        operation.newValue = subLoan.lateFeeRate;
+        operation.newSubLoanValue = subLoan.lateFeeRate;
     }
 
     /**
@@ -1390,9 +1398,9 @@ contract LendingMarketV2 is
         LoanV2.ProcessingOperation memory operation
     ) internal pure {
         // TODO: Simplify
-        operation.oldValue = subLoan.freezeTimestamp;
+        operation.oldSubLoanValue = subLoan.freezeTimestamp;
         subLoan.freezeTimestamp = operation.timestamp;
-        operation.newValue = subLoan.freezeTimestamp;
+        operation.newSubLoanValue = subLoan.freezeTimestamp;
     }
 
     /**
@@ -1402,9 +1410,9 @@ contract LendingMarketV2 is
         LoanV2.ProcessingSubLoan memory subLoan,
         LoanV2.ProcessingOperation memory operation
     ) internal pure {
-        operation.oldValue = subLoan.freezeTimestamp;
+        operation.oldSubLoanValue = subLoan.freezeTimestamp;
         subLoan.freezeTimestamp = 0;
-        operation.newValue = subLoan.freezeTimestamp;
+        operation.newSubLoanValue = subLoan.freezeTimestamp;
         // TODO: implement more actions and simplify
     }
 

@@ -105,18 +105,10 @@ interface ILendingMarketPrimaryV2 {
         uint256 trackedTimestamp,
         bytes32 newPackedRepaidParts,
         bytes32 oldPackedRepaidParts
-        // TODO: distinguish between full and partial repayment
     );
 
-    // revision 1
-    // repayment 1 + tracked balance 1
-    // repayment 2 + tracked balance 2
-
-    // revision 2
-    // repayment 2 + tracked balance 2
-
     /**
-     * @dev Emitted when the tracked balance of a sub-loan is updated TODO.
+     * @dev Emitted when the tracked balance of a sub-loan is updated within the current revision lifecycle.
      * 
      * See notes about the event packed parameters in the `SubLoanRepaymentUpdated` event.
      *
@@ -130,7 +122,6 @@ interface ILendingMarketPrimaryV2 {
         uint256 indexed subLoanRevision,
         uint256 trackedTimestamp,
         bytes32 newPackedTrackedParts
-        // TODO: distinguish between full and partial repayment
     );
 
     /**
@@ -255,10 +246,12 @@ interface ILendingMarketPrimaryV2 {
      * @param subLoanRevision The revision number of the sub-loan.
      * @param trackedTimestamp The tracked timestamp of the sub-loan when it was revoked.
      */
-    event SubLoanRevoked(
+    event SubLoanStatusUpdated(
         uint256 indexed subLoanId,
         uint256 indexed subLoanRevision,
-        uint256 trackedTimestamp
+        LoanV2.SubLoanStatus indexed newStatus,
+        uint256 trackedTimestamp,
+        LoanV2.SubLoanStatus oldStatus
     );
 
     /**
