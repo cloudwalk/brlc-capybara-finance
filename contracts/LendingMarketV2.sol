@@ -1276,17 +1276,17 @@ contract LendingMarketV2 is
         uint256 operationKind = operation.kind;
         uint256 initialAmount = amount;
         operation.oldSubLoanValue = _packRepaidParts(subLoan);
-        // TODO: fix repayment sequence
+
         amount = _repayOrDiscountPartial(
             subLoan,
             amount,
-            uint256(LoanV2.SubLoanPartKind.InterestMoratory),
+            uint256(LoanV2.SubLoanPartKind.LateFee),
             operationKind
         );
         amount = _repayOrDiscountPartial(
             subLoan,
             amount,
-            uint256(LoanV2.SubLoanPartKind.LateFee),
+            uint256(LoanV2.SubLoanPartKind.InterestMoratory),
             operationKind
         );
         amount = _repayOrDiscountPartial(
