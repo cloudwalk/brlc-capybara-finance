@@ -44,10 +44,10 @@ library LoanV2 {
         Revocation,
         Freezing, // TODO implement
         Unfreezing, // TODO implement
-        ChangeInInterestRateRemuneratory, // TODO implement
-        ChangeInInterestRateMoratory, // TODO implement
-        ChangeInLateFeeRate, // TODO implement
-        ChangeInDuration, // TODO implement
+        SetInterestRateRemuneratory, // TODO implement
+        SetInterestRateMoratory, // TODO implement
+        SetLateFeeRate, // TODO implement
+        SetDuration, // TODO implement
         NonexistentLimit
     }
 
