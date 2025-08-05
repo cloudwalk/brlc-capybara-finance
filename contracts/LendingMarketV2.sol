@@ -518,17 +518,17 @@ contract LendingMarketV2 is
     /// @dev TODO
     function _executeOperationBatch(
         uint256 operationKind,
-        LoanV2.SubLoanOperationRequest[] calldata setParameterRequests
+        LoanV2.SubLoanOperationRequest[] calldata operationRequests
     ) internal {
-        uint256 count = setParameterRequests.length;
+        uint256 count = operationRequests.length;
         LoanV2.AddedOperationRequest[] memory addingRequests = new LoanV2.AddedOperationRequest[](count);
         for (uint256 i = 0; i < count; ++i){
-            LoanV2.SubLoanOperationRequest memory setParameterRequest = setParameterRequests[i];
+            LoanV2.SubLoanOperationRequest memory operationRequest = operationRequests[i];
             addingRequests[i] = LoanV2.AddedOperationRequest({
-                subLoanId: setParameterRequest.subLoanId,
+                subLoanId: operationRequest.subLoanId,
                 kind: operationKind,
-                timestamp: _blockTimestamp(),
-                inputValue: setParameterRequest.value,
+                timestamp: operationRequest.timestamp,
+                inputValue: operationRequest.value,
                 account: address(0) // No account is needed for this operation
             });
         }
