@@ -189,24 +189,6 @@ contract LendingMarketV2 is
     }
 
     /// @inheritdoc ILendingMarketPrimaryV2
-    function repaySubLoanBatch(LoanV2.RepaymentRequest[] calldata repaymentRequests) external whenNotPaused onlyRole(ADMIN_ROLE) {
-        uint256 len = repaymentRequests.length;
-        for (uint256 i = 0; i < len; ++i) {
-            LoanV2.RepaymentRequest memory repaymentRequest = repaymentRequests[i];
-            _repaySubLoan(repaymentRequest.subLoanId, repaymentRequest.repaymentAmount, repaymentRequest.repayer);
-        }
-    }
-
-    /// @inheritdoc ILendingMarketPrimaryV2
-    function discountSubLoanBatch(LoanV2.DiscountRequest[] calldata discountRequests) external whenNotPaused onlyRole(ADMIN_ROLE) {
-        uint256 len = discountRequests.length;
-        for (uint256 i = 0; i < len; ++i) {
-            LoanV2.DiscountRequest memory discountRequest = discountRequests[i];
-            _discountSubLoan(discountRequest.subLoanId, discountRequest.discountAmount);
-        }
-    }
-
-    /// @inheritdoc ILendingMarketPrimaryV2
     function revokeLoan(uint256 subLoanId) external whenNotPaused onlyRole(ADMIN_ROLE) {
         LoanV2.SubLoan storage subLoanStored = _getExitingSubLoanInStorage(subLoanId);
 
@@ -243,71 +225,69 @@ contract LendingMarketV2 is
     }
 
     /// @inheritdoc ILendingMarketPrimaryV2
-    function modifyOperationBatch(
-        LoanV2.VoidOperationRequest[] calldata voidOperationRequests,
-        LoanV2.AddedOperationRequest[] calldata addedOperationRequests
-    ) external {
-        // TODO: Simplify and maybe split this function into parts
-        uint256 affectedSubLoanCount = 0;
-        uint256 count = voidOperationRequests.length;
-        OperationAffectedSubLoan[] memory affectedSubLoans =
-            new OperationAffectedSubLoan[](count + addedOperationRequests.length);
-        for (uint256 i = 0; i < count; ++i) {
-            LoanV2.VoidOperationRequest memory voidingRequest = voidOperationRequests[i];
-            OperationAffectedSubLoan memory affectedSubLoan = _findOperationAffectedSubLoan(
-                affectedSubLoans,
-                affectedSubLoanCount,
-                voidingRequest.subLoanId
-            );
-            if (affectedSubLoan.subLoanId == 0) {
-                ++affectedSubLoanCount;
-                affectedSubLoan.subLoanId = voidingRequest.subLoanId;
-                affectedSubLoan.counterparty = voidingRequest.counterparty;
-                affectedSubLoan.minOperationTimestamp = type(uint256).max;
-            } else if (affectedSubLoan.counterparty != voidingRequest.counterparty) {
-                revert OperationRequestArrayCounterpartyDifference();
-            }
-            LoanV2.Operation storage operation = _voidOperation(
-                voidingRequest.subLoanId,
-                voidingRequest.operationId,
-                voidingRequest.counterparty
-            );
-            if (operation.status == LoanV2.OperationStatus.Revoked) {
-                if (operation.timestamp > affectedSubLoan.minOperationTimestamp) {
-                    affectedSubLoan.minOperationTimestamp = operation.timestamp;
-                }
-            }
+    function repaySubLoanBatch(LoanV2.RepaymentRequest[] calldata repaymentRequests) external whenNotPaused onlyRole(ADMIN_ROLE) {
+        uint256 len = repaymentRequests.length;
+        for (uint256 i = 0; i < len; ++i) {
+            LoanV2.RepaymentRequest memory repaymentRequest = repaymentRequests[i];
+            _repaySubLoan(repaymentRequest.subLoanId, repaymentRequest.repaymentAmount, repaymentRequest.repayer);
         }
-        count = addedOperationRequests.length;
-        for (uint256 i = 0; i < count; ++i) {
-            LoanV2.AddedOperationRequest memory addingRequest = addedOperationRequests[i];
-            OperationAffectedSubLoan memory affectedSubLoan = _findOperationAffectedSubLoan(
-                affectedSubLoans,
-                affectedSubLoanCount,
-                addingRequest.subLoanId
-            );
-            if (affectedSubLoan.subLoanId == 0) {
-                ++affectedSubLoanCount;
-                affectedSubLoan.subLoanId = addingRequest.subLoanId;
-                affectedSubLoan.minOperationTimestamp = type(uint256).max;
-            }
-            _checkOperationParameters(addingRequest.kind, addingRequest.inputValue, addingRequest.account);
-            _addOperation(
-                addingRequest.subLoanId,
-                addingRequest.kind,
-                addingRequest.timestamp,
-                addingRequest.inputValue,
-                addingRequest.account
-            );
-            if (addingRequest.timestamp > affectedSubLoan.minOperationTimestamp) {
-                affectedSubLoan.minOperationTimestamp = addingRequest.timestamp;
-            }
-        }
+    }
 
-        for (uint256 i = 0; i < affectedSubLoanCount; ++i) {
-            OperationAffectedSubLoan memory affectedSubLoan = affectedSubLoans[i];
-            _treatOperations(affectedSubLoan.subLoanId, affectedSubLoan.minOperationTimestamp, affectedSubLoan.counterparty);
+    /// @inheritdoc ILendingMarketPrimaryV2
+    function discountSubLoanBatch(LoanV2.DiscountRequest[] calldata discountRequests) external whenNotPaused onlyRole(ADMIN_ROLE) {
+        uint256 len = discountRequests.length;
+        for (uint256 i = 0; i < len; ++i) {
+            LoanV2.DiscountRequest memory discountRequest = discountRequests[i];
+            _discountSubLoan(discountRequest.subLoanId, discountRequest.discountAmount);
         }
+    }
+
+    /// @inheritdoc ILendingMarketPrimaryV2
+    function setSubLoanInterestRateRemuneratoryBatch(
+        LoanV2.SubLoanOperationRequest[] calldata setParameterRequests
+    ) external whenNotPaused onlyRole(ADMIN_ROLE) {
+        _executeOperationBatch(uint256(LoanV2.OperationKind.SetInterestRateRemuneratory), setParameterRequests);
+    }
+
+    /// @inheritdoc ILendingMarketPrimaryV2
+    function setSubLoanInterestRateMoratoryBatch(
+        LoanV2.SubLoanOperationRequest[] calldata setParameterRequests
+    ) external whenNotPaused onlyRole(ADMIN_ROLE) {
+        _executeOperationBatch(uint256(LoanV2.OperationKind.SetInterestRateMoratory), setParameterRequests);
+    }
+
+    /// @inheritdoc ILendingMarketPrimaryV2
+    function setSubLoanLateFeeRateBatch(
+        LoanV2.SubLoanOperationRequest[] calldata setParameterRequests
+    ) external whenNotPaused onlyRole(ADMIN_ROLE) {
+        _executeOperationBatch(uint256(LoanV2.OperationKind.SetLateFeeRate), setParameterRequests);
+    }
+
+    /// @inheritdoc ILendingMarketPrimaryV2
+    function setSubLoanDurationBatch(
+        LoanV2.SubLoanOperationRequest[] calldata operationRequests
+    ) external whenNotPaused onlyRole(ADMIN_ROLE) {
+        _executeOperationBatch(uint256(LoanV2.OperationKind.SetDuration), operationRequests);
+    }
+
+    /// @inheritdoc ILendingMarketPrimaryV2
+    function freezeSubLoanBatch(
+        LoanV2.SubLoanOperationRequest[] calldata operationRequests
+    ) external whenNotPaused onlyRole(ADMIN_ROLE) {
+        _executeOperationBatch(uint256(LoanV2.OperationKind.Freezing), operationRequests);
+    }
+
+    /// @inheritdoc ILendingMarketPrimaryV2
+    function unfreezeSubLoanBatch(
+        LoanV2.SubLoanOperationRequest[] calldata operationRequests
+    ) external whenNotPaused onlyRole(ADMIN_ROLE) {
+        _executeOperationBatch(uint256(LoanV2.OperationKind.Unfreezing), operationRequests);
+    }
+
+
+    /// @inheritdoc ILendingMarketPrimaryV2
+    function voidOperationBatch(LoanV2.VoidOperationRequest[] calldata voidOperationRequests) external {
+        _modifyOperationBatch(voidOperationRequests, new LoanV2.AddedOperationRequest[](0));
     }
 
     // ------------------ View functions -------------------------- //
@@ -530,6 +510,29 @@ contract LendingMarketV2 is
         _processOperations(subLoan);
     }
 
+    /// @dev TODO
+    function _executeOperationBatch(
+        uint256 operationKind,
+        LoanV2.SubLoanOperationRequest[] calldata setParameterRequests
+    ) internal {
+        uint256 count = setParameterRequests.length;
+        LoanV2.AddedOperationRequest[] memory addingRequests = new LoanV2.AddedOperationRequest[](count);
+        for (uint256 i = 0; i < count; ++i){
+            LoanV2.SubLoanOperationRequest memory setParameterRequest = setParameterRequests[i];
+            LoanV2.AddedOperationRequest memory addingRequest = LoanV2.AddedOperationRequest({
+                subLoanId: setParameterRequest.subLoanId,
+                kind: operationKind,
+                timestamp: _blockTimestamp(),
+                inputValue: setParameterRequest.value,
+                account: address(0) // No account is needed for this operation
+            });
+        }
+        _modifyOperationBatch(
+            new LoanV2.VoidOperationRequest[](0), // No voiding requests
+            addingRequests
+        );
+    }
+
     /**
      * @dev Updates the loan state and makes the necessary transfers when revoking a loan.
      * @param subLoan TODO
@@ -749,6 +752,74 @@ contract LendingMarketV2 is
     }
 
     /// @dev TODO
+    function _modifyOperationBatch(
+        LoanV2.VoidOperationRequest[] memory voidOperationRequests,
+        LoanV2.AddedOperationRequest[] memory addedOperationRequests
+    ) internal {
+        // TODO: Simplify and maybe split this function into parts
+        uint256 affectedSubLoanCount = 0;
+        uint256 count = voidOperationRequests.length;
+        OperationAffectedSubLoan[] memory affectedSubLoans =
+                    new OperationAffectedSubLoan[](count + addedOperationRequests.length);
+        for (uint256 i = 0; i < count; ++i) {
+            LoanV2.VoidOperationRequest memory voidingRequest = voidOperationRequests[i];
+            OperationAffectedSubLoan memory affectedSubLoan = _findOperationAffectedSubLoan(
+                affectedSubLoans,
+                affectedSubLoanCount,
+                voidingRequest.subLoanId
+            );
+            if (affectedSubLoan.subLoanId == 0) {
+                ++affectedSubLoanCount;
+                affectedSubLoan.subLoanId = voidingRequest.subLoanId;
+                affectedSubLoan.counterparty = voidingRequest.counterparty;
+                affectedSubLoan.minOperationTimestamp = type(uint256).max;
+            } else if (affectedSubLoan.counterparty != voidingRequest.counterparty) {
+                revert OperationRequestArrayCounterpartyDifference();
+            }
+            LoanV2.Operation storage operation = _voidOperation(
+                voidingRequest.subLoanId,
+                voidingRequest.operationId,
+                voidingRequest.counterparty
+            );
+            if (operation.status == LoanV2.OperationStatus.Revoked) {
+                if (operation.timestamp > affectedSubLoan.minOperationTimestamp) {
+                    affectedSubLoan.minOperationTimestamp = operation.timestamp;
+                }
+            }
+        }
+        count = addedOperationRequests.length;
+        for (uint256 i = 0; i < count; ++i) {
+            LoanV2.AddedOperationRequest memory addingRequest = addedOperationRequests[i];
+            OperationAffectedSubLoan memory affectedSubLoan = _findOperationAffectedSubLoan(
+                affectedSubLoans,
+                affectedSubLoanCount,
+                addingRequest.subLoanId
+            );
+            if (affectedSubLoan.subLoanId == 0) {
+                ++affectedSubLoanCount;
+                affectedSubLoan.subLoanId = addingRequest.subLoanId;
+                affectedSubLoan.minOperationTimestamp = type(uint256).max;
+            }
+            _checkOperationParameters(addingRequest.kind, addingRequest.inputValue, addingRequest.account);
+            _addOperation(
+                addingRequest.subLoanId,
+                addingRequest.kind,
+                addingRequest.timestamp,
+                addingRequest.inputValue,
+                addingRequest.account
+            );
+            if (addingRequest.timestamp > affectedSubLoan.minOperationTimestamp) {
+                affectedSubLoan.minOperationTimestamp = addingRequest.timestamp;
+            }
+        }
+
+        for (uint256 i = 0; i < affectedSubLoanCount; ++i) {
+            OperationAffectedSubLoan memory affectedSubLoan = affectedSubLoans[i];
+            _treatOperations(affectedSubLoan.subLoanId, affectedSubLoan.minOperationTimestamp, affectedSubLoan.counterparty);
+        }
+    }
+
+    /// @dev TODO
     function _processOperations(
         LoanV2.ProcessingSubLoan memory subLoan
     ) internal {
@@ -921,11 +992,21 @@ contract LendingMarketV2 is
             appliedValue = _applyRepaymentOrDiscount(subLoan, operation.inputValue, operationKind);
         } else if (operationKind == uint256(LoanV2.OperationKind.Revocation)) {
             _applyRevocation(subLoan);
+        } else if (operationKind == uint256(LoanV2.OperationKind.SetInterestRateRemuneratory)) {
+            _applySetInterestRateRemuneratory(subLoan, operation.inputValue);
+        } else if (operationKind == uint256(LoanV2.OperationKind.SetInterestRateMoratory)) {
+            _applySetInterestRateMoratory(subLoan, operation.inputValue);
+        } else if (operationKind == uint256(LoanV2.OperationKind.SetLateFeeRate)) {
+            _applySetLateFeeRate(subLoan, operation.inputValue);
+        } else if (operationKind == uint256(LoanV2.OperationKind.Freezing)) {
+            _applyFreezing(subLoan, operation.timestamp);
+        } else if (operationKind == uint256(LoanV2.OperationKind.Unfreezing)) {
+            _applyUnfreezing(subLoan);
         } else {
             notExecuted = 1;
         }
 
-        if (notExecuted != 0) {
+        if (notExecuted == 0) {
             operation.initialStatus = operation.status;
             operation.status = uint256(LoanV2.OperationStatus.Applied);
             operation.appliedValue = appliedValue;
@@ -984,6 +1065,50 @@ contract LendingMarketV2 is
         subLoan.trackedInterestMoratory = 0;
         subLoan.trackedLateFee = 0;
         subLoan.status = uint256(LoanV2.SubLoanStatus.Revoked);
+    }
+
+    /**
+     * @dev Applies the SetInterestRateRemuneratory operation to a sub-loan.
+     * @param subLoan The sub-loan to modify.
+     * @param newRate The new remuneratory interest rate.
+     */
+    function _applySetInterestRateRemuneratory(LoanV2.ProcessingSubLoan memory subLoan, uint256 newRate) internal pure {
+        subLoan.interestRateRemuneratory = newRate;
+    }
+
+    /**
+     * @dev Applies the SetInterestRateMoratory operation to a sub-loan.
+     * @param subLoan The sub-loan to modify.
+     * @param newRate The new moratory interest rate.
+     */
+    function _applySetInterestRateMoratory(LoanV2.ProcessingSubLoan memory subLoan, uint256 newRate) internal pure {
+        subLoan.interestRateMoratory = newRate;
+    }
+
+    /**
+     * @dev Applies the SetLateFeeRate operation to a sub-loan.
+     * @param subLoan The sub-loan to modify.
+     * @param newRate The new late fee rate.
+     */
+    function _applySetLateFeeRate(LoanV2.ProcessingSubLoan memory subLoan, uint256 newRate) internal pure {
+        subLoan.lateFeeRate = newRate;
+    }
+
+    /**
+     * @dev Applies the Freezing operation to a sub-loan.
+     * @param subLoan The sub-loan to freeze.
+     * @param currentTimestamp The current timestamp to use for freezing.
+     */
+    function _applyFreezing(LoanV2.ProcessingSubLoan memory subLoan, uint256 currentTimestamp) internal pure {
+        subLoan.freezeTimestamp = currentTimestamp;
+    }
+
+    /**
+     * @dev Applies the Unfreezing operation to a sub-loan.
+     * @param subLoan The sub-loan to unfreeze.
+     */
+    function _applyUnfreezing(LoanV2.ProcessingSubLoan memory subLoan) internal pure {
+        subLoan.freezeTimestamp = 0;
     }
 
     /**
@@ -1497,12 +1622,15 @@ contract LendingMarketV2 is
             revert OperationKindUnacceptable();
         }
 
-        if (
-            kind == uint256(LoanV2.OperationKind.Freezing) ||
-            kind == uint256(LoanV2.OperationKind.Unfreezing)
-        ) {
+        if (kind == uint256(LoanV2.OperationKind.Freezing)) {
             if (inputValue != 0) {
-                revert OperationInputValueNotZero();
+                revert OperationInputValueInvalid();
+            }
+        }
+
+        if (kind == uint256(LoanV2.OperationKind.Unfreezing)) {
+            if (inputValue > 1) {
+                revert OperationInputValueInvalid();
             }
         }
 
