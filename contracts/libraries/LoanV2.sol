@@ -108,8 +108,8 @@ library LoanV2 {
         uint32 freezeTimestamp;
         uint16 operationCount;
         uint16 earliestOperationId;
-        uint16 pastOperationId;
-        uint16 latestOperationId;
+        uint16 pastOperationId; //TODO: rename to recentOperationId
+        uint16 latestOperationId; //TODO: consider removing this field as redundant
         // No reserve until the end of the storage slot
 
         // Slot 4 //trackedBalance
