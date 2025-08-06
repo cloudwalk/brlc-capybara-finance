@@ -225,21 +225,20 @@ contract LendingMarketV2 is
     }
 
     /// @inheritdoc ILendingMarketPrimaryV2
-    function repaySubLoanBatch(LoanV2.RepaymentRequest[] calldata repaymentRequests) external whenNotPaused onlyRole(ADMIN_ROLE) {
-        uint256 len = repaymentRequests.length;
-        for (uint256 i = 0; i < len; ++i) {
-            LoanV2.RepaymentRequest memory repaymentRequest = repaymentRequests[i];
-            _repaySubLoan(repaymentRequest.subLoanId, repaymentRequest.repaymentAmount, repaymentRequest.repayer);
-        }
+    function repaySubLoanBatch(
+        LoanV2.RepaymentRequest[] calldata repaymentRequests
+    ) external whenNotPaused onlyRole(ADMIN_ROLE) {
+        _executeRepaymentBatch(repaymentRequests);
     }
 
     /// @inheritdoc ILendingMarketPrimaryV2
-    function discountSubLoanBatch(LoanV2.DiscountRequest[] calldata discountRequests) external whenNotPaused onlyRole(ADMIN_ROLE) {
-        uint256 len = discountRequests.length;
-        for (uint256 i = 0; i < len; ++i) {
-            LoanV2.DiscountRequest memory discountRequest = discountRequests[i];
-            _discountSubLoan(discountRequest.subLoanId, discountRequest.discountAmount);
-        }
+    function discountSubLoanBatch(
+        LoanV2.SubLoanOperationRequest[] calldata operationRequests
+    ) external whenNotPaused onlyRole(ADMIN_ROLE) {
+        _executeOperationBatch(
+            uint256(LoanV2.OperationKind.Discounting),
+            operationRequests
+        );
     }
 
     /// @inheritdoc ILendingMarketPrimaryV2
@@ -472,47 +471,32 @@ contract LendingMarketV2 is
         return id;
     }
 
-    /**
-     * @dev Repays a sub-loan internally.
-     * @param subLoanId The unique identifier of the sub-loan to repay.
-     * @param repaymentAmount The amount to repay.
-     * @param repayer The token source for the repayment or zero if the source is the loan borrower themself.
-     */
-    function _repaySubLoan(
-        uint256 subLoanId, // Tools: this comment prevents Prettier from formatting into a single line.
-        uint256 repaymentAmount,
-        address repayer
-    ) internal {
-        repaymentAmount = _normalizeAmount(repaymentAmount);
-        LoanV2.ProcessingSubLoan memory subLoan = _getOngoingSubLoan(subLoanId);
-        _addOperation(
-            subLoan.id,
-            uint256(LoanV2.OperationKind.Repayment),
-            _blockTimestamp(), // timestamp
-            repaymentAmount, // inputValue
-            repayer // account
-        );
-        _processOperations(subLoan);
-    }
+    //TODO: Somehow unite the following two functions.
 
-    /**
-     * @dev Discounts a sub-loan internally.
-     * @param subLoanId The unique identifier of the sub-loan to discount.
-     * @param discountAmount The amount of the discount.
-     */
-    function _discountSubLoan(
-        uint256 subLoanId, // Tools: this comment prevents Prettier from formatting into a single line.
-        uint256 discountAmount
+    /// @dev TODO
+    function _executeRepaymentBatch(
+        LoanV2.RepaymentRequest[] calldata repaymentRequests
     ) internal {
-        LoanV2.ProcessingSubLoan memory subLoan = _getOngoingSubLoan(subLoanId);
-        _addOperation(
-            subLoan.id,
-            uint256(LoanV2.OperationKind.Discounting),
-            _blockTimestamp(),
-            discountAmount,
-            address(0) // account
+        uint256 count = repaymentRequests.length;
+        LoanV2.AddedOperationRequest[] memory addingRequests = new LoanV2.AddedOperationRequest[](count);
+        for (uint256 i = 0; i < count; ++i){
+            LoanV2.RepaymentRequest memory repaymentRequest = repaymentRequests[i];
+            uint256 operationTimestamp = repaymentRequest.timestamp;
+            if (operationTimestamp == 0) {
+                operationTimestamp = _blockTimestamp();
+            }
+            addingRequests[i] = LoanV2.AddedOperationRequest({
+                subLoanId: repaymentRequest.subLoanId,
+                kind: uint256(LoanV2.OperationKind.Repayment),
+                timestamp: operationTimestamp,
+                inputValue: repaymentRequest.repaymentAmount,
+                account: repaymentRequest.repayer
+            });
+        }
+        _modifyOperationBatch(
+            new LoanV2.VoidOperationRequest[](0), // No voiding requests
+            addingRequests
         );
-        _processOperations(subLoan);
     }
 
     /// @dev TODO
@@ -524,10 +508,14 @@ contract LendingMarketV2 is
         LoanV2.AddedOperationRequest[] memory addingRequests = new LoanV2.AddedOperationRequest[](count);
         for (uint256 i = 0; i < count; ++i){
             LoanV2.SubLoanOperationRequest memory operationRequest = operationRequests[i];
+            uint256 operationTimestamp = operationRequest.timestamp;
+            if (operationTimestamp == 0) {
+                operationTimestamp = _blockTimestamp();
+            }
             addingRequests[i] = LoanV2.AddedOperationRequest({
                 subLoanId: operationRequest.subLoanId,
                 kind: operationKind,
-                timestamp: operationRequest.timestamp,
+                timestamp: operationTimestamp,
                 inputValue: operationRequest.value,
                 account: address(0) // No account is needed for this operation
             });
