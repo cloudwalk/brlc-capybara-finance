@@ -375,9 +375,9 @@ interface ILendingMarketPrimaryV2 {
      *
      * Can be called only by an account with a special role.
      *
-     * @param discountRequests The request structures to discount the sub-loans.
+     * @param operationRequests The operation request structures to discount the sub-loans.
      */
-    function discountSubLoanBatch(LoanV2.DiscountRequest[] calldata discountRequests) external;
+    function discountSubLoanBatch(LoanV2.SubLoanOperationRequest[] calldata operationRequests) external;
 
     /**
      * @dev Sets the duration of a batch of sub-loans.
@@ -386,9 +386,7 @@ interface ILendingMarketPrimaryV2 {
      *
      * @param operationRequests The operation request structures to set the duration of the sub-loans.
      */
-    function setSubLoanDurationBatch(
-        LoanV2.SubLoanOperationRequest[] calldata operationRequests
-    ) external;
+    function setSubLoanDurationBatch(LoanV2.SubLoanOperationRequest[] calldata operationRequests) external;
 
     /**
      * @dev Sets the remuneratory interest rate of a batch of sub-loans.
@@ -397,9 +395,7 @@ interface ILendingMarketPrimaryV2 {
      *
      * @param operationRequests The operation request structures to set the remuneratory interest rate of the sub-loans.
      */
-    function setSubLoanInterestRateRemuneratoryBatch(
-        LoanV2.SubLoanOperationRequest[] calldata operationRequests
-    ) external;
+    function setSubLoanInterestRateRemuneratoryBatch(LoanV2.SubLoanOperationRequest[] calldata operationRequests) external;
 
     /**
      * @dev Sets the moratory interest rate of a batch of sub-loans.
@@ -408,9 +404,7 @@ interface ILendingMarketPrimaryV2 {
      *
      * @param operationRequests The operation request structures to set the moratory interest rate of the sub-loans.
      */
-    function setSubLoanInterestRateMoratoryBatch(
-        LoanV2.SubLoanOperationRequest[] calldata operationRequests
-    ) external;
+    function setSubLoanInterestRateMoratoryBatch(LoanV2.SubLoanOperationRequest[] calldata operationRequests) external;
 
     /**
      * @dev Sets the late fee rate of a batch of sub-loans.
@@ -419,9 +413,7 @@ interface ILendingMarketPrimaryV2 {
      *
      * @param operationRequests The operation request structures to set the late fee rate of the sub-loans.
      */
-    function setSubLoanLateFeeRateBatch(
-        LoanV2.SubLoanOperationRequest[] calldata operationRequests
-    ) external;
+    function setSubLoanLateFeeRateBatch(LoanV2.SubLoanOperationRequest[] calldata operationRequests) external;
 
     /**
      * @dev Freezes a batch of sub-loans.
@@ -430,9 +422,7 @@ interface ILendingMarketPrimaryV2 {
      *
      * @param operationRequests The operation request structures to freeze the sub-loans.
      */
-    function freezeSubLoanBatch(
-        LoanV2.SubLoanOperationRequest[] calldata operationRequests
-    ) external;
+    function freezeSubLoanBatch(LoanV2.SubLoanOperationRequest[] calldata operationRequests) external;
 
     /**
      * @dev Unfreezes a batch of sub-loans.
@@ -441,9 +431,7 @@ interface ILendingMarketPrimaryV2 {
      *
      * @param operationRequests The operation request structures to unfreeze the sub-loans.
      */
-    function unfreezeSubLoanBatch(
-        LoanV2.SubLoanOperationRequest[] calldata operationRequests
-    ) external;
+    function unfreezeSubLoanBatch(LoanV2.SubLoanOperationRequest[] calldata operationRequests) external;
 
     /**
      * @dev Voids a batch of operations.

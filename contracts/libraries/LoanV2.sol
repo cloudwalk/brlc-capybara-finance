@@ -217,6 +217,7 @@ library LoanV2 {
      */
     struct RepaymentRequest {
         uint256 subLoanId;
+        uint256 timestamp;
         uint256 repaymentAmount;
         address repayer;
     }
@@ -226,6 +227,7 @@ library LoanV2 {
      */
     struct DiscountRequest {
         uint256 subLoanId;
+        uint256 timestamp;
         uint256 discountAmount;
     }
 
