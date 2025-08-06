@@ -703,6 +703,9 @@ interface ILendingMarketErrorsV2 {
 
     /// @dev TODO
     error OperationVoidingProhibited(); //TODO: add parameters
+
+    /// @dev TODO
+    error OperationRepaymentOrDiscountProhibitedInFuture(); //TODO: add parameters
 }
 
 /**

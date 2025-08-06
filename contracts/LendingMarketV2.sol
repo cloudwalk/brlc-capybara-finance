@@ -553,7 +553,6 @@ contract LendingMarketV2 is
     ) internal returns (uint256) {
         LendingMarketStorageV2 storage storageStruct = _getLendingMarketStorage();
         LoanV2.SubLoan storage subLoan = storageStruct.subLoans[subLoanId];
-        _checkOperationParameters(kind, inputValue, account);  // TODO: move to the calling function
         if (timestamp < subLoan.startTimestamp) {
             revert OperationTimestampTooEarly();
         }
@@ -810,7 +809,7 @@ contract LendingMarketV2 is
                 affectedSubLoan.subLoanId = addingRequest.subLoanId;
                 affectedSubLoan.minOperationTimestamp = type(uint256).max;
             }
-            _checkOperationParameters(addingRequest.kind, addingRequest.inputValue, addingRequest.account);
+            _checkOperationParameters(addingRequest);
             _addOperation(
                 addingRequest.subLoanId,
                 addingRequest.kind,
@@ -1669,10 +1668,11 @@ contract LendingMarketV2 is
 
     /// TODO
     function _checkOperationParameters(
-        uint256 kind,
-        uint256 inputValue,
-        address account
-    ) internal pure {
+        LoanV2.AddedOperationRequest memory request
+    ) internal view {
+        uint256 kind = request.kind;
+        uint256 inputValue = request.inputValue;
+        address account = request.account;
         if (
             kind == uint256(LoanV2.OperationKind.Nonexistent) ||
             kind >= uint256(LoanV2.OperationKind.NonexistentLimit)
@@ -1720,6 +1720,15 @@ contract LendingMarketV2 is
             }
         } else if (account != address(0)){
             revert OperationAccountNotZero();
+        }
+
+        if (
+            kind == uint256(LoanV2.OperationKind.Repayment) ||
+            kind == uint256(LoanV2.OperationKind.Discounting)
+        ) {
+            if (request.timestamp > _blockTimestamp()) {
+                revert OperationRepaymentOrDiscountProhibitedInFuture();
+            }
         }
     }
 
