@@ -47,8 +47,7 @@ library LoanV2 {
         SetInterestRateRemuneratory, // TODO implement
         SetInterestRateMoratory, // TODO implement
         SetLateFeeRate, // TODO implement
-        SetDuration, // TODO implement
-        NonexistentLimit
+        SetDuration // TODO implement
     }
 
     /**

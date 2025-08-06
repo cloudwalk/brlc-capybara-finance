@@ -1675,7 +1675,7 @@ contract LendingMarketV2 is
         address account = request.account;
         if (
             kind == uint256(LoanV2.OperationKind.Nonexistent) ||
-            kind >= uint256(LoanV2.OperationKind.NonexistentLimit)
+            kind >= uint256(type(LoanV2.OperationKind).max)
         ) {
             revert OperationKindInvalid();
         }
