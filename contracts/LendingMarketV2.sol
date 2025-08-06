@@ -615,6 +615,9 @@ contract LendingMarketV2 is
     ) internal returns (LoanV2.Operation storage operation){
         operation = _getExistingOperationInStorage(subLoanId, operationId);
         uint256 previousStatus = uint256(operation.status);
+        if (operation.kind == LoanV2.OperationKind.Revocation) {
+            revert OperationVoidingProhibited();
+        }
         if (previousStatus == uint256(LoanV2.OperationStatus.Pending)) {
             operation.status = LoanV2.OperationStatus.Canceled;
 
