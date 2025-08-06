@@ -700,6 +700,9 @@ interface ILendingMarketErrorsV2 {
 
     /// @dev TODO
     error SubLoanRevisionExcess(); //TODO: add parameters
+
+    /// @dev TODO
+    error OperationVoidingProhibited(); //TODO: add parameters
 }
 
 /**
