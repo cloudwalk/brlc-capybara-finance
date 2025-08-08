@@ -339,18 +339,13 @@ interface ILendingMarketPrimaryV2 {
      *
      * @param borrower The account for whom the loan is taken.
      * @param programId The identifier of the lending program to take the loan.
-     * @param borrowedAmounts The desired amounts of tokens to borrow for each sub-loan.
-     * @param addonAmounts The off-chain calculated addon amounts for each sub-loan.
-     * @param durations The desired duration of each sub-loan in days.
+     * @param subLoanTakingRequests The request structures to take the sub-loans.
      * @return firstSubLoanId The unique identifier of the first sub-loan of the loan.
      */
     function takeLoan(
         address borrower,
         uint32 programId,
-        // TODO: Make array of structs
-        uint256[] calldata borrowedAmounts,
-        uint256[] calldata addonAmounts,
-        uint256[] calldata durations
+        LoanV2.SubLoanTakingRequest[] calldata subLoanTakingRequests
     ) external returns (uint256 firstSubLoanId);
 
     /**
@@ -635,8 +630,11 @@ interface ILendingMarketErrorsV2 {
     /// @dev Thrown when the lending program ID exceeds the maximum allowed value.
     error ProgramIdExcess();
 
-    /// @dev Thrown when the provided duration array is invalid.
-    error DurationArrayInvalid();
+    /// @dev Thrown when the provided sub-loan durations are invalid.
+    error SubLoanDurationsInvalid();
+
+    /// @dev TODO
+    error SubLoanBorrowedAmountInvalid(); // TODO: add parameters if needed
 
     /// @dev Thrown when the provided sub-loan duration is invalid.
     error DurationInvalid();
