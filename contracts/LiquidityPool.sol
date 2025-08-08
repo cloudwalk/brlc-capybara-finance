@@ -11,12 +11,10 @@ import { UUPSExtUpgradeable } from "./base/UUPSExtUpgradeable.sol";
 import { Versionable } from "./base/Versionable.sol";
 
 import { Error } from "./libraries/Error.sol";
-import { Loan } from "./libraries/Loan.sol";
 import { SafeCast } from "./libraries/SafeCast.sol";
 
 import { ICreditLine } from "./interfaces/ICreditLine.sol";
 import { IERC20Mintable } from "./interfaces/IERC20Mintable.sol";
-import { ILendingMarket } from "./interfaces/ILendingMarket.sol";
 import { ILiquidityPool } from "./interfaces/ILiquidityPool.sol";
 import { ILiquidityPoolConfiguration } from "./interfaces/ILiquidityPool.sol";
 import { ILiquidityPoolHooks } from "./interfaces/ILiquidityPool.sol";
@@ -45,15 +43,8 @@ contract LiquidityPool is
     /// @dev The role of an admin that is allowed to execute pool-related functions.
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
 
-    // ------------------ Modifiers ------------------------------- //
-
-    /// @dev Throws if called by any account other than the lending market.
-    modifier onlyMarket() {
-        if (msg.sender != _market) {
-            revert Error.Unauthorized();
-        }
-        _;
-    }
+    /// @dev The role of the liquidity operator that is allowed to move liquidity and execute related hook functions.
+    bytes32 public constant LIQUIDITY_OPERATOR_ROLE = keccak256("LIQUIDITY_OPERATOR_ROLE");
 
     // ------------------ Constructor ----------------------------- //
 
@@ -74,26 +65,23 @@ contract LiquidityPool is
     /**
      * @dev Initializer of the upgradeable contract.
      * @param owner_ The address of the liquidity pool owner.
-     * @param market_ The address of the lending market.
+     * @param liquidityOperator_ The address of the initial liquidity operator.
      * @param token_ The address of the token.
      * See details https://docs.openzeppelin.com/upgrades-plugins/writing-upgradeable.
      */
     function initialize(
         address owner_, // Tools: prevent Prettier one-liner
-        address market_,
+        address liquidityOperator_,
         address token_
     ) external initializer {
         if (owner_ == address(0)) {
             revert Error.ZeroAddress();
         }
 
-        if (market_ == address(0)) {
+        if (liquidityOperator_ == address(0)) {
             revert Error.ZeroAddress();
         }
-        if (market_.code.length == 0) {
-            revert Error.ContractAddressInvalid();
-        }
-        try ILendingMarket(market_).proveLendingMarket() {} catch {
+        if (liquidityOperator_.code.length == 0) {
             revert Error.ContractAddressInvalid();
         }
 
@@ -114,8 +102,9 @@ contract LiquidityPool is
         _setRoleAdmin(ADMIN_ROLE, GRANTOR_ROLE);
         _grantRole(OWNER_ROLE, owner_);
 
-        _market = market_;
         _token = token_;
+
+        _configureLiquidityOperator(liquidityOperator_);
     }
 
     // ----------- Configuration transactional functions ---------- //
@@ -128,6 +117,16 @@ contract LiquidityPool is
     /// @inheritdoc ILiquidityPoolConfiguration
     function setOperationalTreasury(address newTreasury) external onlyRole(OWNER_ROLE) {
         _setOperationalTreasury(newTreasury);
+    }
+
+    /// @inheritdoc ILiquidityPoolConfiguration
+    function configureLiquidityOperator(address newOperator) external onlyRole(OWNER_ROLE) {
+        _configureLiquidityOperator(newOperator);
+    }
+
+    /// @inheritdoc ILiquidityPoolConfiguration
+    function deconfigureLiquidityOperator(address newOperator) external onlyRole(OWNER_ROLE) {
+        _deconfigureLiquidityOperator(newOperator);
     }
 
     /**
@@ -188,43 +187,51 @@ contract LiquidityPool is
         emit Rescue(token_, amount);
     }
 
+    // -------------- Service transactional functions ------------- //
+    /**
+     * @dev Migrate the liquidity pool state to a new version.
+     *
+     * Actually, this function just clears the `_market` address,
+     */
+    function migrate() external {
+        _market = address(0);
+    }
+
     // ------------------ Hook transactional functions ------------ //
 
     /// @inheritdoc ILiquidityPoolHooks
-    function onBeforeLoanTaken(uint256 loanId) external whenNotPaused onlyMarket {
-        Loan.State memory loan = ILendingMarket(_market).getLoanState(loanId);
-        uint64 principalAmount = loan.borrowedAmount + loan.addonAmount;
-        if (principalAmount > _borrowableBalance) {
-            revert InsufficientBalance();
+    function onBeforeLiquidityIn(uint256 amount) external whenNotPaused onlyRole(LIQUIDITY_OPERATOR_ROLE) {
+        if (amount > type(uint64).max) {
+            revert BalanceExcess();
+        }
+        uint256 balance = _borrowableBalance;
+        unchecked {
+            balance += amount;
+        }
+        if (balance > type(uint64).max) {
+            revert BalanceExcess();
+        }
+        _borrowableBalance = uint64(balance);
+    }
+
+    /// @inheritdoc ILiquidityPoolHooks
+    function onBeforeLiquidityOut(uint256 amount) external whenNotPaused onlyRole(LIQUIDITY_OPERATOR_ROLE) {
+        uint256 balance = _borrowableBalance;
+        if (amount > balance) {
+            revert BalanceInsufficient();
         }
         unchecked {
-            _borrowableBalance -= principalAmount;
+            balance -= amount;
         }
-    }
-
-    /// @inheritdoc ILiquidityPoolHooks
-    function onAfterLoanPayment(uint256 loanId, uint256 amount) external whenNotPaused onlyMarket {
-        loanId; // To prevent compiler warning about unused variable
-        _borrowableBalance += amount.toUint64();
-    }
-
-    /// @inheritdoc ILiquidityPoolHooks
-    function onAfterLoanRepaymentUndoing(uint256 loanId, uint256 amount) external whenNotPaused onlyMarket {
-        loanId; // To prevent compiler warning about unused variable
-        _borrowableBalance -= amount.toUint64();
-    }
-
-    /// @inheritdoc ILiquidityPoolHooks
-    function onAfterLoanRevocation(uint256 loanId) external whenNotPaused onlyMarket {
-        Loan.State memory loan = ILendingMarket(_market).getLoanState(loanId);
-        if (loan.borrowedAmount > loan.repaidAmount) {
-            _borrowableBalance = _borrowableBalance + (loan.borrowedAmount - loan.repaidAmount) + loan.addonAmount;
-        } else {
-            _borrowableBalance = _borrowableBalance - (loan.repaidAmount - loan.borrowedAmount) + loan.addonAmount;
-        }
+        _borrowableBalance = uint64(balance);
     }
 
     // ------------------ View functions -------------------------- //
+
+    /// @inheritdoc ILiquidityPoolConfiguration
+    function isLiquidityOperator(address operator) external view returns (bool) {
+        return _isLiquidityOperator(operator);
+    }
 
     /// @inheritdoc ILiquidityPoolPrimary
     function addonTreasury() external view returns (address) {
@@ -239,11 +246,6 @@ contract LiquidityPool is
     /// @inheritdoc ILiquidityPoolPrimary
     function getBalances() external view returns (uint256, uint256) {
         return (_borrowableBalance, _addonsBalance);
-    }
-
-    /// @inheritdoc ILiquidityPoolPrimary
-    function market() external view returns (address) {
-        return _market;
     }
 
     /// @inheritdoc ILiquidityPoolPrimary
@@ -270,10 +272,6 @@ contract LiquidityPool is
 
         IERC20 underlyingToken = IERC20(_token);
 
-        if (underlyingToken.allowance(address(this), _market) == 0) {
-            underlyingToken.approve(_market, type(uint256).max);
-        }
-
         _borrowableBalance += amount.toUint64();
         if (sender != address(this)) {
             underlyingToken.safeTransferFrom(sender, address(this), amount);
@@ -297,7 +295,7 @@ contract LiquidityPool is
         }
 
         if (_borrowableBalance < borrowableAmount) {
-            revert InsufficientBalance();
+            revert BalanceInsufficient();
         }
 
         _borrowableBalance -= borrowableAmount.toUint64();
@@ -317,9 +315,6 @@ contract LiquidityPool is
         }
         if (newTreasury == address(0)) {
             revert AddonTreasuryAddressZeroingProhibited();
-        }
-        if (IERC20(_token).allowance(newTreasury, _market) == 0) {
-            revert AddonTreasuryZeroAllowanceForMarket();
         }
         emit AddonTreasuryChanged(newTreasury, oldTreasury);
         _addonTreasury = newTreasury;
@@ -341,6 +336,54 @@ contract LiquidityPool is
         }
         emit OperationalTreasuryChanged(newTreasury, oldTreasury);
         _operationalTreasury = newTreasury;
+    }
+
+    /**
+     * @dev Configures a new liquidity operator internally.
+     * @param newOperator The new address of the liquidity operator to configure.
+     */
+    function _configureLiquidityOperator(address newOperator) internal {
+        if (hasRole(LIQUIDITY_OPERATOR_ROLE, newOperator)) {
+            revert Error.AlreadyConfigured();
+        }
+        _grantRole(LIQUIDITY_OPERATOR_ROLE, newOperator);
+
+        IERC20 underlyingToken = IERC20(_token);
+
+        if (underlyingToken.allowance(address(this), newOperator) == 0) {
+            underlyingToken.approve(newOperator, type(uint256).max);
+        }
+
+        emit LiquidityOperatorConfigured(newOperator);
+    }
+
+    /**
+     * @dev Deconfigures a liquidity operator internally.
+     * @param operator The address of the liquidity operator to deconfigure.
+     */
+    function _deconfigureLiquidityOperator(address operator) internal {
+        if (!hasRole(LIQUIDITY_OPERATOR_ROLE, operator)) {
+            revert Error.AlreadyConfigured();
+        }
+        _revokeRole(LIQUIDITY_OPERATOR_ROLE, operator);
+
+        IERC20 underlyingToken = IERC20(_token);
+        underlyingToken.approve(operator, 0);
+
+        emit LiquidityOperatorDeconfigured(operator);
+    }
+
+    /**
+     * @dev Checks if an address is a liquidity operator internally.
+     * @param operator The address to check.
+     * @return True if the address is a liquidity operator, false otherwise.
+     */
+    function _isLiquidityOperator(address operator) internal view returns (bool) {
+        IERC20 underlyingToken = IERC20(_token);
+
+        return
+            hasRole(LIQUIDITY_OPERATOR_ROLE, operator) &&
+            underlyingToken.allowance(address(this), operator) > 0;
     }
 
     /// @dev Returns the operational treasury address and validates it.

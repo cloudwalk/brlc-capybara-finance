@@ -87,9 +87,6 @@ interface ILiquidityPoolPrimary {
 
     // ------------------ View functions -------------------------- //
 
-    /// @dev Returns the address of the associated lending market.
-    function market() external view returns (address);
-
     /// @dev Returns the address of the liquidity pool token.
     function token() external view returns (address);
 
@@ -151,6 +148,24 @@ interface ILiquidityPoolConfiguration {
      */
     event OperationalTreasuryChanged(address newTreasury, address oldTreasury);
 
+    /**
+     * @dev Emitted when a liquidity operator is configured.
+     *
+     * See the {configureLiquidityOperator} function comments for more details.
+     *
+     * @param operator The address of the liquidity operator.
+     */
+    event LiquidityOperatorConfigured(address operator);
+
+    /**
+     * @dev Emitted when a liquidity operator is deconfigured.
+     *
+     * See the {configureLiquidityOperator} function comments for more details.
+     *
+     * @param operator The address of the liquidity operator.
+     */
+    event LiquidityOperatorDeconfigured(address operator);
+
     // ------------------ Transactional functions ----------------- //
 
     /**
@@ -170,6 +185,37 @@ interface ILiquidityPoolConfiguration {
      * @param newTreasury The new address of the operational treasury to set.
      */
     function setOperationalTreasury(address newTreasury) external;
+
+    /**
+     * @dev Configures a new liquidity operator.
+     *
+     * The liquidity operator is an address that is allowed to move liquidity in and out of the pool.
+     * and execute the liquidity-related hook functions.
+     *
+     * @param newOperator The new address of the liquidity operator to configure.
+     */
+    function configureLiquidityOperator(address newOperator) external;
+
+    /**
+     * @dev Deconfigures a liquidity operator.
+     *
+     * See the {configureLiquidityOperator} function comments for more details.
+     *
+     * @param newOperator The address of the liquidity operator to deconfigure.
+     */
+    function deconfigureLiquidityOperator(address newOperator) external;
+
+    // ------------------ View functions -------------------------- //
+
+    /**
+     * @dev Checks if an address is a liquidity operator.
+     *
+     * See the {configureLiquidityOperator} function comments for more details.
+     *
+     * @param operator The address to check.
+     * @return True if the address is a liquidity operator, false otherwise.
+     */
+    function isLiquidityOperator(address operator) external view returns (bool);
 }
 
 /**
@@ -179,30 +225,18 @@ interface ILiquidityPoolConfiguration {
  */
 interface ILiquidityPoolHooks {
     /**
-     * @dev A hook that is triggered by the associated market before a loan is taken.
-     * @param loanId The unique identifier of the loan being taken.
+     * @dev Hook function that must be called before liquidity is moved into the pool.
+     *
+     * @param amount The amount of liquidity to move into the pool.
      */
-    function onBeforeLoanTaken(uint256 loanId) external;
+    function onBeforeLiquidityIn(uint256 amount) external;
 
     /**
-     * @dev A hook that is triggered by the associated market after the loan payment.
-     * @param loanId The unique identifier of the loan being paid.
-     * @param repaymentAmount The amount of tokens that was repaid.
+     * @dev Hook function that must be called before liquidity is moved out of the pool.
+     *
+     * @param amount The amount of liquidity to move out of the pool.
      */
-    function onAfterLoanPayment(uint256 loanId, uint256 repaymentAmount) external;
-
-    /**
-     * @dev A hook that is triggered by the associated market after the loan repayment undoing.
-     * @param loanId The unique identifier of the loan to undo the repayment for.
-     * @param repaymentAmount The amount of tokens that was undone.
-     */
-    function onAfterLoanRepaymentUndoing(uint256 loanId, uint256 repaymentAmount) external;
-
-    /**
-     * @dev A hook that is triggered by the associated market after the loan revocation.
-     * @param loanId The unique identifier of the loan being revoked.
-     */
-    function onAfterLoanRevocation(uint256 loanId) external;
+    function onBeforeLiquidityOut(uint256 amount) external;
 }
 
 /**
@@ -223,8 +257,11 @@ interface ILiquidityPoolErrors {
     /// @dev Thrown when the addon treasury has not provided an allowance for the lending market to transfer its tokens.
     error AddonTreasuryZeroAllowanceForMarket();
 
-    /// @dev Thrown when the token source balance is insufficient.
-    error InsufficientBalance();
+    /// @dev Thrown when the liquidity pool balance is greater than the maximum allowed balance.
+    error BalanceExcess();
+
+    /// @dev Thrown when the liquidity pool balance is insufficient to cover moving liquidity out of the pool.
+    error BalanceInsufficient();
 
     /// @dev Thrown when the operational treasury address is zero.
     error OperationalTreasuryAddressZero();
