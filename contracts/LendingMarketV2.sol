@@ -143,32 +143,24 @@ contract LendingMarketV2 is
     function takeLoan(
         address borrower,
         uint32 programId,
-        uint256[] calldata borrowedAmounts,
-        uint256[] calldata addonAmounts,
-        uint256[] calldata durations
+        LoanV2.SubLoanTakingRequest[] calldata subLoanTakingRequests
     ) external whenNotPaused onlyRole(ADMIN_ROLE) returns (uint256 firstSubLoanId) {
-        uint256 totalBorrowedAmount = _sumArray(borrowedAmounts);
-        uint256 totalAddonAmount = _sumArray(addonAmounts);
-        uint256 subLoanCount = borrowedAmounts.length;
+        uint256 subLoanCount = subLoanTakingRequests.length;
 
-        _checkMainLoanParameters(borrower, programId, totalBorrowedAmount, totalAddonAmount);
-        _checkDurationArray(durations);
         _checkSubLoanCount(subLoanCount);
-        if (addonAmounts.length != subLoanCount || durations.length != subLoanCount) {
-            revert Error.ArrayLengthMismatch();
-        }
+        _checkSubLoanParameters(subLoanTakingRequests);
+        (uint256 totalBorrowedAmount, uint256 totalAddonAmount) = _calculateTotalAmounts(subLoanTakingRequests);
+        _checkMainLoanParameters(borrower, programId, totalBorrowedAmount, totalAddonAmount);
         // Arrays are not checked for emptiness because if the loan amount is zero, the transaction is reverted earlier
 
         for (uint256 i = 0; i < subLoanCount; ++i) {
-            if (borrowedAmounts[i] == 0) {
-                revert Error.InvalidAmount();
-            }
+            LoanV2.SubLoanTakingRequest calldata subLoanTakingRequest = subLoanTakingRequests[i];
             uint256 subLoanId = _takeSubLoan(
                 borrower, // Tools: this comment prevents Prettier from formatting into a single line.
                 programId,
-                borrowedAmounts[i],
-                addonAmounts[i],
-                durations[i]
+                subLoanTakingRequest.borrowedAmount,
+                subLoanTakingRequest.addonAmount,
+                subLoanTakingRequest.duration
             );
             if (i == 0) {
                 firstSubLoanId = subLoanId;
@@ -1607,6 +1599,20 @@ contract LendingMarketV2 is
     }
 
     /**
+     * @dev TODO
+     */
+    function _calculateTotalAmounts(
+        LoanV2.SubLoanTakingRequest[] calldata subLoanTakingRequests
+    ) internal pure returns (uint256 borrowedAmount, uint256 addonAmount) {
+        uint256 len = subLoanTakingRequests.length;
+        for (uint256 i = 0; i < len; ++i) {
+            LoanV2.SubLoanTakingRequest calldata subLoanTakingRequest = subLoanTakingRequests[i];
+            borrowedAmount += subLoanTakingRequest.borrowedAmount;
+            addonAmount += subLoanTakingRequest.addonAmount;
+        }
+    }
+
+    /**
      * @dev Validates the main parameters of the loan.
      * @param borrower The address of the borrower.
      * @param programId The ID of the lending program.
@@ -1651,16 +1657,19 @@ contract LendingMarketV2 is
     }
 
     /**
-     * @dev Validates the loan durations in the array.
-     * @param durationsInPeriods Array of loan durations in periods.
+     * @dev TODO
      */
-    function _checkDurationArray(uint256[] calldata durationsInPeriods) internal pure {
-        uint256 len = durationsInPeriods.length;
-        uint256 previousDuration = durationsInPeriods[0];
+    function _checkSubLoanParameters(LoanV2.SubLoanTakingRequest[] calldata subLoanTakingRequests) internal pure {
+        uint256 len = subLoanTakingRequests.length;
+        uint256 previousDuration = subLoanTakingRequests[0].duration;
         for (uint256 i = 1; i < len; ++i) {
-            uint256 duration = durationsInPeriods[i];
+            LoanV2.SubLoanTakingRequest calldata subLoanTakingRequest = subLoanTakingRequests[i];
+            if (subLoanTakingRequest.borrowedAmount == 0) {
+                revert SubLoanBorrowedAmountInvalid();
+            }
+            uint256 duration = subLoanTakingRequest.duration;
             if (duration < previousDuration) {
-                revert DurationArrayInvalid();
+                revert SubLoanDurationsInvalid();
             }
             previousDuration = duration;
         }
