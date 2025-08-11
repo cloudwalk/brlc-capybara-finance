@@ -120,13 +120,12 @@ contract LiquidityPool is
     }
 
     /// @inheritdoc ILiquidityPoolConfiguration
-    function configureLiquidityOperator(address newOperator) external onlyRole(OWNER_ROLE) {
-        _configureLiquidityOperator(newOperator);
-    }
-
-    /// @inheritdoc ILiquidityPoolConfiguration
-    function deconfigureLiquidityOperator(address newOperator) external onlyRole(OWNER_ROLE) {
-        _deconfigureLiquidityOperator(newOperator);
+    function configureLiquidityOperator(address newOperator, bool isActive) external onlyRole(OWNER_ROLE) {
+        if (isActive) {
+            _configureLiquidityOperator(newOperator);
+        } else {
+            _deconfigureLiquidityOperator(newOperator);
+        }
     }
 
     /**

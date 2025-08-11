@@ -193,17 +193,9 @@ interface ILiquidityPoolConfiguration {
      * and execute the liquidity-related hook functions.
      *
      * @param newOperator The new address of the liquidity operator to configure.
+     * @param isActive A boolean indicating whether the operator is active or not.
      */
-    function configureLiquidityOperator(address newOperator) external;
-
-    /**
-     * @dev Deconfigures a liquidity operator.
-     *
-     * See the {configureLiquidityOperator} function comments for more details.
-     *
-     * @param newOperator The address of the liquidity operator to deconfigure.
-     */
-    function deconfigureLiquidityOperator(address newOperator) external;
+    function configureLiquidityOperator(address newOperator, bool isActive) external;
 
     // ------------------ View functions -------------------------- //
 
