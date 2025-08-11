@@ -343,6 +343,9 @@ contract LiquidityPool is
      * @param newOperator The new address of the liquidity operator to configure.
      */
     function _configureLiquidityOperator(address newOperator) internal {
+        if (newOperator == address(0)) {
+            revert Error.ZeroAddress();
+        }
         if (hasRole(LIQUIDITY_OPERATOR_ROLE, newOperator)) {
             revert Error.AlreadyConfigured();
         }
