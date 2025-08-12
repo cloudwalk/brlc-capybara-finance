@@ -91,6 +91,7 @@ contract LiquidityPool is
         __UUPSExt_init_unchained();
 
         _setRoleAdmin(ADMIN_ROLE, GRANTOR_ROLE);
+        _setRoleAdmin(LIQUIDITY_OPERATOR_ROLE, GRANTOR_ROLE);
         _grantRole(OWNER_ROLE, owner_);
 
         _token = token_;
