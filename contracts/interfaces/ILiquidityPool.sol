@@ -167,6 +167,14 @@ interface ILiquidityPoolConfiguration {
      * @param newTreasury The new address of the operational treasury to set.
      */
     function setOperationalTreasury(address newTreasury) external;
+
+    /**
+     * @dev Approves an account to spend tokens on behalf of this liquidity pool contract.
+     *
+     * @param spender The address of the spender to approve on the underlying token.
+     * @param newAllowance The new allowance amount to set for the spender.
+     */
+    function approveTokenSpending(address spender, uint256 newAllowance) external;
 }
 
 /**

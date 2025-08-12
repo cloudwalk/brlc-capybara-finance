@@ -108,6 +108,14 @@ contract LiquidityPool is
         _setOperationalTreasury(newTreasury);
     }
 
+    /// @inheritdoc ILiquidityPoolConfiguration
+    function approveTokenSpending(address spender, uint256 newAllowance) external onlyRole(OWNER_ROLE) {
+        if (spender == address(0)) {
+            revert Error.ZeroAddress();
+        }
+        IERC20(_token).approve(spender, newAllowance);
+    }
+
     /**
      * @dev Initializes the admin role for already deployed contracts.
      *
