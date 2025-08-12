@@ -13,6 +13,7 @@ import {
 
 const GRANTOR_ROLE = ethers.id("GRANTOR_ROLE");
 const ADMIN_ROLE = ethers.id("ADMIN_ROLE");
+const LIQUIDITY_OPERATOR_ROLE = ethers.id("LIQUIDITY_OPERATOR_ROLE");
 
 const MAX_ALLOWANCE = ethers.MaxUint256;
 const INITIAL_BALANCE = 10n ** 15n;
@@ -218,7 +219,6 @@ describe("Contract 'LendingMarket': complex tests", async () => {
       liquidityPoolFactory,
       [
         owner.address,
-        lendingMarketAddress,
         tokenAddress
       ],
       { kind: "uups" }
@@ -257,6 +257,8 @@ describe("Contract 'LendingMarket': complex tests", async () => {
     await proveTx(creditLine.grantRole(ADMIN_ROLE, owner.address));
     await proveTx(lendingMarket.grantRole(GRANTOR_ROLE, owner.address));
     await proveTx(lendingMarket.grantRole(ADMIN_ROLE, owner.address));
+    await proveTx(liquidityPool.grantRole(GRANTOR_ROLE, owner.address));
+    await proveTx(liquidityPool.grantRole(LIQUIDITY_OPERATOR_ROLE, lendingMarketAddress));
     await proveTx(lendingMarket.createProgram(creditLineAddress, liquidityPoolAddress));
 
     // Configure addon treasure
@@ -270,6 +272,7 @@ describe("Contract 'LendingMarket': complex tests", async () => {
 
     // Configure liquidity pool and credit line
     await proveTx(liquidityPool.deposit(INITIAL_DEPOSIT));
+    await proveTx(liquidityPool.approveTokenSpending(lendingMarketAddress, MAX_ALLOWANCE));
   }
 
   async function runScenario(scenario: TestScenario): Promise<TestScenarioContext> {

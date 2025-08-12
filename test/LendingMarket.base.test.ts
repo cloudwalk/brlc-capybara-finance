@@ -152,10 +152,11 @@ const EVENT_NAME_PROGRAM_CREATED = "ProgramCreated";
 const EVENT_NAME_PROGRAM_UPDATED = "ProgramUpdated";
 const EVENT_NAME_INSTALLMENT_LOAN_TAKEN = "InstallmentLoanTaken";
 const EVENT_NAME_LOAN_UNFROZEN = "LoanUnfrozen";
+const EVENT_NAME_ON_BEFORE_LIQUIDITY_IN_CALLED = "OnBeforeLiquidityInCalled";
+const EVENT_NAME_ON_BEFORE_LIQUIDITY_OUT_CALLED = "OnBeforeLiquidityOutCalled";
 const EVENT_NAME_ON_BEFORE_LOAN_REOPENED_CALLED = "OnBeforeLoanReopenedCalled";
 const EVENT_NAME_ON_BEFORE_LOAN_TAKEN_CALLED = "OnBeforeLoanTakenCalled";
 const EVENT_NAME_ON_AFTER_LOAN_PAYMENT_CALLED = "OnAfterLoanPaymentCalled";
-const EVENT_NAME_ON_AFTER_LOAN_REPAYMENT_UNDOING_CALLED = "OnAfterLoanRepaymentUndoingCalled";
 const EVENT_NAME_LOAN_REVOKED = "LoanRevoked";
 const EVENT_NAME_INSTALLMENT_LOAN_REVOKED = "InstallmentLoanRevoked";
 const EVENT_NAME_ON_AFTER_LOAN_REVOCATION_CALLED = "OnAfterLoanRevocationCalled";
@@ -678,7 +679,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
     await proveTx(token.mint(stranger.address, INITIAL_BALANCE));
     await proveTx(token.mint(liquidityPoolAddress, INITIAL_BALANCE));
     await proveTx(token.mint(addonTreasury.address, INITIAL_BALANCE));
-    await proveTx(liquidityPool.approveMarket(marketAddress, tokenAddress));
+    await proveTx(liquidityPool.approveMaxTokenSpending(marketAddress, tokenAddress));
     await proveTx(connect(token, borrower).approve(marketAddress, ethers.MaxUint256));
     await proveTx(connect(token, stranger).approve(marketAddress, ethers.MaxUint256));
     await proveTx(connect(token, addonTreasury).approve(marketAddress, ethers.MaxUint256));
@@ -768,8 +769,8 @@ describe("Contract 'LendingMarket': base tests", async () => {
           }
 
           if (operation.subjectToUndo) {
-            // If the repayment will be undone it is executed only for the first loan in the array.
-            // For other loans in the array a fake repayment with zero amount is executed.
+            // If the repayment is undone, then it is executed only for the first loan in the array.
+            // For other loans in the array, a fake repayment with the zero amount is executed.
             // A repayment with the zero amount can be done because of
             // the overridden function '_checkTrackedBalanceChange()' in the testable version of the contract.
             for (let i = 1; i < loans.length; ++i) {
@@ -1166,7 +1167,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
         .withArgs(expectedLoanId, borrower.address, principalAmount, DURATION_IN_PERIODS);
 
       // Check that the appropriate market hook functions are called
-      await expect(tx).to.emit(liquidityPool, EVENT_NAME_ON_BEFORE_LOAN_TAKEN_CALLED).withArgs(expectedLoanId);
+      await expect(tx).to.emit(liquidityPool, EVENT_NAME_ON_BEFORE_LIQUIDITY_OUT_CALLED).withArgs(principalAmount);
       await expect(tx).to.emit(creditLine, EVENT_NAME_ON_BEFORE_LOAN_TAKEN_CALLED).withArgs(expectedLoanId);
 
       // Check the returned value of the function for the second loan
@@ -1463,7 +1464,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
           .withArgs(expectedLoanIds[i], borrower.address, principalAmounts[i], durationsInPeriods[i]);
 
         // Check that the appropriate market hook functions are called
-        await expect(tx).to.emit(liquidityPool, EVENT_NAME_ON_BEFORE_LOAN_TAKEN_CALLED).withArgs(expectedLoanIds[i]);
+        await expect(tx).to.emit(liquidityPool, EVENT_NAME_ON_BEFORE_LIQUIDITY_OUT_CALLED).withArgs(totalPrincipal);
         await expect(tx).to.emit(creditLine, EVENT_NAME_ON_BEFORE_LOAN_TAKEN_CALLED).withArgs(expectedLoanIds[i]);
       }
       await expect(tx)
@@ -1819,8 +1820,8 @@ describe("Contract 'LendingMarket': base tests", async () => {
 
       // Check that the appropriate market hook functions are called
       await expect(tx)
-        .to.emit(liquidityPool, EVENT_NAME_ON_AFTER_LOAN_PAYMENT_CALLED)
-        .withArgs(expectedLoan.id, repaymentAmount);
+        .to.emit(liquidityPool, EVENT_NAME_ON_BEFORE_LIQUIDITY_IN_CALLED)
+        .withArgs(repaymentAmount);
       await expect(tx)
         .to.emit(creditLine, EVENT_NAME_ON_AFTER_LOAN_PAYMENT_CALLED)
         .withArgs(expectedLoan.id, repaymentAmount);
@@ -1978,8 +1979,8 @@ describe("Contract 'LendingMarket': base tests", async () => {
 
         // Check that the appropriate market hook functions are called
         await expect(tx)
-          .to.emit(liquidityPool, EVENT_NAME_ON_AFTER_LOAN_PAYMENT_CALLED)
-          .withArgs(expectedLoan.id, expectedRepaymentAmount);
+          .to.emit(liquidityPool, EVENT_NAME_ON_BEFORE_LIQUIDITY_IN_CALLED)
+          .withArgs(expectedRepaymentAmount);
         await expect(tx)
           .to.emit(creditLine, EVENT_NAME_ON_AFTER_LOAN_PAYMENT_CALLED)
           .withArgs(expectedLoan.id, expectedRepaymentAmount);
@@ -2491,15 +2492,15 @@ describe("Contract 'LendingMarket': base tests", async () => {
           );
 
           await expect(tx)
-            .to.emit(liquidityPool, EVENT_NAME_ON_AFTER_LOAN_REPAYMENT_UNDOING_CALLED)
-            .withArgs(loans[0].id, repaymentAmount);
+            .to.emit(liquidityPool, EVENT_NAME_ON_BEFORE_LIQUIDITY_OUT_CALLED)
+            .withArgs(repaymentAmount);
         } else {
           await expect(tx).to.changeTokenBalances(
             token,
             [liquidityPool, borrower, receiver, marketViaAdmin],
             [0, 0, 0, 0]
           );
-          await expect(tx).not.to.emit(liquidityPool, EVENT_NAME_ON_AFTER_LOAN_REPAYMENT_UNDOING_CALLED);
+          await expect(tx).not.to.emit(liquidityPool, EVENT_NAME_ON_BEFORE_LIQUIDITY_OUT_CALLED);
         }
 
         // Check some events if there is only a single repayment to undo
@@ -3671,7 +3672,30 @@ describe("Contract 'LendingMarket': base tests", async () => {
 
       // Check hook calls
       await expect(tx).to.emit(creditLine, EVENT_NAME_ON_AFTER_LOAN_REVOCATION_CALLED).withArgs(expectedLoan.id);
-      await expect(tx).and.to.emit(liquidityPool, EVENT_NAME_ON_AFTER_LOAN_REVOCATION_CALLED).withArgs(expectedLoan.id);
+      if (borrowerBalanceChange < 0) {
+        await expect(tx)
+          .to.emit(liquidityPool, EVENT_NAME_ON_BEFORE_LIQUIDITY_IN_CALLED)
+          .withArgs(-borrowerBalanceChange);
+        await expect(tx).not.to.emit(liquidityPool, EVENT_NAME_ON_BEFORE_LIQUIDITY_OUT_CALLED);
+      } else if (borrowerBalanceChange > 0) {
+        if (addonAmount == 0) {
+          await expect(tx).not.to.emit(liquidityPool, EVENT_NAME_ON_BEFORE_LIQUIDITY_IN_CALLED);
+        }
+        await expect(tx)
+          .to.emit(liquidityPool, EVENT_NAME_ON_BEFORE_LIQUIDITY_OUT_CALLED)
+          .withArgs(borrowerBalanceChange);
+      } else {
+        if (addonAmount == 0) {
+          await expect(tx).not.to.emit(liquidityPool, EVENT_NAME_ON_BEFORE_LIQUIDITY_IN_CALLED);
+        }
+        await expect(tx).not.to.emit(liquidityPool, EVENT_NAME_ON_BEFORE_LIQUIDITY_OUT_CALLED);
+      }
+
+      if (addonAmount != 0) {
+        await expect(tx)
+          .to.emit(liquidityPool, EVENT_NAME_ON_BEFORE_LIQUIDITY_IN_CALLED)
+          .withArgs(addonAmount);
+      }
     }
 
     describe("Executes as expected and emits correct event if", async () => {
@@ -3844,7 +3868,6 @@ describe("Contract 'LendingMarket': base tests", async () => {
         checkEquality(actualLoanStates[i], expectedLoans[i].state, i);
         // Check hook calls
         await expect(tx).to.emit(creditLine, EVENT_NAME_ON_AFTER_LOAN_REVOCATION_CALLED).withArgs(loanId);
-        await expect(tx).and.to.emit(liquidityPool, EVENT_NAME_ON_AFTER_LOAN_REVOCATION_CALLED).withArgs(loanId);
       }
       await expect(tx).to.emit(market, EVENT_NAME_INSTALLMENT_LOAN_REVOKED).withArgs(loanIds[0], loanIds.length);
 
@@ -3862,6 +3885,30 @@ describe("Contract 'LendingMarket': base tests", async () => {
         expect(await getNumberOfEvents(tx, token, EVENT_NAME_TRANSFER)).to.eq(0);
       } else {
         expect(await getNumberOfEvents(tx, token, EVENT_NAME_TRANSFER)).to.eq(1);
+      }
+      if (borrowerBalanceChange < 0) {
+        await expect(tx)
+          .to.emit(liquidityPool, EVENT_NAME_ON_BEFORE_LIQUIDITY_IN_CALLED)
+          .withArgs(-borrowerBalanceChange);
+        await expect(tx).not.to.emit(liquidityPool, EVENT_NAME_ON_BEFORE_LIQUIDITY_OUT_CALLED);
+      } else if (borrowerBalanceChange > 0) {
+        if (totalAddonAmount == 0) {
+          await expect(tx).not.to.emit(liquidityPool, EVENT_NAME_ON_BEFORE_LIQUIDITY_IN_CALLED);
+        }
+        await expect(tx)
+          .to.emit(liquidityPool, EVENT_NAME_ON_BEFORE_LIQUIDITY_OUT_CALLED)
+          .withArgs(borrowerBalanceChange);
+      } else {
+        if (totalAddonAmount == 0) {
+          await expect(tx).not.to.emit(liquidityPool, EVENT_NAME_ON_BEFORE_LIQUIDITY_IN_CALLED);
+        }
+        await expect(tx).not.to.emit(liquidityPool, EVENT_NAME_ON_BEFORE_LIQUIDITY_OUT_CALLED);
+      }
+
+      if (totalAddonAmount != 0) {
+        await expect(tx)
+          .to.emit(liquidityPool, EVENT_NAME_ON_BEFORE_LIQUIDITY_IN_CALLED)
+          .withArgs(totalAddonAmount);
       }
     }
 

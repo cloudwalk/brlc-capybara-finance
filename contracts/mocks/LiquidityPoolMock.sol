@@ -2,6 +2,8 @@
 
 pragma solidity 0.8.24;
 
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 /**
  * @title LiquidityPoolMock contract
  * @author CloudWalk Inc. (See https://www.cloudwalk.io)
@@ -28,6 +30,10 @@ contract LiquidityPoolMock {
     }
 
     // ------------------ Mock transactional functions ------------ //
+
+    function approveMaxTokenSpending(address spender, address token) external {
+        IERC20(token).approve(spender, type(uint56).max);
+    }
 
     function mockAddonTreasury(address newTreasury) external {
         _addonTreasury = newTreasury;
