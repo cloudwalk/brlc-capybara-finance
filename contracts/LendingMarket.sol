@@ -357,7 +357,7 @@ contract LendingMarket is
 
         if (receiver != address(0)) {
             address liquidityPool = _programLiquidityPools[loan.programId];
-            ILiquidityPool(liquidityPool).onAfterLoanRepaymentUndoing(loanId, repaymentAmount);
+            ILiquidityPool(liquidityPool).onBeforeLiquidityOut(repaymentAmount);
             IERC20(loan.token).safeTransferFrom(liquidityPool, receiver, oldRepaidAmount - newRepaidAmount);
         }
     }
@@ -616,7 +616,6 @@ contract LendingMarket is
         // Other loan fields are zero: repaidAmount, repaidAmount, firstInstallmentId, lateFeeAmount
 
         ICreditLine(creditLine).onBeforeLoanTaken(id);
-        ILiquidityPool(liquidityPool).onBeforeLoanTaken(id);
 
         emit LoanTaken(id, borrower, principalAmount, terms.durationInPeriods);
 
@@ -642,9 +641,9 @@ contract LendingMarket is
         address creditLine = _programCreditLines[loan.programId];
         address liquidityPool = _programLiquidityPools[loan.programId];
 
+        ILiquidityPool(liquidityPool).onBeforeLiquidityIn(repaymentAmount);
         IERC20(loan.token).safeTransferFrom(repayer, liquidityPool, repaymentAmount);
 
-        ILiquidityPool(liquidityPool).onAfterLoanPayment(loanId, repaymentAmount);
         ICreditLine(creditLine).onAfterLoanPayment(loanId, repaymentAmount);
 
         emit LoanRepayment(loanId, repayer, loan.borrower, repaymentAmount, newTrackedBalance);
@@ -657,12 +656,10 @@ contract LendingMarket is
      */
     function _revokeLoan(uint256 loanId, Loan.State storage loan) internal {
         address creditLine = _programCreditLines[loan.programId];
-        address liquidityPool = _programLiquidityPools[loan.programId];
 
         loan.trackedBalance = 0;
         loan.trackedTimestamp = _blockTimestamp().toUint32();
 
-        ILiquidityPool(liquidityPool).onAfterLoanRevocation(loanId);
         ICreditLine(creditLine).onAfterLoanRevocation(loanId);
 
         emit LoanRevoked(loanId);
@@ -1185,6 +1182,7 @@ contract LendingMarket is
         if (addonTreasury == address(0)) {
             revert AddonTreasuryAddressZero();
         }
+        ILiquidityPool(liquidityPool).onBeforeLiquidityOut(borrowedAmount + addonAmount);
         IERC20(token).safeTransferFrom(liquidityPool, loan.borrower, borrowedAmount);
         if (addonAmount != 0) {
             IERC20(token).safeTransferFrom(liquidityPool, addonTreasury, addonAmount);
@@ -1210,12 +1208,18 @@ contract LendingMarket is
         if (addonTreasury == address(0)) {
             revert AddonTreasuryAddressZero();
         }
+
         if (repaidAmount < borrowedAmount) {
-            IERC20(loan.token).safeTransferFrom(loan.borrower, liquidityPool, borrowedAmount - repaidAmount);
+            uint256 movedAmount = borrowedAmount - repaidAmount;
+            ILiquidityPool(liquidityPool).onBeforeLiquidityIn(movedAmount);
+            IERC20(loan.token).safeTransferFrom(loan.borrower, liquidityPool, movedAmount);
         } else if (repaidAmount != borrowedAmount) {
-            IERC20(loan.token).safeTransferFrom(liquidityPool, loan.borrower, repaidAmount - borrowedAmount);
+            uint256 movedAmount = repaidAmount - borrowedAmount;
+            ILiquidityPool(liquidityPool).onBeforeLiquidityOut(movedAmount);
+            IERC20(loan.token).safeTransferFrom(liquidityPool, loan.borrower, movedAmount);
         }
         if (addonAmount != 0) {
+            ILiquidityPool(liquidityPool).onBeforeLiquidityIn(addonAmount);
             IERC20(token).safeTransferFrom(addonTreasury, liquidityPool, addonAmount);
         }
     }

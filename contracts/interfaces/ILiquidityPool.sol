@@ -87,9 +87,6 @@ interface ILiquidityPoolPrimary {
 
     // ------------------ View functions -------------------------- //
 
-    /// @dev Returns the address of the associated lending market.
-    function market() external view returns (address);
-
     /// @dev Returns the address of the liquidity pool token.
     function token() external view returns (address);
 
@@ -179,30 +176,18 @@ interface ILiquidityPoolConfiguration {
  */
 interface ILiquidityPoolHooks {
     /**
-     * @dev A hook that is triggered by the associated market before a loan is taken.
-     * @param loanId The unique identifier of the loan being taken.
+     * @dev Hook function that must be called before liquidity is moved into the pool.
+     *
+     * @param amount The amount of liquidity to move into the pool.
      */
-    function onBeforeLoanTaken(uint256 loanId) external;
+    function onBeforeLiquidityIn(uint256 amount) external;
 
     /**
-     * @dev A hook that is triggered by the associated market after the loan payment.
-     * @param loanId The unique identifier of the loan being paid.
-     * @param repaymentAmount The amount of tokens that was repaid.
+     * @dev Hook function that must be called before liquidity is moved out of the pool.
+     *
+     * @param amount The amount of liquidity to move out of the pool.
      */
-    function onAfterLoanPayment(uint256 loanId, uint256 repaymentAmount) external;
-
-    /**
-     * @dev A hook that is triggered by the associated market after the loan repayment undoing.
-     * @param loanId The unique identifier of the loan to undo the repayment for.
-     * @param repaymentAmount The amount of tokens that was undone.
-     */
-    function onAfterLoanRepaymentUndoing(uint256 loanId, uint256 repaymentAmount) external;
-
-    /**
-     * @dev A hook that is triggered by the associated market after the loan revocation.
-     * @param loanId The unique identifier of the loan being revoked.
-     */
-    function onAfterLoanRevocation(uint256 loanId) external;
+    function onBeforeLiquidityOut(uint256 amount) external;
 }
 
 /**
@@ -223,8 +208,11 @@ interface ILiquidityPoolErrors {
     /// @dev Thrown when the addon treasury has not provided an allowance for the lending market to transfer its tokens.
     error AddonTreasuryZeroAllowanceForMarket();
 
-    /// @dev Thrown when the token source balance is insufficient.
-    error InsufficientBalance();
+    /// @dev Thrown when the liquidity pool balance is greater than the maximum allowed balance.
+    error BalanceExcess();
+
+    /// @dev Thrown when the liquidity pool balance is insufficient to cover moving liquidity out of the pool.
+    error BalanceInsufficient();
 
     /// @dev Thrown when the operational treasury address is zero.
     error OperationalTreasuryAddressZero();

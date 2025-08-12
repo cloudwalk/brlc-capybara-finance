@@ -23,10 +23,6 @@ contract LendingMarketMock {
         _loanStates[loanId] = state;
     }
 
-    function callOnBeforeLoanTakenLiquidityPool(address liquidityPool, uint256 loanId) external {
-        ILiquidityPool(liquidityPool).onBeforeLoanTaken(loanId);
-    }
-
     function callOnBeforeLoanTakenCreditLine(address creditLine, uint256 loanId) external {
         ICreditLine(creditLine).onBeforeLoanTaken(loanId);
     }
@@ -35,29 +31,22 @@ contract LendingMarketMock {
         ICreditLine(creditLine).onBeforeLoanReopened(loanId);
     }
 
-    function callOnAfterLoanPaymentLiquidityPool(address liquidityPool, uint256 loanId, uint256 amount) external {
-        ILiquidityPool(liquidityPool).onAfterLoanPayment(loanId, amount);
-    }
-
-    function callOnAfterLoanRepaymentUndoingLiquidityPool(
-        address liquidityPool,
-        uint256 loanId,
-        uint256 amount
-    ) external {
-        ILiquidityPool(liquidityPool).onAfterLoanRepaymentUndoing(loanId, amount);
-    }
-
     function callOnAfterLoanPaymentCreditLine(address creditLine, uint256 loanId, uint256 repaymentAmount) external {
         ICreditLine(creditLine).onAfterLoanPayment(loanId, repaymentAmount);
-    }
-
-    function callOnAfterLoanRevocationLiquidityPool(address liquidityPool, uint256 loanId) external {
-        ILiquidityPool(liquidityPool).onAfterLoanRevocation(loanId);
     }
 
     function callOnAfterLoanRevocationCreditLine(address creditLine, uint256 loanId) external {
         ICreditLine(creditLine).onAfterLoanRevocation(loanId);
     }
+
+    function callOnBeforeLiquidityInLiquidityPool(address liquidityPool, uint256 amount) external {
+        ILiquidityPool(liquidityPool).onBeforeLiquidityIn(amount);
+    }
+
+    function callOnBeforeLiquidityOutLiquidityPool(address liquidityPool, uint256 amount) external {
+        ILiquidityPool(liquidityPool).onBeforeLiquidityOut(amount);
+    }
+
 
     // ------------------ View functions -------------------------- //
 
