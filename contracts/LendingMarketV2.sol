@@ -1055,7 +1055,7 @@ contract LendingMarketV2 is
                 if (finishDay <= dueDay) {
                     _accrueInterestRemuneratory(subLoan, finishDay - startDay);
                 } else {
-                    _accrueInterestRemuneratory(subLoan, finishDay - startDay);
+                     _accrueInterestRemuneratory(subLoan, dueDay - startDay);
                     _calculateInitialLateFee(subLoan);
                     _accrueInterestRemuneratory(subLoan, finishDay  - dueDay);
                     _accrueInterestMoratory(subLoan, finishDay - dueDay);
