@@ -65,24 +65,15 @@ contract LiquidityPool is
     /**
      * @dev Initializer of the upgradeable contract.
      * @param owner_ The address of the liquidity pool owner.
-     * @param liquidityOperator_ The address of the initial liquidity operator.
      * @param token_ The address of the token.
      * See details https://docs.openzeppelin.com/upgrades-plugins/writing-upgradeable.
      */
     function initialize(
         address owner_, // Tools: prevent Prettier one-liner
-        address liquidityOperator_,
         address token_
     ) external initializer {
         if (owner_ == address(0)) {
             revert Error.ZeroAddress();
-        }
-
-        if (liquidityOperator_ == address(0)) {
-            revert Error.ZeroAddress();
-        }
-        if (liquidityOperator_.code.length == 0) {
-            revert Error.ContractAddressInvalid();
         }
 
         if (token_ == address(0)) {
@@ -101,7 +92,6 @@ contract LiquidityPool is
 
         _setRoleAdmin(ADMIN_ROLE, GRANTOR_ROLE);
         _grantRole(OWNER_ROLE, owner_);
-        _grantRole(LIQUIDITY_OPERATOR_ROLE, liquidityOperator_);
 
         _token = token_;
     }
