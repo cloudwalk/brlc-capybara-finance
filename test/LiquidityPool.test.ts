@@ -42,7 +42,10 @@ const ERROR_NAME_IMPLEMENTATION_ADDRESS_INVALID = "LiquidityPool_ImplementationA
 const ERROR_NAME_OPERATIONAL_TREASURY_ADDRESS_ZERO = "LiquidityPool_OperationalTreasuryAddressZero";
 const ERROR_NAME_OPERATIONAL_TREASURY_ZERO_ALLOWANCE_FOR_POOL = "LiquidityPool_OperationalTreasuryZeroAllowanceForPool";
 const ERROR_NAME_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST = "SafeCastOverflowedUintDowncast";
-const ERROR_NAME_ZERO_ADDRESS = "LiquidityPool_ZeroAddress";
+const ERROR_NAME_OWNER_ADDRESS_ZERO = "LiquidityPool_OwnerAddressZero";
+const ERROR_NAME_TOKEN_ADDRESS_ZERO = "LiquidityPool_TokenAddressZero";
+const ERROR_NAME_SPENDER_ADDRESS_ZERO = "LiquidityPool_SpenderAddressZero";
+const ERROR_NAME_RESCUE_TOKEN_ADDRESS_ZERO = "LiquidityPool_RescueTokenAddressZero";
 
 const DEFAULT_ADMIN_ROLE = ethers.ZeroHash;
 const GRANTOR_ROLE = ethers.id("GRANTOR_ROLE");
@@ -290,7 +293,7 @@ describe("Contract 'LiquidityPool'", async () => {
       await expect(upgrades.deployProxy(liquidityPoolFactory, [
         wrongOwnerAddress,
         tokenAddress
-      ])).to.be.revertedWithCustomError(liquidityPoolFactory, ERROR_NAME_ZERO_ADDRESS);
+      ])).to.be.revertedWithCustomError(liquidityPoolFactory, ERROR_NAME_OWNER_ADDRESS_ZERO);
     });
 
     it("Is reverted if the token address is zero", async () => {
@@ -298,7 +301,7 @@ describe("Contract 'LiquidityPool'", async () => {
       await expect(upgrades.deployProxy(liquidityPoolFactory, [
         owner.address,
         wrongTokenAddress
-      ])).to.be.revertedWithCustomError(liquidityPoolFactory, ERROR_NAME_ZERO_ADDRESS);
+      ])).to.be.revertedWithCustomError(liquidityPoolFactory, ERROR_NAME_TOKEN_ADDRESS_ZERO);
     });
 
     it("Is reverted if the token address is not a contract address", async () => {
@@ -492,7 +495,7 @@ describe("Contract 'LiquidityPool'", async () => {
       const { liquidityPool } = await setUpFixture(deployLiquidityPool);
 
       await expect(liquidityPool.approveSpender(ZERO_ADDRESS, MAX_ALLOWANCE))
-        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_ZERO_ADDRESS);
+        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_SPENDER_ADDRESS_ZERO);
     });
   });
 
@@ -790,7 +793,7 @@ describe("Contract 'LiquidityPool'", async () => {
       const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
 
       await expect(liquidityPool.rescue(ZERO_ADDRESS, rescuedAmount))
-        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_ZERO_ADDRESS);
+        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_RESCUE_TOKEN_ADDRESS_ZERO);
     });
 
     it("Is reverted if provided rescued amount is zero", async () => {

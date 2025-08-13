@@ -71,11 +71,11 @@ contract LiquidityPool is
         address token_
     ) external initializer {
         if (owner_ == address(0)) {
-            revert LiquidityPool_ZeroAddress();
+            revert LiquidityPool_OwnerAddressZero();
         }
 
         if (token_ == address(0)) {
-            revert LiquidityPool_ZeroAddress();
+            revert LiquidityPool_TokenAddressZero();
         }
         if (token_.code.length == 0) {
             revert LiquidityPool_ContractAddressInvalid();
@@ -110,7 +110,7 @@ contract LiquidityPool is
     /// @inheritdoc ILiquidityPoolConfiguration
     function approveSpender(address spender, uint256 newAllowance) external onlyRole(OWNER_ROLE) {
         if (spender == address(0)) {
-            revert LiquidityPool_ZeroAddress();
+            revert LiquidityPool_SpenderAddressZero();
         }
         IERC20(_token).approve(spender, newAllowance);
     }
@@ -162,7 +162,7 @@ contract LiquidityPool is
     /// @inheritdoc ILiquidityPoolPrimary
     function rescue(address token_, uint256 amount) external onlyRole(OWNER_ROLE) {
         if (token_ == address(0)) {
-            revert LiquidityPool_ZeroAddress();
+            revert LiquidityPool_RescueTokenAddressZero();
         }
         if (amount == 0) {
             revert LiquidityPool_InvalidAmount();

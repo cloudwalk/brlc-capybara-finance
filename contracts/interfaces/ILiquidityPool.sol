@@ -237,8 +237,17 @@ interface ILiquidityPoolErrors {
     /// @dev Thrown when the operational treasury has not provided an allowance for the pool to transfer its tokens.
     error LiquidityPool_OperationalTreasuryZeroAllowanceForPool();
 
-    /// @dev Thrown when the specified address is zero.
-    error LiquidityPool_ZeroAddress();
+    /// @dev Thrown when the owner address is zero during initialization.
+    error LiquidityPool_OwnerAddressZero();
+
+    /// @dev Thrown when the token address is zero during initialization.
+    error LiquidityPool_TokenAddressZero();
+
+    /// @dev Thrown when the spender address is zero in approve operations.
+    error LiquidityPool_SpenderAddressZero();
+
+    /// @dev Thrown when the token address is zero in rescue operations.
+    error LiquidityPool_RescueTokenAddressZero();
 
     /// @dev Thrown when the specified amount is invalid.
     error LiquidityPool_InvalidAmount();
