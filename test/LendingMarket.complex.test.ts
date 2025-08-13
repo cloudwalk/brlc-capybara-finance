@@ -447,7 +447,7 @@ describe("Contract 'LendingMarket': complex tests", async () => {
     const scenario = context.scenario;
     const expectedBalanceBefore = scenario.expectedOutstandingBalancesBeforeRepayment[context.stepIndex] ?? 0;
     if (expectedBalanceBefore < 0) {
-      // Do not check is the expected balance is negative
+      // Do not check if the expected balance is negative
       return;
     }
     const loanPreviewAfter = await lendingMarket.getLoanPreview(context.loanId, 0);
@@ -573,7 +573,7 @@ describe("Contract 'LendingMarket': complex tests", async () => {
 
       const expectedOutstandingBalancesBeforeRepayment: number[] = [
         /* eslint-disable @stylistic/array-element-newline*/
-        // The numbers below are taken form spreadsheet:
+        // The numbers below are taken from the spreadsheet:
         // https://docs.google.com/spreadsheets/d/148elvx9Yd0QuaDtc7AkaelIn3t5rvZCx5iG2ceVfpe8
         1085060000, 992900000, 892900000, 968850000, 1051260000, 956220000,
         905800000, 831090000, 661090000, 491090000, 362670000, 217620000
@@ -609,7 +609,7 @@ describe("Contract 'LendingMarket': complex tests", async () => {
 
       const expectedOutstandingBalancesBeforeRepayment: number[] = [
         /* eslint-disable @stylistic/array-element-newline*/
-        // The numbers below are taken form spreadsheet:
+        // The numbers below are taken from the spreadsheet:
         // https://docs.google.com/spreadsheets/d/148elvx9Yd0QuaDtc7AkaelIn3t5rvZCx5iG2ceVfpe8
         1085060000, 1177360000, 1177360000, 1177360000, 1277510000, 1386180000,
         1504090000, 1632030000, 1880240000, 2123740000, 2398760000, 1015150000
@@ -642,7 +642,7 @@ describe("Contract 'LendingMarket': complex tests", async () => {
 
       const expectedOutstandingBalancesBeforeRepayment: number[] = [
         /* eslint-disable @stylistic/array-element-newline*/
-        // The numbers below are taken form spreadsheet:
+        // The numbers below are taken from the spreadsheet:
         // https://docs.google.com/spreadsheets/d/148elvx9Yd0QuaDtc7AkaelIn3t5rvZCx5iG2ceVfpe8
         1134642760000, 1287300730000, 1460512990000, 1657047030000, 1880042950000, 2133063660000,
         2588953760000, 3080691310000, 3665850520000, 4362179870000, 5190799790000, 6176843200000,
@@ -679,7 +679,7 @@ describe("Contract 'LendingMarket': complex tests", async () => {
 
       const expectedOutstandingBalancesBeforeRepayment: number[] = [
         /* eslint-disable @stylistic/array-element-newline*/
-        // The numbers below are taken form spreadsheet:
+        // The numbers below are taken from the spreadsheet:
         // https://docs.google.com/spreadsheets/d/148elvx9Yd0QuaDtc7AkaelIn3t5rvZCx5iG2ceVfpe8
         1010000, 930000, 840000, 760000, 670000, 590000,
         520000, 430000, 350000, 260000, 170000, 80000

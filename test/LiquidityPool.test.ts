@@ -82,7 +82,6 @@ describe("Contract 'LiquidityPool'", async () => {
   let operationalTreasury: HardhatEthersSigner;
 
   let tokenAddress: string;
-  let marketAddress: string;
 
   before(async () => {
     [
@@ -523,7 +522,8 @@ describe("Contract 'LiquidityPool'", async () => {
     it("Executes as expected", async () => {
       const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
 
-      const tx: Promise<TransactionResponse> = depositAndCheck(liquidityPool, DEPOSIT_AMOUNT);
+      const tx = depositAndCheck(liquidityPool, DEPOSIT_AMOUNT);
+      await expect(tx).not.to.emit(token, EVENT_NAME_APPROVAL); // No approval must happen within the deposit function
     });
 
     it("Is reverted if the caller does not have the owner role", async () => {
@@ -554,7 +554,8 @@ describe("Contract 'LiquidityPool'", async () => {
   describe("Function 'depositFromExternalTreasury()'", async () => {
     it("Executes as expected", async () => {
       const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
-      await depositAndCheck(liquidityPool, DEPOSIT_AMOUNT, FUNC_SIGNATURE_DEPOSIT_FROM_OPERATIONAL_TREASURY);
+      const tx = depositAndCheck(liquidityPool, DEPOSIT_AMOUNT, FUNC_SIGNATURE_DEPOSIT_FROM_OPERATIONAL_TREASURY);
+      await expect(tx).not.to.emit(token, EVENT_NAME_APPROVAL); // No approval must happen within the deposit function
     });
 
     it("Is reverted if the caller does not have the admin role", async () => {
@@ -598,13 +599,13 @@ describe("Contract 'LiquidityPool'", async () => {
       const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
       const liquidityPoolAddress = getAddress(liquidityPool);
 
-      const tx: Promise<TransactionResponse> =
-        depositAndCheck(liquidityPool, DEPOSIT_AMOUNT, FUNC_SIGNATURE_DEPOSIT_FROM_RESERVE);
+      const tx = depositAndCheck(liquidityPool, DEPOSIT_AMOUNT, FUNC_SIGNATURE_DEPOSIT_FROM_RESERVE);
       await expect(tx).to.emit(token, EVENT_NAME_MOCK_MINTING_FROM_RESERVE).withArgs(
         liquidityPoolAddress,
         liquidityPoolAddress,
         DEPOSIT_AMOUNT
       );
+      await expect(tx).not.to.emit(token, EVENT_NAME_APPROVAL); // No approval must happen within the deposit function
       expect(await getNumberOfEvents(tx, token, EVENT_NAME_TRANSFER)).to.eq(1);
     });
 
