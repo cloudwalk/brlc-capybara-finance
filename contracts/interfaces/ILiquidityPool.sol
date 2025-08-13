@@ -220,22 +220,37 @@ interface ILiquidityPoolErrors {
      * a loan is taken when it is non-zero and revoked when it is zero, which will lead to
      * an incorrect value of the `_addonsBalance` variable, or a reversion if `_addonsBalance == 0`.
      */
-    error AddonTreasuryAddressZeroingProhibited();
+    error LiquidityPool_AddonTreasuryAddressZeroingProhibited();
 
     /// @dev Thrown when the addon treasury has not provided an allowance for the lending market to transfer its tokens.
-    error AddonTreasuryZeroAllowanceForMarket();
+    error LiquidityPool_AddonTreasuryZeroAllowanceForMarket();
 
     /// @dev Thrown when a deposit would cause the pool balance to exceed its maximum allowed value.
-    error BalanceExcess();
+    error LiquidityPool_BalanceExcess();
 
     /// @dev Thrown when the liquidity pool balance is insufficient to cover moving liquidity out of the pool.
-    error BalanceInsufficient();
+    error LiquidityPool_BalanceInsufficient();
 
     /// @dev Thrown when the operational treasury address is zero.
-    error OperationalTreasuryAddressZero();
+    error LiquidityPool_OperationalTreasuryAddressZero();
 
     /// @dev Thrown when the operational treasury has not provided an allowance for the pool to transfer its tokens.
-    error OperationalTreasuryZeroAllowanceForPool();
+    error LiquidityPool_OperationalTreasuryZeroAllowanceForPool();
+
+    /// @dev Thrown when the specified address is zero.
+    error LiquidityPool_ZeroAddress();
+
+    /// @dev Thrown when the specified amount is invalid.
+    error LiquidityPool_InvalidAmount();
+
+    /// @dev Thrown when the configuration is already applied.
+    error LiquidityPool_AlreadyConfigured();
+
+    /// @dev Thrown when the provided address does not belong to a contract of expected type or a contract at all.
+    error LiquidityPool_ContractAddressInvalid();
+
+    /// @dev Thrown if the provided new implementation address is not of a contract.
+    error LiquidityPool_ImplementationAddressInvalid();
 }
 
 /**

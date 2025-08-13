@@ -9,8 +9,6 @@ import { AccessControlExtUpgradeable } from "./base/AccessControlExtUpgradeable.
 import { PausableExtUpgradeable } from "./base/PausableExtUpgradeable.sol";
 import { UUPSExtUpgradeable } from "./base/UUPSExtUpgradeable.sol";
 import { Versionable } from "./base/Versionable.sol";
-
-import { Error } from "./libraries/Error.sol";
 import { SafeCast } from "./libraries/SafeCast.sol";
 
 import { ICreditLine } from "./interfaces/ICreditLine.sol";
@@ -73,17 +71,17 @@ contract LiquidityPool is
         address token_
     ) external initializer {
         if (owner_ == address(0)) {
-            revert Error.ZeroAddress();
+            revert LiquidityPool_ZeroAddress();
         }
 
         if (token_ == address(0)) {
-            revert Error.ZeroAddress();
+            revert LiquidityPool_ZeroAddress();
         }
         if (token_.code.length == 0) {
-            revert Error.ContractAddressInvalid();
+            revert LiquidityPool_ContractAddressInvalid();
         }
         try IERC20(token_).balanceOf(address(0)) {} catch {
-            revert Error.ContractAddressInvalid();
+            revert LiquidityPool_ContractAddressInvalid();
         }
 
         __AccessControlExt_init_unchained();
@@ -112,7 +110,7 @@ contract LiquidityPool is
     /// @inheritdoc ILiquidityPoolConfiguration
     function approveSpender(address spender, uint256 newAllowance) external onlyRole(OWNER_ROLE) {
         if (spender == address(0)) {
-            revert Error.ZeroAddress();
+            revert LiquidityPool_ZeroAddress();
         }
         IERC20(_token).approve(spender, newAllowance);
     }
@@ -164,10 +162,10 @@ contract LiquidityPool is
     /// @inheritdoc ILiquidityPoolPrimary
     function rescue(address token_, uint256 amount) external onlyRole(OWNER_ROLE) {
         if (token_ == address(0)) {
-            revert Error.ZeroAddress();
+            revert LiquidityPool_ZeroAddress();
         }
         if (amount == 0) {
-            revert Error.InvalidAmount();
+            revert LiquidityPool_InvalidAmount();
         }
 
         IERC20(token_).safeTransfer(msg.sender, amount);
@@ -190,14 +188,14 @@ contract LiquidityPool is
     /// @inheritdoc ILiquidityPoolHooks
     function onBeforeLiquidityIn(uint256 amount) external whenNotPaused onlyRole(LIQUIDITY_OPERATOR_ROLE) {
         if (amount > type(uint64).max) {
-            revert BalanceExcess();
+            revert LiquidityPool_BalanceExcess();
         }
         uint256 balance = _borrowableBalance;
         unchecked {
             balance += amount;
         }
         if (balance > type(uint64).max) {
-            revert BalanceExcess();
+            revert LiquidityPool_BalanceExcess();
         }
         _borrowableBalance = uint64(balance);
     }
@@ -206,7 +204,7 @@ contract LiquidityPool is
     function onBeforeLiquidityOut(uint256 amount) external whenNotPaused onlyRole(LIQUIDITY_OPERATOR_ROLE) {
         uint256 balance = _borrowableBalance;
         if (amount > balance) {
-            revert BalanceInsufficient();
+            revert LiquidityPool_BalanceInsufficient();
         }
         unchecked {
             balance -= amount;
@@ -250,7 +248,7 @@ contract LiquidityPool is
      */
     function _deposit(uint256 amount, address sender) internal {
         if (amount == 0) {
-            revert Error.InvalidAmount();
+            revert LiquidityPool_InvalidAmount();
         }
 
         IERC20 underlyingToken = IERC20(_token);
@@ -271,14 +269,14 @@ contract LiquidityPool is
      */
     function _withdraw(uint256 borrowableAmount, uint256 addonAmount, address recipient) internal {
         if (borrowableAmount == 0) {
-            revert Error.InvalidAmount();
+            revert LiquidityPool_InvalidAmount();
         }
         if (addonAmount != 0) {
-            revert Error.InvalidAmount();
+            revert LiquidityPool_InvalidAmount();
         }
 
         if (_borrowableBalance < borrowableAmount) {
-            revert BalanceInsufficient();
+            revert LiquidityPool_BalanceInsufficient();
         }
 
         _borrowableBalance -= borrowableAmount.toUint64();
@@ -294,10 +292,10 @@ contract LiquidityPool is
     function _setAddonTreasury(address newTreasury) internal {
         address oldTreasury = _addonTreasury;
         if (oldTreasury == newTreasury) {
-            revert Error.AlreadyConfigured();
+            revert LiquidityPool_AlreadyConfigured();
         }
         if (newTreasury == address(0)) {
-            revert AddonTreasuryAddressZeroingProhibited();
+            revert LiquidityPool_AddonTreasuryAddressZeroingProhibited();
         }
         emit AddonTreasuryChanged(newTreasury, oldTreasury);
         _addonTreasury = newTreasury;
@@ -310,11 +308,11 @@ contract LiquidityPool is
     function _setOperationalTreasury(address newTreasury) internal {
         address oldTreasury = _operationalTreasury;
         if (oldTreasury == newTreasury) {
-            revert Error.AlreadyConfigured();
+            revert LiquidityPool_AlreadyConfigured();
         }
         if (newTreasury != address(0)) {
             if (IERC20(_token).allowance(newTreasury, address(this)) == 0) {
-                revert OperationalTreasuryZeroAllowanceForPool();
+                revert LiquidityPool_OperationalTreasuryZeroAllowanceForPool();
             }
         }
         emit OperationalTreasuryChanged(newTreasury, oldTreasury);
@@ -325,7 +323,7 @@ contract LiquidityPool is
     function _getAndCheckOperationalTreasury() internal view returns (address) {
         address operationalTreasury_ = _operationalTreasury;
         if (operationalTreasury_ == address(0)) {
-            revert OperationalTreasuryAddressZero();
+            revert LiquidityPool_OperationalTreasuryAddressZero();
         }
         return operationalTreasury_;
     }
@@ -337,7 +335,7 @@ contract LiquidityPool is
      */
     function _validateUpgrade(address newImplementation) internal view override onlyRole(OWNER_ROLE) {
         try ILiquidityPool(newImplementation).proveLiquidityPool() {} catch {
-            revert Error.ImplementationAddressInvalid();
+            revert LiquidityPool_ImplementationAddressInvalid();
         }
     }
 }
