@@ -272,7 +272,7 @@ describe("Contract 'LendingMarket': complex tests", async () => {
 
     // Configure liquidity pool and credit line
     await proveTx(liquidityPool.deposit(INITIAL_DEPOSIT));
-    await proveTx(liquidityPool.approveTokenSpending(lendingMarketAddress, MAX_ALLOWANCE));
+    await proveTx(liquidityPool.approveSpender(lendingMarketAddress, MAX_ALLOWANCE));
   }
 
   async function runScenario(scenario: TestScenario): Promise<TestScenarioContext> {

@@ -110,7 +110,7 @@ contract LiquidityPool is
     }
 
     /// @inheritdoc ILiquidityPoolConfiguration
-    function approveTokenSpending(address spender, uint256 newAllowance) external onlyRole(OWNER_ROLE) {
+    function approveSpender(address spender, uint256 newAllowance) external onlyRole(OWNER_ROLE) {
         if (spender == address(0)) {
             revert Error.ZeroAddress();
         }

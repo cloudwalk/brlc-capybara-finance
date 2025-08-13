@@ -132,7 +132,7 @@ describe("Contract 'LiquidityPool'", async () => {
     await proveTx(liquidityPool.grantRole(PAUSER_ROLE, owner.address));
     await proveTx(liquidityPool.grantRole(ADMIN_ROLE, admin.address));
     await proveTx(liquidityPool.grantRole(LIQUIDITY_OPERATOR_ROLE, liquidityOperator.address));
-    await proveTx(liquidityPool.approveTokenSpending(liquidityOperator.address, MAX_ALLOWANCE));
+    await proveTx(liquidityPool.approveSpender(liquidityOperator.address, MAX_ALLOWANCE));
     await proveTx(connect(token, operationalTreasury).approve(getAddress(liquidityPool), MAX_ALLOWANCE));
     await proveTx(liquidityPool.setOperationalTreasury(operationalTreasury.address));
     return { liquidityPool };
@@ -458,7 +458,7 @@ describe("Contract 'LiquidityPool'", async () => {
     });
   });
 
-  describe("Function 'approveTokenSpending()", async () => {
+  describe("Function 'approveSpender()", async () => {
     it("Executes as expected", async () => {
       const { liquidityPool } = await setUpFixture(deployLiquidityPool);
       let expectedAllowance = 1;
@@ -466,7 +466,7 @@ describe("Contract 'LiquidityPool'", async () => {
       let actualAllowance = await token.allowance(getAddress(liquidityPool), liquidityOperator.address);
       expect(actualAllowance).to.eq(0);
 
-      let tx = liquidityPool.approveTokenSpending(liquidityOperator.address, expectedAllowance);
+      let tx = liquidityPool.approveSpender(liquidityOperator.address, expectedAllowance);
       await expect(tx)
         .to.emit(token, EVENT_NAME_APPROVAL)
         .withArgs(getAddress(liquidityPool), liquidityOperator.address, expectedAllowance);
@@ -474,7 +474,7 @@ describe("Contract 'LiquidityPool'", async () => {
       expect(actualAllowance).to.eq(expectedAllowance);
 
       expectedAllowance = ZERO_ALLOWANCE;
-      tx = liquidityPool.approveTokenSpending(liquidityOperator.address, expectedAllowance);
+      tx = liquidityPool.approveSpender(liquidityOperator.address, expectedAllowance);
       await expect(tx)
         .to.emit(token, EVENT_NAME_APPROVAL)
         .withArgs(getAddress(liquidityPool), liquidityOperator.address, expectedAllowance);
@@ -485,7 +485,7 @@ describe("Contract 'LiquidityPool'", async () => {
     it("Is reverted if caller does not have the owner role", async () => {
       const { liquidityPool } = await setUpFixture(deployLiquidityPool);
 
-      await expect(connect(liquidityPool, attacker).approveTokenSpending(attacker.address, MAX_ALLOWANCE))
+      await expect(connect(liquidityPool, attacker).approveSpender(attacker.address, MAX_ALLOWANCE))
         .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
         .withArgs(attacker.address, OWNER_ROLE);
     });
@@ -493,7 +493,7 @@ describe("Contract 'LiquidityPool'", async () => {
     it("Is reverted if the spender address is zero", async () => {
       const { liquidityPool } = await setUpFixture(deployLiquidityPool);
 
-      await expect(liquidityPool.approveTokenSpending(ZERO_ADDRESS, MAX_ALLOWANCE))
+      await expect(liquidityPool.approveSpender(ZERO_ADDRESS, MAX_ALLOWANCE))
         .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_ZERO_ADDRESS);
     });
   });
