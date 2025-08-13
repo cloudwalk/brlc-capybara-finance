@@ -96,7 +96,7 @@ describe("Contract 'LiquidityPool'", async () => {
     ] = await ethers.getSigners();
 
     // Factories with an explicitly specified deployer account
-    liquidityPoolFactory = await ethers.getContractFactory("LiquidityPool");
+    liquidityPoolFactory = await ethers.getContractFactory("LiquidityPoolTestable");
     liquidityPoolFactory = liquidityPoolFactory.connect(deployer);
     tokenFactory = await ethers.getContractFactory("ERC20Mock");
     tokenFactory = tokenFactory.connect(deployer);
@@ -806,6 +806,50 @@ describe("Contract 'LiquidityPool'", async () => {
       await expect(connect(liquidityPool, attacker).rescue(tokenAddress, rescuedAmount))
         .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
         .withArgs(attacker.address, OWNER_ROLE);
+    });
+  });
+
+  describe("Function 'migrate()'", async () => {
+    // In this section function `setMarket()` and `getMarket()` are called on the testable version of the contract.
+
+    it("Executes as expected and clears the market address", async () => {
+      const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
+      const mockMarketAddress = admin.address;
+      await proveTx(liquidityPool.setMarket(mockMarketAddress));
+
+      expect(await liquidityPool.getMarket()).to.eq(mockMarketAddress);
+      await proveTx(liquidityPool.migrate());
+      expect(await liquidityPool.getMarket()).to.eq(ZERO_ADDRESS);
+    });
+
+    it("Can be called multiple times without reverting", async () => {
+      const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
+
+      await proveTx(liquidityPool.migrate());
+      await proveTx(liquidityPool.migrate());
+
+      expect(await liquidityPool.getMarket()).to.eq(ZERO_ADDRESS);
+    });
+
+    it("Can be called when contract is paused", async () => {
+      const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
+
+      await proveTx(liquidityPool.pause());
+      expect(await liquidityPool.paused()).to.equal(true);
+
+      await proveTx(liquidityPool.migrate());
+      expect(await liquidityPool.getMarket()).to.eq(ZERO_ADDRESS);
+    });
+
+    it("Can be called by any account (no access control)", async () => {
+      const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
+
+      await proveTx(connect(liquidityPool, owner).migrate());
+      await proveTx(connect(liquidityPool, admin).migrate());
+      await proveTx(connect(liquidityPool, liquidityOperator).migrate());
+      await proveTx(connect(liquidityPool, attacker).migrate());
+
+      expect(await liquidityPool.getMarket()).to.eq(ZERO_ADDRESS);
     });
   });
 
