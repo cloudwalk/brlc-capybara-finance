@@ -39,15 +39,6 @@ contract LendingMarketMock {
         ICreditLine(creditLine).onAfterLoanRevocation(loanId);
     }
 
-    function callOnBeforeLiquidityInLiquidityPool(address liquidityPool, uint256 amount) external {
-        ILiquidityPool(liquidityPool).onBeforeLiquidityIn(amount);
-    }
-
-    function callOnBeforeLiquidityOutLiquidityPool(address liquidityPool, uint256 amount) external {
-        ILiquidityPool(liquidityPool).onBeforeLiquidityOut(amount);
-    }
-
-
     // ------------------ View functions -------------------------- //
 
     function getLoanState(uint256 loanId) external view returns (Loan.State memory) {
