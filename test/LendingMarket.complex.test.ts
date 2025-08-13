@@ -422,6 +422,7 @@ describe("Contract 'LendingMarket': complex tests", async () => {
     const { token, lendingMarket, liquidityPool } = context.fixture as Fixture;
     const repaymentAmount = context.scenario.repaymentAmounts[context.stepIndex] ?? 0;
     if (repaymentAmount != 0) {
+      const liquidityPoolBalancesBefore = await liquidityPool.getBalances();
       await expect(
         connect(lendingMarket, borrower).repayLoan(context.loanId, repaymentAmount)
       ).to.changeTokenBalances(
@@ -429,6 +430,12 @@ describe("Contract 'LendingMarket': complex tests", async () => {
         [lendingMarket, liquidityPool, borrower],
         [0, +repaymentAmount, -repaymentAmount]
       );
+      const liquidityPoolBalancesAfter = await liquidityPool.getBalances();
+      expect(liquidityPoolBalancesAfter[0] - liquidityPoolBalancesBefore[0]).to.eq(repaymentAmount);
+
+      // The addonsBalance must be zero because addonTreasury != 0
+      expect(liquidityPoolBalancesBefore[1]).to.eq(0);
+      expect(liquidityPoolBalancesAfter[1]).to.eq(0);
     }
   }
 
@@ -499,6 +506,7 @@ describe("Contract 'LendingMarket': complex tests", async () => {
   async function executeAndCheckFullLoanRepaymentForScenario(context: TestScenarioContext) {
     const { token, lendingMarket, liquidityPool } = context.fixture as Fixture;
     const outstandingBalance = (await lendingMarket.getLoanPreview(context.loanId, 0)).outstandingBalance;
+    const liquidityPoolBalancesBefore = await liquidityPool.getBalances();
     await expect(
       connect(lendingMarket, borrower).repayLoan(context.loanId, ethers.MaxUint256)
     ).changeTokenBalances(
@@ -506,6 +514,12 @@ describe("Contract 'LendingMarket': complex tests", async () => {
       [lendingMarket, liquidityPool, borrower],
       [0, outstandingBalance, -outstandingBalance]
     );
+    const liquidityPoolBalancesAfter = await liquidityPool.getBalances();
+    expect(liquidityPoolBalancesAfter[0] - liquidityPoolBalancesBefore[0]).to.eq(outstandingBalance);
+
+    // The addonsBalance must be zero because addonTreasury != 0
+    expect(liquidityPoolBalancesBefore[1]).to.eq(0);
+    expect(liquidityPoolBalancesAfter[1]).to.eq(0);
     await checkLoanClosedState(lendingMarket, context.loanId);
   }
 
