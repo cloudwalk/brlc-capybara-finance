@@ -165,7 +165,7 @@ contract LiquidityPool is
             revert LiquidityPool_RescueTokenAddressZero();
         }
         if (amount == 0) {
-            revert LiquidityPool_InvalidAmount();
+            revert LiquidityPool_AmountInvalid();
         }
 
         IERC20(token_).safeTransfer(msg.sender, amount);
@@ -248,7 +248,7 @@ contract LiquidityPool is
      */
     function _deposit(uint256 amount, address sender) internal {
         if (amount == 0) {
-            revert LiquidityPool_InvalidAmount();
+            revert LiquidityPool_AmountInvalid();
         }
 
         IERC20 underlyingToken = IERC20(_token);
@@ -269,10 +269,10 @@ contract LiquidityPool is
      */
     function _withdraw(uint256 borrowableAmount, uint256 addonAmount, address recipient) internal {
         if (borrowableAmount == 0) {
-            revert LiquidityPool_InvalidAmount();
+            revert LiquidityPool_AmountInvalid();
         }
         if (addonAmount != 0) {
-            revert LiquidityPool_InvalidAmount();
+            revert LiquidityPool_AmountInvalid();
         }
 
         if (_borrowableBalance < borrowableAmount) {

@@ -228,6 +228,9 @@ interface ILiquidityPoolErrors {
     /// @dev Thrown when the configuration is already applied.
     error LiquidityPool_AlreadyConfigured();
 
+    /// @dev Thrown when the specified amount is invalid.
+    error LiquidityPool_AmountInvalid();
+
     /// @dev Thrown when a deposit would cause the pool balance to exceed its maximum allowed value.
     error LiquidityPool_BalanceExcess();
 
@@ -239,9 +242,6 @@ interface ILiquidityPoolErrors {
 
     /// @dev Thrown if the provided new implementation address is not of a contract.
     error LiquidityPool_ImplementationAddressInvalid();
-
-    /// @dev Thrown when the specified amount is invalid.
-    error LiquidityPool_InvalidAmount();
 
     /// @dev Thrown when the operational treasury address is zero.
     error LiquidityPool_OperationalTreasuryAddressZero();

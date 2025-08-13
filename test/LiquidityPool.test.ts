@@ -34,11 +34,11 @@ const ERROR_NAME_INVALID_INITIALIZATION = "InvalidInitialization";
 // Errors of the contracts under test
 const ERROR_NAME_ADDON_TREASURY_ADDRESS_ZEROING_PROHIBITED = "LiquidityPool_AddonTreasuryAddressZeroingProhibited";
 const ERROR_NAME_ALREADY_CONFIGURED = "LiquidityPool_AlreadyConfigured";
+const ERROR_NAME_AMOUNT_INVALID = "LiquidityPool_AmountInvalid";
 const ERROR_NAME_BALANCE_EXCESS = "LiquidityPool_BalanceExcess";
 const ERROR_NAME_BALANCE_INSUFFICIENT = "LiquidityPool_BalanceInsufficient";
 const ERROR_NAME_CONTRACT_ADDRESS_INVALID = "LiquidityPool_ContractAddressInvalid";
 const ERROR_NAME_IMPLEMENTATION_ADDRESS_INVALID = "LiquidityPool_ImplementationAddressInvalid";
-const ERROR_NAME_INVALID_AMOUNT = "LiquidityPool_InvalidAmount";
 const ERROR_NAME_OPERATIONAL_TREASURY_ADDRESS_ZERO = "LiquidityPool_OperationalTreasuryAddressZero";
 const ERROR_NAME_OPERATIONAL_TREASURY_ZERO_ALLOWANCE_FOR_POOL = "LiquidityPool_OperationalTreasuryZeroAllowanceForPool";
 const ERROR_NAME_OWNER_ADDRESS_ZERO = "LiquidityPool_OwnerAddressZero";
@@ -540,7 +540,7 @@ describe("Contract 'LiquidityPool'", async () => {
       const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
 
       await expect(liquidityPool.deposit(0))
-        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_INVALID_AMOUNT);
+        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_AMOUNT_INVALID);
     });
 
     it("Is reverted if the deposit amount is greater than 64-bit unsigned integer", async () => {
@@ -583,7 +583,7 @@ describe("Contract 'LiquidityPool'", async () => {
       const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
 
       await expect(connect(liquidityPool, admin).depositFromOperationalTreasury(0))
-        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_INVALID_AMOUNT);
+        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_AMOUNT_INVALID);
     });
 
     it("Is reverted if the deposit amount is greater than 64-bit unsigned integer", async () => {
@@ -626,7 +626,7 @@ describe("Contract 'LiquidityPool'", async () => {
       const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
 
       await expect(connect(liquidityPool, admin).depositFromReserve(0))
-        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_INVALID_AMOUNT);
+        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_AMOUNT_INVALID);
     });
 
     it("Is reverted if the deposit amount is greater than 64-bit unsigned integer", async () => {
@@ -657,7 +657,7 @@ describe("Contract 'LiquidityPool'", async () => {
       const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
 
       await expect(liquidityPool.withdraw(0, 0))
-        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_INVALID_AMOUNT);
+        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_AMOUNT_INVALID);
     });
 
     it("Is reverted if the addon balance is a non-zero amount", async () => {
@@ -666,11 +666,11 @@ describe("Contract 'LiquidityPool'", async () => {
       let borrowableAmount = 1n;
 
       await expect(liquidityPool.withdraw(borrowableAmount, 1n))
-        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_INVALID_AMOUNT);
+        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_AMOUNT_INVALID);
 
       borrowableAmount = 0n;
       await expect(liquidityPool.withdraw(borrowableAmount, 1n))
-        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_INVALID_AMOUNT);
+        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_AMOUNT_INVALID);
     });
 
     it("Is reverted if the liquidity pool balance is enough but borrowable balance is not", async () => {
@@ -714,7 +714,7 @@ describe("Contract 'LiquidityPool'", async () => {
       const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
 
       await expect(connect(liquidityPool, admin).withdrawToOperationalTreasury(0))
-        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_INVALID_AMOUNT);
+        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_AMOUNT_INVALID);
     });
 
     it("Is reverted if the liquidity pool balance is enough but borrowable balance is not", async () => {
@@ -754,7 +754,7 @@ describe("Contract 'LiquidityPool'", async () => {
       const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
 
       await expect(connect(liquidityPool, admin).withdrawToReserve(0))
-        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_INVALID_AMOUNT);
+        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_AMOUNT_INVALID);
     });
 
     it("Is reverted if the liquidity pool balance is enough but borrowable balance is not", async () => {
@@ -800,7 +800,7 @@ describe("Contract 'LiquidityPool'", async () => {
       const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
 
       await expect(liquidityPool.rescue(tokenAddress, 0))
-        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_INVALID_AMOUNT);
+        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_AMOUNT_INVALID);
     });
 
     it("Is reverted if caller does not have the owner role", async () => {
