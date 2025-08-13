@@ -679,7 +679,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
     await proveTx(token.mint(stranger.address, INITIAL_BALANCE));
     await proveTx(token.mint(liquidityPoolAddress, INITIAL_BALANCE));
     await proveTx(token.mint(addonTreasury.address, INITIAL_BALANCE));
-    await proveTx(liquidityPool.approveMaxTokenSpending(marketAddress, tokenAddress));
+    await proveTx(liquidityPool.approveSpender(tokenAddress, marketAddress, ethers.MaxUint256));
     await proveTx(connect(token, borrower).approve(marketAddress, ethers.MaxUint256));
     await proveTx(connect(token, stranger).approve(marketAddress, ethers.MaxUint256));
     await proveTx(connect(token, addonTreasury).approve(marketAddress, ethers.MaxUint256));

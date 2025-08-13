@@ -31,8 +31,8 @@ contract LiquidityPoolMock {
 
     // ------------------ Mock transactional functions ------------ //
 
-    function approveMaxTokenSpending(address spender, address token) external {
-        IERC20(token).approve(spender, type(uint56).max);
+    function approveSpender(address token, address spender, uint256 newAllowance) external {
+        IERC20(token).approve(spender, newAllowance);
     }
 
     function mockAddonTreasury(address newTreasury) external {
