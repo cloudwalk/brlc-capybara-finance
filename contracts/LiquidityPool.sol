@@ -173,12 +173,13 @@ contract LiquidityPool is
     }
 
     // -------------- Service transactional functions ------------- //
+
     /**
      * @dev Migrate the liquidity pool state to a new version.
      *
-     * Actually, this function just clears the `_market` address,
+     * Actually, this function just clears the `_market` address.
      *
-     * This function should be removed in the future versions of the contract.
+     * This function should be removed in the next minor version of the contract.
      */
     function migrate() external {
         _market = address(0);
