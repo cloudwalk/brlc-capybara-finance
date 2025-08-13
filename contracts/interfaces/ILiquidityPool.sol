@@ -187,16 +187,22 @@ interface ILiquidityPoolConfiguration {
  */
 interface ILiquidityPoolHooks {
     /**
-     * @dev Hook function that must be called before liquidity is moved into the pool.
+     * @dev Hook function that must be called before tokens are transferred into the pool.
      *
-     * @param amount The amount of liquidity to move into the pool.
+     * Checks whether the transfer will not break the pool balance.
+     * Updates the internal borrowable balance to reflect the incoming liquidity.
+     *
+     * @param amount The amount of tokens to be transferred into the pool.
      */
     function onBeforeLiquidityIn(uint256 amount) external;
 
     /**
-     * @dev Hook function that must be called before liquidity is moved out of the pool.
+     * @dev Hook function that must be called before tokens are transferred out of the pool.
      *
-     * @param amount The amount of liquidity to move out of the pool.
+     * Checks whether the transfer will not break the pool balance.
+     * Updates the internal borrowable balance to reflect the outgoing liquidity.
+     *
+     * @param amount The amount of tokens to be transferred out of the pool.
      */
     function onBeforeLiquidityOut(uint256 amount) external;
 }
