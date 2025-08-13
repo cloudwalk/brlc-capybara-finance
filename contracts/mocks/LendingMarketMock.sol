@@ -2,10 +2,8 @@
 
 pragma solidity 0.8.24;
 
-import { Error } from "../libraries/Error.sol";
 import { Loan } from "../libraries/Loan.sol";
 import { ICreditLine } from "../interfaces/ICreditLine.sol";
-import { ILiquidityPool } from "../interfaces/ILiquidityPool.sol";
 
 /**
  * @title LendingMarketMock contract

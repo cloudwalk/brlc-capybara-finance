@@ -3,9 +3,7 @@
 pragma solidity 0.8.24;
 
 import { Constants } from "../libraries/Constants.sol";
-import { Error } from "../libraries/Error.sol";
 import { Loan } from "../libraries/Loan.sol";
-import { ICreditLine } from "../interfaces/ICreditLine.sol";
 
 /**
  * @title CreditLineMock contract

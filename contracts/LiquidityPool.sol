@@ -11,7 +11,6 @@ import { UUPSExtUpgradeable } from "./base/UUPSExtUpgradeable.sol";
 import { Versionable } from "./base/Versionable.sol";
 import { SafeCast } from "./libraries/SafeCast.sol";
 
-import { ICreditLine } from "./interfaces/ICreditLine.sol";
 import { IERC20Mintable } from "./interfaces/IERC20Mintable.sol";
 import { ILiquidityPool } from "./interfaces/ILiquidityPool.sol";
 import { ILiquidityPoolConfiguration } from "./interfaces/ILiquidityPool.sol";
