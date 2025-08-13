@@ -225,7 +225,7 @@ interface ILiquidityPoolErrors {
     /// @dev Thrown when the addon treasury has not provided an allowance for the lending market to transfer its tokens.
     error AddonTreasuryZeroAllowanceForMarket();
 
-    /// @dev Thrown when the liquidity pool balance is greater than the maximum allowed balance.
+    /// @dev Thrown when a deposit would cause the pool balance to exceed its maximum allowed value.
     error BalanceExcess();
 
     /// @dev Thrown when the liquidity pool balance is insufficient to cover moving liquidity out of the pool.
