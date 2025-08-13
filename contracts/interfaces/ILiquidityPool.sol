@@ -225,11 +225,23 @@ interface ILiquidityPoolErrors {
     /// @dev Thrown when the addon treasury has not provided an allowance for the lending market to transfer its tokens.
     error LiquidityPool_AddonTreasuryZeroAllowanceForMarket();
 
+    /// @dev Thrown when the configuration is already applied.
+    error LiquidityPool_AlreadyConfigured();
+
     /// @dev Thrown when a deposit would cause the pool balance to exceed its maximum allowed value.
     error LiquidityPool_BalanceExcess();
 
     /// @dev Thrown when the liquidity pool balance is insufficient to cover moving liquidity out of the pool.
     error LiquidityPool_BalanceInsufficient();
+
+    /// @dev Thrown when the provided address does not belong to a contract of expected type or a contract at all.
+    error LiquidityPool_ContractAddressInvalid();
+
+    /// @dev Thrown if the provided new implementation address is not of a contract.
+    error LiquidityPool_ImplementationAddressInvalid();
+
+    /// @dev Thrown when the specified amount is invalid.
+    error LiquidityPool_InvalidAmount();
 
     /// @dev Thrown when the operational treasury address is zero.
     error LiquidityPool_OperationalTreasuryAddressZero();
@@ -240,26 +252,14 @@ interface ILiquidityPoolErrors {
     /// @dev Thrown when the owner address is zero during initialization.
     error LiquidityPool_OwnerAddressZero();
 
-    /// @dev Thrown when the token address is zero during initialization.
-    error LiquidityPool_TokenAddressZero();
+    /// @dev Thrown when the token address is zero in rescue operations.
+    error LiquidityPool_RescueTokenAddressZero();
 
     /// @dev Thrown when the spender address is zero in approve operations.
     error LiquidityPool_SpenderAddressZero();
 
-    /// @dev Thrown when the token address is zero in rescue operations.
-    error LiquidityPool_RescueTokenAddressZero();
-
-    /// @dev Thrown when the specified amount is invalid.
-    error LiquidityPool_InvalidAmount();
-
-    /// @dev Thrown when the configuration is already applied.
-    error LiquidityPool_AlreadyConfigured();
-
-    /// @dev Thrown when the provided address does not belong to a contract of expected type or a contract at all.
-    error LiquidityPool_ContractAddressInvalid();
-
-    /// @dev Thrown if the provided new implementation address is not of a contract.
-    error LiquidityPool_ImplementationAddressInvalid();
+    /// @dev Thrown when the token address is zero during initialization.
+    error LiquidityPool_TokenAddressZero();
 }
 
 /**

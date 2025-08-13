@@ -34,18 +34,18 @@ const ERROR_NAME_INVALID_INITIALIZATION = "InvalidInitialization";
 // Errors of the contracts under test
 const ERROR_NAME_ADDON_TREASURY_ADDRESS_ZEROING_PROHIBITED = "LiquidityPool_AddonTreasuryAddressZeroingProhibited";
 const ERROR_NAME_ALREADY_CONFIGURED = "LiquidityPool_AlreadyConfigured";
-const ERROR_NAME_CONTRACT_ADDRESS_INVALID = "LiquidityPool_ContractAddressInvalid";
 const ERROR_NAME_BALANCE_EXCESS = "LiquidityPool_BalanceExcess";
 const ERROR_NAME_BALANCE_INSUFFICIENT = "LiquidityPool_BalanceInsufficient";
-const ERROR_NAME_INVALID_AMOUNT = "LiquidityPool_InvalidAmount";
+const ERROR_NAME_CONTRACT_ADDRESS_INVALID = "LiquidityPool_ContractAddressInvalid";
 const ERROR_NAME_IMPLEMENTATION_ADDRESS_INVALID = "LiquidityPool_ImplementationAddressInvalid";
+const ERROR_NAME_INVALID_AMOUNT = "LiquidityPool_InvalidAmount";
 const ERROR_NAME_OPERATIONAL_TREASURY_ADDRESS_ZERO = "LiquidityPool_OperationalTreasuryAddressZero";
 const ERROR_NAME_OPERATIONAL_TREASURY_ZERO_ALLOWANCE_FOR_POOL = "LiquidityPool_OperationalTreasuryZeroAllowanceForPool";
-const ERROR_NAME_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST = "SafeCastOverflowedUintDowncast";
 const ERROR_NAME_OWNER_ADDRESS_ZERO = "LiquidityPool_OwnerAddressZero";
-const ERROR_NAME_TOKEN_ADDRESS_ZERO = "LiquidityPool_TokenAddressZero";
-const ERROR_NAME_SPENDER_ADDRESS_ZERO = "LiquidityPool_SpenderAddressZero";
 const ERROR_NAME_RESCUE_TOKEN_ADDRESS_ZERO = "LiquidityPool_RescueTokenAddressZero";
+const ERROR_NAME_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST = "SafeCastOverflowedUintDowncast";
+const ERROR_NAME_SPENDER_ADDRESS_ZERO = "LiquidityPool_SpenderAddressZero";
+const ERROR_NAME_TOKEN_ADDRESS_ZERO = "LiquidityPool_TokenAddressZero";
 
 const DEFAULT_ADMIN_ROLE = ethers.ZeroHash;
 const GRANTOR_ROLE = ethers.id("GRANTOR_ROLE");
