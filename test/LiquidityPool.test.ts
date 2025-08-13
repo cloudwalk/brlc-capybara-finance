@@ -838,6 +838,14 @@ describe("Contract 'LiquidityPool'", async () => {
         .withArgs(owner.address, LIQUIDITY_OPERATOR_ROLE);
     });
 
+    it("Is reverted if the input amount is greater than 64-bit unsigned integer", async () => {
+      const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
+      const repaymentAmount = maxUintForBits(64) + 1n;
+
+      await expect(connect(liquidityPool, liquidityOperator).onBeforeLiquidityIn(repaymentAmount))
+        .to.revertedWithCustomError(liquidityPool, ERROR_NAME_BALANCE_EXCESS);
+    });
+
     it("Is reverted if there is an overflow in the borrowable balance", async () => {
       const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
       const depositAmount = maxUintForBits(64);
