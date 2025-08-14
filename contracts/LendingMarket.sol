@@ -356,9 +356,12 @@ contract LendingMarket is
         }
 
         if (receiver != address(0)) {
-            address liquidityPool = _programLiquidityPools[loan.programId];
-            ILiquidityPool(liquidityPool).onBeforeLiquidityOut(repaymentAmount);
-            IERC20(loan.token).safeTransferFrom(liquidityPool, receiver, oldRepaidAmount - newRepaidAmount);
+            _transferFromPool(
+                loan.token,
+                _programLiquidityPools[loan.programId],
+                receiver,
+                oldRepaidAmount - newRepaidAmount
+            );
         }
     }
 
@@ -638,13 +641,13 @@ contract LendingMarket is
         (newTrackedBalance, repaymentAmount) = _processTrackedBalanceChange(loan, repaymentAmount);
         loan.repaidAmount += repaymentAmount.toUint64();
 
-        address creditLine = _programCreditLines[loan.programId];
-        address liquidityPool = _programLiquidityPools[loan.programId];
-
-        ILiquidityPool(liquidityPool).onBeforeLiquidityIn(repaymentAmount);
-        IERC20(loan.token).safeTransferFrom(repayer, liquidityPool, repaymentAmount);
-
-        ICreditLine(creditLine).onAfterLoanPayment(loanId, repaymentAmount);
+        _transferToPool(
+            loan.token,
+            _programLiquidityPools[loan.programId],
+            repayer,
+            repaymentAmount
+        );
+        ICreditLine(_programCreditLines[loan.programId]).onAfterLoanPayment(loanId, repaymentAmount);
 
         emit LoanRepayment(loanId, repayer, loan.borrower, repaymentAmount, newTrackedBalance);
     }
@@ -1182,10 +1185,10 @@ contract LendingMarket is
         if (addonTreasury == address(0)) {
             revert AddonTreasuryAddressZero();
         }
-        ILiquidityPool(liquidityPool).onBeforeLiquidityOut(borrowedAmount + addonAmount);
-        IERC20(token).safeTransferFrom(liquidityPool, loan.borrower, borrowedAmount);
+
+        _transferFromPool(token, liquidityPool, loan.borrower, borrowedAmount);
         if (addonAmount != 0) {
-            IERC20(token).safeTransferFrom(liquidityPool, addonTreasury, addonAmount);
+            _transferFromPool(token, liquidityPool, addonTreasury, addonAmount);
         }
     }
 
@@ -1210,18 +1213,52 @@ contract LendingMarket is
         }
 
         if (repaidAmount < borrowedAmount) {
-            uint256 movedAmount = borrowedAmount - repaidAmount;
-            ILiquidityPool(liquidityPool).onBeforeLiquidityIn(movedAmount);
-            IERC20(loan.token).safeTransferFrom(loan.borrower, liquidityPool, movedAmount);
+            _transferToPool(
+                token,
+                liquidityPool,
+                loan.borrower,
+                borrowedAmount - repaidAmount
+            );
         } else if (repaidAmount != borrowedAmount) {
-            uint256 movedAmount = repaidAmount - borrowedAmount;
-            ILiquidityPool(liquidityPool).onBeforeLiquidityOut(movedAmount);
-            IERC20(loan.token).safeTransferFrom(liquidityPool, loan.borrower, movedAmount);
+            _transferFromPool(
+                token,
+                liquidityPool,
+                loan.borrower,
+                repaidAmount - borrowedAmount
+            );
         }
         if (addonAmount != 0) {
-            ILiquidityPool(liquidityPool).onBeforeLiquidityIn(addonAmount);
-            IERC20(token).safeTransferFrom(addonTreasury, liquidityPool, addonAmount);
+            _transferToPool(
+                token,
+                liquidityPool,
+                addonTreasury,
+                addonAmount
+            );
         }
+    }
+
+    /**
+     * @dev Transfers tokens from a liquidity pool to a receiver.
+     * @param token The address of the token.
+     * @param liquidityPool The address of the liquidity pool.
+     * @param receiver The address of the receiver.
+     * @param amount The amount of tokens to transfer.
+     */
+    function _transferFromPool(address token, address liquidityPool, address receiver, uint256 amount) internal {
+        ILiquidityPool(liquidityPool).onBeforeLiquidityOut(amount);
+        IERC20(token).safeTransferFrom(liquidityPool, receiver, amount);
+    }
+
+    /**
+     * @dev Transfers tokens from a sender to a liquidity pool.
+     * @param token The address of the token.
+     * @param liquidityPool The address of the liquidity pool.
+     * @param sender The address of the sender.
+     * @param amount The amount of tokens to transfer.
+     */
+    function _transferToPool(address token, address liquidityPool, address sender, uint256 amount) internal {
+        ILiquidityPool(liquidityPool).onBeforeLiquidityIn(amount);
+        IERC20(token).safeTransferFrom(sender, liquidityPool, amount);
     }
 
     /**

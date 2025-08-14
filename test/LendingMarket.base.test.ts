@@ -1158,16 +1158,19 @@ describe("Contract 'LendingMarket': base tests", async () => {
       );
       if (addonAmount != 0) {
         expect(await getNumberOfEvents(tx, token, EVENT_NAME_TRANSFER)).to.eq(2);
+        expect(await getNumberOfEvents(tx, liquidityPool, EVENT_NAME_ON_BEFORE_LIQUIDITY_OUT_CALLED)).to.eq(2);
+        await expect(tx).to.emit(liquidityPool, EVENT_NAME_ON_BEFORE_LIQUIDITY_OUT_CALLED).withArgs(BORROWED_AMOUNT);
+        await expect(tx).to.emit(liquidityPool, EVENT_NAME_ON_BEFORE_LIQUIDITY_OUT_CALLED).withArgs(addonAmount);
       } else {
         expect(await getNumberOfEvents(tx, token, EVENT_NAME_TRANSFER)).to.eq(1);
+        expect(await getNumberOfEvents(tx, liquidityPool, EVENT_NAME_ON_BEFORE_LIQUIDITY_OUT_CALLED)).to.eq(1);
+        await expect(tx).to.emit(liquidityPool, EVENT_NAME_ON_BEFORE_LIQUIDITY_OUT_CALLED).withArgs(BORROWED_AMOUNT);
       }
 
       await expect(tx)
         .to.emit(marketViaAdmin, EVENT_NAME_LOAN_TAKEN)
         .withArgs(expectedLoanId, borrower.address, principalAmount, DURATION_IN_PERIODS);
 
-      // Check that the appropriate market hook functions are called
-      await expect(tx).to.emit(liquidityPool, EVENT_NAME_ON_BEFORE_LIQUIDITY_OUT_CALLED).withArgs(principalAmount);
       await expect(tx).to.emit(creditLine, EVENT_NAME_ON_BEFORE_LOAN_TAKEN_CALLED).withArgs(expectedLoanId);
 
       // Check the returned value of the function for the second loan
@@ -1457,11 +1460,6 @@ describe("Contract 'LendingMarket': base tests", async () => {
         timestamp
       });
 
-      // Check that the appropriate market hook functions are called
-      expect(await getNumberOfEvents(tx, liquidityPool, EVENT_NAME_ON_BEFORE_LIQUIDITY_OUT_CALLED)).to.eq(1);
-      expect(await getNumberOfEvents(tx, creditLine, EVENT_NAME_ON_BEFORE_LOAN_TAKEN_CALLED)).to.eq(installmentCount);
-      await expect(tx).to.emit(liquidityPool, EVENT_NAME_ON_BEFORE_LIQUIDITY_OUT_CALLED).withArgs(totalPrincipal);
-
       // Check individual events
       for (let i = 0; i < installmentCount; ++i) {
         checkEquality(actualLoanStates[i], expectedLoans[i].state, i);
@@ -1487,10 +1485,16 @@ describe("Contract 'LendingMarket': base tests", async () => {
         [liquidityPool, borrower, addonTreasury, marketViaAdmin],
         [-totalPrincipal, +totalBorrowedAmount, +totalAddonAmount, 0]
       );
+
+      expect(await getNumberOfEvents(tx, creditLine, EVENT_NAME_ON_BEFORE_LOAN_TAKEN_CALLED)).to.eq(installmentCount);
+      await expect(tx).to.emit(liquidityPool, EVENT_NAME_ON_BEFORE_LIQUIDITY_OUT_CALLED).withArgs(totalBorrowedAmount);
       if (totalAddonAmount != 0) {
+        await expect(tx).to.emit(liquidityPool, EVENT_NAME_ON_BEFORE_LIQUIDITY_OUT_CALLED).withArgs(totalAddonAmount);
         expect(await getNumberOfEvents(tx, token, EVENT_NAME_TRANSFER)).to.eq(2);
+        expect(await getNumberOfEvents(tx, liquidityPool, EVENT_NAME_ON_BEFORE_LIQUIDITY_OUT_CALLED)).to.eq(2);
       } else {
         expect(await getNumberOfEvents(tx, token, EVENT_NAME_TRANSFER)).to.eq(1);
+        expect(await getNumberOfEvents(tx, liquidityPool, EVENT_NAME_ON_BEFORE_LIQUIDITY_OUT_CALLED)).to.eq(1);
       }
 
       // Check the returned value of the function for the second loan
@@ -2496,7 +2500,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
 
           await expect(tx)
             .to.emit(liquidityPool, EVENT_NAME_ON_BEFORE_LIQUIDITY_OUT_CALLED)
-            .withArgs(repaymentAmount);
+            .withArgs(roundedRepaymentAmount);
         } else {
           await expect(tx).to.changeTokenBalances(
             token,
