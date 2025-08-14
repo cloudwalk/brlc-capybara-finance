@@ -11,14 +11,17 @@ abstract contract LiquidityPoolStorage {
     /// @dev The address of the underlying token.
     address internal _token;
 
-    /// @dev The address of the associated market.
+    /**
+     * @dev [DEPRECATED] The address of the associated market. Not in use since version 1.16.0.
+     * It has been set to zero for already deployed contracts during the migration procedure.
+     */
     address internal _market;
 
     /// @dev The borrowable balance of the liquidity pool.
     uint64 internal _borrowableBalance;
 
     /**
-     * @dev The addons balance of the liquidity pool.
+     * @dev [DEPRECATED] The addons balance of the liquidity pool.
      *
      * IMPORTANT! Deprecated since version 1.8.0. Now this variable is always zero.
      *

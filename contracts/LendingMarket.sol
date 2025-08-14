@@ -356,9 +356,12 @@ contract LendingMarket is
         }
 
         if (receiver != address(0)) {
-            address liquidityPool = _programLiquidityPools[loan.programId];
-            ILiquidityPool(liquidityPool).onAfterLoanRepaymentUndoing(loanId, repaymentAmount);
-            IERC20(loan.token).safeTransferFrom(liquidityPool, receiver, oldRepaidAmount - newRepaidAmount);
+            _transferFromPool(
+                loan.token,
+                _programLiquidityPools[loan.programId],
+                receiver,
+                oldRepaidAmount - newRepaidAmount
+            );
         }
     }
 
@@ -616,7 +619,6 @@ contract LendingMarket is
         // Other loan fields are zero: repaidAmount, repaidAmount, firstInstallmentId, lateFeeAmount
 
         ICreditLine(creditLine).onBeforeLoanTaken(id);
-        ILiquidityPool(liquidityPool).onBeforeLoanTaken(id);
 
         emit LoanTaken(id, borrower, principalAmount, terms.durationInPeriods);
 
@@ -639,13 +641,13 @@ contract LendingMarket is
         (newTrackedBalance, repaymentAmount) = _processTrackedBalanceChange(loan, repaymentAmount);
         loan.repaidAmount += repaymentAmount.toUint64();
 
-        address creditLine = _programCreditLines[loan.programId];
-        address liquidityPool = _programLiquidityPools[loan.programId];
-
-        IERC20(loan.token).safeTransferFrom(repayer, liquidityPool, repaymentAmount);
-
-        ILiquidityPool(liquidityPool).onAfterLoanPayment(loanId, repaymentAmount);
-        ICreditLine(creditLine).onAfterLoanPayment(loanId, repaymentAmount);
+        _transferToPool(
+            loan.token,
+            _programLiquidityPools[loan.programId],
+            repayer,
+            repaymentAmount
+        );
+        ICreditLine(_programCreditLines[loan.programId]).onAfterLoanPayment(loanId, repaymentAmount);
 
         emit LoanRepayment(loanId, repayer, loan.borrower, repaymentAmount, newTrackedBalance);
     }
@@ -657,12 +659,10 @@ contract LendingMarket is
      */
     function _revokeLoan(uint256 loanId, Loan.State storage loan) internal {
         address creditLine = _programCreditLines[loan.programId];
-        address liquidityPool = _programLiquidityPools[loan.programId];
 
         loan.trackedBalance = 0;
         loan.trackedTimestamp = _blockTimestamp().toUint32();
 
-        ILiquidityPool(liquidityPool).onAfterLoanRevocation(loanId);
         ICreditLine(creditLine).onAfterLoanRevocation(loanId);
 
         emit LoanRevoked(loanId);
@@ -1185,9 +1185,10 @@ contract LendingMarket is
         if (addonTreasury == address(0)) {
             revert AddonTreasuryAddressZero();
         }
-        IERC20(token).safeTransferFrom(liquidityPool, loan.borrower, borrowedAmount);
+
+        _transferFromPool(token, liquidityPool, loan.borrower, borrowedAmount);
         if (addonAmount != 0) {
-            IERC20(token).safeTransferFrom(liquidityPool, addonTreasury, addonAmount);
+            _transferFromPool(token, liquidityPool, addonTreasury, addonAmount);
         }
     }
 
@@ -1210,14 +1211,54 @@ contract LendingMarket is
         if (addonTreasury == address(0)) {
             revert AddonTreasuryAddressZero();
         }
+
         if (repaidAmount < borrowedAmount) {
-            IERC20(loan.token).safeTransferFrom(loan.borrower, liquidityPool, borrowedAmount - repaidAmount);
+            _transferToPool(
+                token,
+                liquidityPool,
+                loan.borrower,
+                borrowedAmount - repaidAmount
+            );
         } else if (repaidAmount != borrowedAmount) {
-            IERC20(loan.token).safeTransferFrom(liquidityPool, loan.borrower, repaidAmount - borrowedAmount);
+            _transferFromPool(
+                token,
+                liquidityPool,
+                loan.borrower,
+                repaidAmount - borrowedAmount
+            );
         }
         if (addonAmount != 0) {
-            IERC20(token).safeTransferFrom(addonTreasury, liquidityPool, addonAmount);
+            _transferToPool(
+                token,
+                liquidityPool,
+                addonTreasury,
+                addonAmount
+            );
         }
+    }
+
+    /**
+     * @dev Transfers tokens from a liquidity pool to a receiver.
+     * @param token The address of the token.
+     * @param liquidityPool The address of the liquidity pool.
+     * @param receiver The address of the receiver.
+     * @param amount The amount of tokens to transfer.
+     */
+    function _transferFromPool(address token, address liquidityPool, address receiver, uint256 amount) internal {
+        ILiquidityPool(liquidityPool).onBeforeLiquidityOut(amount);
+        IERC20(token).safeTransferFrom(liquidityPool, receiver, amount);
+    }
+
+    /**
+     * @dev Transfers tokens from a sender to a liquidity pool.
+     * @param token The address of the token.
+     * @param liquidityPool The address of the liquidity pool.
+     * @param sender The address of the sender.
+     * @param amount The amount of tokens to transfer.
+     */
+    function _transferToPool(address token, address liquidityPool, address sender, uint256 amount) internal {
+        ILiquidityPool(liquidityPool).onBeforeLiquidityIn(amount);
+        IERC20(token).safeTransferFrom(sender, liquidityPool, amount);
     }
 
     /**

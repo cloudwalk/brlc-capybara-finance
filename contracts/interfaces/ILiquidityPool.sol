@@ -87,9 +87,6 @@ interface ILiquidityPoolPrimary {
 
     // ------------------ View functions -------------------------- //
 
-    /// @dev Returns the address of the associated lending market.
-    function market() external view returns (address);
-
     /// @dev Returns the address of the liquidity pool token.
     function token() external view returns (address);
 
@@ -170,6 +167,17 @@ interface ILiquidityPoolConfiguration {
      * @param newTreasury The new address of the operational treasury to set.
      */
     function setOperationalTreasury(address newTreasury) external;
+
+    /**
+     * @dev Approves a spender to spend tokens on behalf of the liquidity pool contract.
+     *
+     * It is expected to use for managing the allowance of liquidity operators in the case
+     * there is not trustable functionality on the underlying token contract.
+     *
+     * @param spender The address of the spender to approve on the underlying token.
+     * @param newAllowance The new allowance amount to set for the spender.
+     */
+    function approveSpender(address spender, uint256 newAllowance) external;
 }
 
 /**
@@ -179,30 +187,24 @@ interface ILiquidityPoolConfiguration {
  */
 interface ILiquidityPoolHooks {
     /**
-     * @dev A hook that is triggered by the associated market before a loan is taken.
-     * @param loanId The unique identifier of the loan being taken.
+     * @dev Hook function that must be called before tokens are transferred into the pool.
+     *
+     * Checks whether the transfer will not break the pool balance.
+     * Updates the internal borrowable balance to reflect the incoming liquidity.
+     *
+     * @param amount The amount of tokens to be transferred into the pool.
      */
-    function onBeforeLoanTaken(uint256 loanId) external;
+    function onBeforeLiquidityIn(uint256 amount) external;
 
     /**
-     * @dev A hook that is triggered by the associated market after the loan payment.
-     * @param loanId The unique identifier of the loan being paid.
-     * @param repaymentAmount The amount of tokens that was repaid.
+     * @dev Hook function that must be called before tokens are transferred out of the pool.
+     *
+     * Checks whether the transfer will not break the pool balance.
+     * Updates the internal borrowable balance to reflect the outgoing liquidity.
+     *
+     * @param amount The amount of tokens to be transferred out of the pool.
      */
-    function onAfterLoanPayment(uint256 loanId, uint256 repaymentAmount) external;
-
-    /**
-     * @dev A hook that is triggered by the associated market after the loan repayment undoing.
-     * @param loanId The unique identifier of the loan to undo the repayment for.
-     * @param repaymentAmount The amount of tokens that was undone.
-     */
-    function onAfterLoanRepaymentUndoing(uint256 loanId, uint256 repaymentAmount) external;
-
-    /**
-     * @dev A hook that is triggered by the associated market after the loan revocation.
-     * @param loanId The unique identifier of the loan being revoked.
-     */
-    function onAfterLoanRevocation(uint256 loanId) external;
+    function onBeforeLiquidityOut(uint256 amount) external;
 }
 
 /**
@@ -218,19 +220,46 @@ interface ILiquidityPoolErrors {
      * a loan is taken when it is non-zero and revoked when it is zero, which will lead to
      * an incorrect value of the `_addonsBalance` variable, or a reversion if `_addonsBalance == 0`.
      */
-    error AddonTreasuryAddressZeroingProhibited();
+    error LiquidityPool_AddonTreasuryAddressZeroingProhibited();
 
     /// @dev Thrown when the addon treasury has not provided an allowance for the lending market to transfer its tokens.
-    error AddonTreasuryZeroAllowanceForMarket();
+    error LiquidityPool_AddonTreasuryZeroAllowanceForMarket();
 
-    /// @dev Thrown when the token source balance is insufficient.
-    error InsufficientBalance();
+    /// @dev Thrown when the configuration is already applied.
+    error LiquidityPool_AlreadyConfigured();
+
+    /// @dev Thrown when the specified amount is invalid.
+    error LiquidityPool_AmountInvalid();
+
+    /// @dev Thrown when a deposit would cause the pool balance to exceed its maximum allowed value.
+    error LiquidityPool_BalanceExcess();
+
+    /// @dev Thrown when the liquidity pool balance is insufficient to cover moving liquidity out of the pool.
+    error LiquidityPool_BalanceInsufficient();
+
+    /// @dev Thrown when the provided address does not belong to a contract of expected type or a contract at all.
+    error LiquidityPool_ContractAddressInvalid();
+
+    /// @dev Thrown if the provided new implementation address is not of a contract.
+    error LiquidityPool_ImplementationAddressInvalid();
 
     /// @dev Thrown when the operational treasury address is zero.
-    error OperationalTreasuryAddressZero();
+    error LiquidityPool_OperationalTreasuryAddressZero();
 
     /// @dev Thrown when the operational treasury has not provided an allowance for the pool to transfer its tokens.
-    error OperationalTreasuryZeroAllowanceForPool();
+    error LiquidityPool_OperationalTreasuryZeroAllowanceForPool();
+
+    /// @dev Thrown when the owner address is zero during initialization.
+    error LiquidityPool_OwnerAddressZero();
+
+    /// @dev Thrown when the token address is zero in rescue operations.
+    error LiquidityPool_RescueTokenAddressZero();
+
+    /// @dev Thrown when the spender address is zero in approve operations.
+    error LiquidityPool_SpenderAddressZero();
+
+    /// @dev Thrown when the token address is zero during initialization.
+    error LiquidityPool_TokenAddressZero();
 }
 
 /**
