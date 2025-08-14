@@ -185,6 +185,33 @@ contract LiquidityPool is
         _market = address(0);
     }
 
+    /**
+     * @dev Corrects the borrowable balance of the liquidity pool.
+     *
+     * This function is needed to fix the consequences of a bug in
+     * the `LendingMarket` contract prior to v.1.16.0.
+     *
+     * This function should be removed in the next minor version of the contract.
+     *
+     * @param amount The amount to correct the borrowable balance by.
+     */
+    function correctBorrowableBalance(int256 amount) external onlyRole(OWNER_ROLE) {
+        if (amount > int256(uint256(type(uint64).max))) {
+            revert LiquidityPool_BalanceExcess();
+        }
+        int256 balance = int256(uint256(_borrowableBalance));
+        if (amount < -balance) {
+            revert LiquidityPool_BalanceInsufficient();
+        }
+        unchecked {
+            balance += amount;
+        }
+        if (balance > int256(uint256(type(uint64).max))) {
+            revert LiquidityPool_BalanceExcess();
+        }
+        _borrowableBalance = uint64(uint256(balance));
+    }
+
     // ------------------ Hook transactional functions ------------ //
 
     /// @inheritdoc ILiquidityPoolHooks
