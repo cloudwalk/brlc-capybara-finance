@@ -1011,13 +1011,6 @@ contract LendingMarketV2 is
             );
         } else if (operationKind == uint256(LoanV2.OperationKind.Revocation)) {
             _emitTrackedBalanceUpdate(subLoan);
-            emit SubLoanStatusUpdated(
-                subLoan.id,
-                subLoan.revision,
-                LoanV2.SubLoanStatus.Revoked,
-                subLoan.trackedTimestamp,
-                LoanV2.SubLoanStatus(operation.oldSubLoanValue)
-            );
         }
 
         if (subLoan.status != operation.initialSubLoanStatus) {
@@ -1338,10 +1331,6 @@ contract LendingMarketV2 is
     ) internal pure {
         operation.oldSubLoanValue = _packTrackedParts(subLoan);
         operation.newSubLoanValue = 0;
-        subLoan.trackedPrincipal = 0;
-        subLoan.trackedInterestRemuneratory = 0;
-        subLoan.trackedInterestMoratory = 0;
-        subLoan.trackedLateFee = 0;
         subLoan.status = uint256(LoanV2.SubLoanStatus.Revoked);
     }
 
