@@ -1096,9 +1096,9 @@ contract LendingMarketV2 is
         uint256 operationKind = operation.kind;
         operation.initialSubLoanStatus = subLoan.status;
         if (operationKind == uint256(LoanV2.OperationKind.Repayment)) {
-            _applyRepaymentOrDiscount(subLoan, operation);
+            _applyRepayment(subLoan, operation);
         } else if (operationKind == uint256(LoanV2.OperationKind.Discounting)) {
-            _applyRepaymentOrDiscount(subLoan, operation);
+            _applyDiscount(subLoan, operation);
         } else if (operationKind == uint256(LoanV2.OperationKind.SetDuration)) {
             _applySetDuration(subLoan, operation);
         } else if (operationKind == uint256(LoanV2.OperationKind.SetInterestRateRemuneratory)) {
@@ -1127,84 +1127,28 @@ contract LendingMarketV2 is
      * @dev TODO
      */
     function _repayOrDiscountPartial(
-        LoanV2.ProcessingSubLoan memory subLoan,
-        uint256 amount,
-        uint256 subLoanPartKind,
-        uint256 operationKind
-    ) internal pure returns (uint256 newRepaymentAmount) {
-        if (amount == 0) {
-            return 0;
-        }
-        // Discounting must not be applied to the principal part of a sub-loan
-        // TODO: Discuss this with the team
-        if (
-            subLoanPartKind == uint256(LoanV2.SubLoanPartKind.Principal) &&
-            operationKind == uint256(LoanV2.OperationKind.Discounting)
-        ) {
-            return amount;
-        }
-        uint256 trackedPartAmount;
-        uint256 repaidPartAmount;
-        uint256 discountPartAmount;
-
-        // TODO: Can be optimized through the assembler language
-        if (subLoanPartKind == uint256(LoanV2.SubLoanPartKind.Principal)) {
-            trackedPartAmount = subLoan.trackedPrincipal;
-            repaidPartAmount = subLoan.repaidPrincipal;
-        } else if (subLoanPartKind == uint256(LoanV2.SubLoanPartKind.InterestRemuneratory)) {
-            trackedPartAmount = subLoan.trackedInterestRemuneratory;
-            repaidPartAmount = subLoan.repaidInterestRemuneratory;
-            discountPartAmount = subLoan.discountInterestRemuneratory;
-        } else if (subLoanPartKind == uint256(LoanV2.SubLoanPartKind.InterestMoratory)) {
-            trackedPartAmount = subLoan.trackedInterestMoratory;
-            repaidPartAmount = subLoan.repaidInterestMoratory;
-            discountPartAmount = subLoan.discountInterestMoratory;
-        } else {
-            trackedPartAmount = subLoan.trackedLateFee;
-            repaidPartAmount = subLoan.repaidLateFee;
-            discountPartAmount = subLoan.discountLateFee;
-        }
-
-        // TODO: Review the rounding logic if a loan part is being fully repaid
+        uint256 changeAmount,
+        uint256 trackedPartAmount,
+        uint256 repaidOrDiscountPartAmount
+    ) internal pure returns (
+        uint256 newRepaymentAmount,
+        uint256 newTrackedPartAmount,
+        uint256 newRepaidOrDiscountPartAmount
+    ) {
+        // TODO: Review the rounding logic if a aloan part is being fully repaid
         uint256 roundedTrackedPartAmount = _roundMath(trackedPartAmount);
-        if (roundedTrackedPartAmount <= amount) {
+        if (roundedTrackedPartAmount <= changeAmount) {
             unchecked {
-                amount -= roundedTrackedPartAmount;
-                if (operationKind == uint256(LoanV2.OperationKind.Repayment)) {
-                    repaidPartAmount += roundedTrackedPartAmount;
-                } else {
-                    discountPartAmount += roundedTrackedPartAmount;
-                }
+                changeAmount -= roundedTrackedPartAmount;
+                repaidOrDiscountPartAmount += roundedTrackedPartAmount;
                 trackedPartAmount = 0;
             }
         } else {
-            trackedPartAmount -= amount;
-            if (operationKind == uint256(LoanV2.OperationKind.Repayment)) {
-                repaidPartAmount += amount;
-            } else {
-                discountPartAmount += roundedTrackedPartAmount;
-            }
+            trackedPartAmount -= changeAmount;
+            repaidOrDiscountPartAmount += changeAmount;
         }
 
-        // TODO: Can be optimized through the assembler language
-        if (subLoanPartKind == uint256(LoanV2.SubLoanPartKind.Principal)) {
-            subLoan.trackedPrincipal = trackedPartAmount;
-            subLoan.repaidPrincipal = repaidPartAmount;
-        } else if (subLoanPartKind == uint256(LoanV2.SubLoanPartKind.InterestRemuneratory)) {
-            subLoan.trackedInterestRemuneratory = trackedPartAmount;
-            subLoan.repaidInterestRemuneratory = repaidPartAmount;
-            subLoan.discountInterestRemuneratory = discountPartAmount;
-        } else if (subLoanPartKind == uint256(LoanV2.SubLoanPartKind.InterestMoratory)) {
-            subLoan.trackedInterestMoratory = trackedPartAmount;
-            subLoan.repaidInterestMoratory = repaidPartAmount;
-            subLoan.discountInterestMoratory = discountPartAmount;
-        } else {
-            subLoan.repaidLateFee = repaidPartAmount;
-            subLoan.trackedLateFee = trackedPartAmount;
-            subLoan.discountLateFee = discountPartAmount;
-        }
-
-        return amount;
+        return (changeAmount, trackedPartAmount, repaidOrDiscountPartAmount);
     }
 
     /**
@@ -1287,46 +1231,104 @@ contract LendingMarketV2 is
     /**
      * @dev TODO
      */
-    function _applyRepaymentOrDiscount(
+    function _applyRepayment(
         LoanV2.ProcessingSubLoan memory subLoan,
         LoanV2.ProcessingOperation memory operation
     ) internal pure returns (uint256) {
         uint256 amount = operation.inputValue;
-        uint256 operationKind = operation.kind;
         uint256 initialAmount = amount;
         operation.oldSubLoanValue = _packRepaidParts(subLoan);
 
-        amount = _repayOrDiscountPartial(
-            subLoan,
-            amount,
-            uint256(LoanV2.SubLoanPartKind.InterestMoratory),
-            operationKind
-        );
-        amount = _repayOrDiscountPartial(
-            subLoan, // Tools: prevent Prettier one-liner
-            amount,
-            uint256(LoanV2.SubLoanPartKind.LateFee),
-            operationKind
-        );
-        amount = _repayOrDiscountPartial(
-            subLoan,
-            amount,
-            uint256(LoanV2.SubLoanPartKind.InterestRemuneratory),
-            operationKind
-        );
-        amount = _repayOrDiscountPartial(
-            subLoan, // Tools: prevent Prettier one-liner
-            amount,
-            uint256(LoanV2.SubLoanPartKind.Principal),
-            operationKind
-        );
+        if (amount != 0) {
+            (amount, subLoan.trackedInterestMoratory, subLoan.repaidInterestMoratory) = _repayOrDiscountPartial(
+                amount,
+                subLoan.trackedInterestMoratory,
+                subLoan.repaidInterestMoratory
+            );
+        }
+        if (amount != 0) {
+            (amount, subLoan.trackedLateFee, subLoan.repaidLateFee) = _repayOrDiscountPartial(
+                amount,
+                subLoan.trackedLateFee,
+                subLoan.repaidLateFee
+            );
+        }
+        if (amount != 0) {
+            (amount, subLoan.trackedInterestRemuneratory, subLoan.repaidInterestRemuneratory) = _repayOrDiscountPartial(
+                amount,
+                subLoan.trackedInterestRemuneratory,
+                subLoan.repaidInterestRemuneratory
+            );
+        }
+        if (amount != 0) {
+            (amount, subLoan.trackedPrincipal, subLoan.repaidPrincipal) = _repayOrDiscountPartial(
+                amount,
+                subLoan.trackedPrincipal,
+                subLoan.repaidPrincipal
+            );
+        }
 
         // TODO: Consider replacement of repaymentAmount with repaymentLimit, then no special value is needed
 
         if (amount > 0 && initialAmount < type(uint64).max) {
-            revert RepaymentOrDiscountAmountExcess();
+            revert RepaymentExcess();
         }
         operation.newSubLoanValue = _packRepaidParts(subLoan);
+        uint256 newPackedTrackedParts = _packTrackedParts(subLoan);
+        if (newPackedTrackedParts == 0 && subLoan.status == uint256(LoanV2.SubLoanStatus.Ongoing)) {
+            subLoan.status = uint256(LoanV2.SubLoanStatus.FullyRepaid);
+        }
+
+        return initialAmount - amount;
+    }
+
+    /**
+     * @dev TODO
+     */
+    function _applyDiscount(
+        LoanV2.ProcessingSubLoan memory subLoan,
+        LoanV2.ProcessingOperation memory operation
+    ) internal pure returns (uint256) {
+        uint256 amount = operation.inputValue;
+        uint256 initialAmount = amount;
+        operation.oldSubLoanValue = _packDiscountParts(subLoan);
+
+        if (amount != 0) {
+            (amount, subLoan.trackedInterestMoratory, subLoan.discountInterestMoratory) = _repayOrDiscountPartial(
+                amount,
+                subLoan.trackedInterestMoratory,
+                subLoan.discountInterestMoratory
+            );
+        }
+        if (amount != 0) {
+            (amount, subLoan.trackedLateFee, subLoan.discountLateFee) = _repayOrDiscountPartial(
+                amount,
+                subLoan.trackedLateFee,
+                subLoan.discountLateFee
+            );
+        }
+        if (amount != 0) {
+            (amount, subLoan.trackedInterestRemuneratory, subLoan.discountInterestRemuneratory) =
+                _repayOrDiscountPartial(
+                    amount,
+                    subLoan.trackedInterestRemuneratory,
+                    subLoan.discountInterestRemuneratory
+                );
+        }
+        if (amount != 0) {
+            (amount, subLoan.trackedPrincipal, subLoan.discountPrincipal) = _repayOrDiscountPartial(
+                amount,
+                subLoan.trackedPrincipal,
+                subLoan.discountPrincipal
+            );
+        }
+
+        // TODO: Consider replacement of discountAmount with discountLimit, then no special value is needed
+
+        if (amount > 0 && initialAmount < type(uint64).max) {
+            revert DiscountExcess();
+        }
+        operation.newSubLoanValue = _packDiscountParts(subLoan);
         uint256 newPackedTrackedParts = _packTrackedParts(subLoan);
         if (newPackedTrackedParts == 0 && subLoan.status == uint256(LoanV2.SubLoanStatus.Ongoing)) {
             subLoan.status = uint256(LoanV2.SubLoanStatus.FullyRepaid);
@@ -2174,11 +2176,11 @@ contract LendingMarketV2 is
     function _packRepaidParts(LoanV2.ProcessingSubLoan memory subLoan) internal pure returns (uint256) {
         return
             _packAmountParts(
-                subLoan.repaidPrincipal,
-                subLoan.repaidInterestRemuneratory,
-                subLoan.repaidInterestMoratory,
-                subLoan.repaidLateFee
-            );
+            subLoan.repaidPrincipal,
+            subLoan.repaidInterestRemuneratory,
+            subLoan.repaidInterestMoratory,
+            subLoan.repaidLateFee
+        );
     }
 
     /**
@@ -2187,11 +2189,11 @@ contract LendingMarketV2 is
     function _packedRepaidPartsInStorage(LoanV2.SubLoan storage subLoan) internal view returns (uint256) {
         return
             _packAmountParts(
-                subLoan.repaidPrincipal,
-                subLoan.repaidInterestRemuneratory,
-                subLoan.repaidInterestMoratory,
-                subLoan.repaidLateFee
-            );
+            subLoan.repaidPrincipal,
+            subLoan.repaidInterestRemuneratory,
+            subLoan.repaidInterestMoratory,
+            subLoan.repaidLateFee
+        );
     }
 
     /**
@@ -2200,11 +2202,11 @@ contract LendingMarketV2 is
     function _packDiscountParts(LoanV2.ProcessingSubLoan memory subLoan) internal pure returns (uint256) {
         return
             _packAmountParts(
-                subLoan.discountPrincipal,
-                subLoan.discountInterestRemuneratory,
-                subLoan.discountInterestMoratory,
-                subLoan.discountLateFee
-            );
+            subLoan.discountPrincipal,
+            subLoan.discountInterestRemuneratory,
+            subLoan.discountInterestMoratory,
+            subLoan.discountLateFee
+        );
     }
 
     /**
@@ -2213,11 +2215,11 @@ contract LendingMarketV2 is
     function _packDiscountPartsInStorage(LoanV2.SubLoan storage subLoan) internal view returns (uint256) {
         return
             _packAmountParts(
-                subLoan.discountPrincipal,
-                subLoan.discountInterestRemuneratory,
-                subLoan.discountInterestMoratory,
-                subLoan.discountLateFee
-            );
+            subLoan.discountPrincipal,
+            subLoan.discountInterestRemuneratory,
+            subLoan.discountInterestMoratory,
+            subLoan.discountLateFee
+        );
     }
 
     /**
@@ -2226,11 +2228,11 @@ contract LendingMarketV2 is
     function _packTrackedParts(LoanV2.ProcessingSubLoan memory subLoan) internal pure returns (uint256) {
         return
             _packAmountParts(
-                subLoan.trackedPrincipal,
-                subLoan.trackedInterestRemuneratory,
-                subLoan.trackedInterestMoratory,
-                subLoan.trackedLateFee
-            );
+            subLoan.trackedPrincipal,
+            subLoan.trackedInterestRemuneratory,
+            subLoan.trackedInterestMoratory,
+            subLoan.trackedLateFee
+        );
     }
 
     /**

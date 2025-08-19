@@ -659,7 +659,10 @@ interface ILendingMarketErrorsV2 {
     error RepaymentOrDiscountAmountInvalid(); // TODO: add parameters
 
     /// @dev TODO
-    error RepaymentOrDiscountAmountExcess(); // TODO: add parameters
+    error RepaymentExcess(); // TODO: add parameters
+
+    /// @dev TODO
+    error DiscountExcess(); // TODO: add parameters
 
     /// @dev TODO
     error RateValueInvalid(); // TODO: add parameters
