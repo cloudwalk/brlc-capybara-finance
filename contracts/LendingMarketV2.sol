@@ -1075,7 +1075,7 @@ contract LendingMarketV2 is
                     _accrueInterestRemuneratory(subLoan, finishDay - startDay);
                 } else {
                     _accrueInterestRemuneratory(subLoan, dueDay - startDay);
-                    _calculateInitialLateFee(subLoan);
+                    _imposeLateFee(subLoan);
                     _accrueInterestRemuneratory(subLoan, finishDay - dueDay);
                     _accrueInterestMoratory(subLoan, finishDay - dueDay);
                 }
@@ -1230,6 +1230,22 @@ contract LendingMarketV2 is
             dayCount,
             subLoan.interestRateMoratory
         );
+    }
+
+    /**
+     * @dev TODO
+     */
+    function _imposeLateFee(LoanV2.ProcessingSubLoan memory subLoan) internal pure {
+        // The equivalent formula: round(trackedPrincipal * lateFeeRate / INTEREST_RATE_FACTOR)
+        // Where division operator `/` takes into account the fractional part and
+        // the `round()` function returns an integer rounded according to standard mathematical rules.
+        uint256 product = subLoan.trackedPrincipal * subLoan.lateFeeRate;
+        uint256 remainder = product % Constants.INTEREST_RATE_FACTOR;
+        uint256 result = product / Constants.INTEREST_RATE_FACTOR;
+        if (remainder >= (Constants.INTEREST_RATE_FACTOR / 2)) {
+            ++result;
+        }
+        subLoan.trackedLateFee = uint64(_roundMath(result)); // Safe cast due to prior checks
     }
 
     /**
@@ -1591,22 +1607,6 @@ contract LendingMarketV2 is
             subLoan.trackedLateFee + // Tools: prevent Prettier one-liner
             subLoan.repaidLateFee +
             subLoan.discountLateFee;
-    }
-
-    /**
-     * @dev TODO
-     */
-    function _calculateInitialLateFee(LoanV2.ProcessingSubLoan memory subLoan) internal pure {
-        // The equivalent formula: round(trackedPrincipal * lateFeeRate / INTEREST_RATE_FACTOR)
-        // Where division operator `/` takes into account the fractional part and
-        // the `round()` function returns an integer rounded according to standard mathematical rules.
-        uint256 product = subLoan.trackedPrincipal * subLoan.lateFeeRate;
-        uint256 remainder = product % Constants.INTEREST_RATE_FACTOR;
-        uint256 result = product / Constants.INTEREST_RATE_FACTOR;
-        if (remainder >= (Constants.INTEREST_RATE_FACTOR / 2)) {
-            ++result;
-        }
-        subLoan.trackedLateFee = uint64(_roundMath(result)); // Safe cast due to prior checks
     }
 
     /**
