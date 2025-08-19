@@ -59,6 +59,9 @@ contract LendingMarketV2 is
     /// @dev The role of an admin that is allowed to execute loan-related functions.
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
 
+    /// @dev The negative time offset in seconds that is used to calculate the day boundary for the lending market.
+    uint256 internal constant NEGATIVE_DAY_BOUNDARY_OFFSET = 3 hours;
+
     // ------------------ Constructor ----------------------------- //
 
     /**
@@ -336,8 +339,8 @@ contract LendingMarketV2 is
     }
 
     /// @inheritdoc ILendingMarketPrimaryV2
-    function timeOffset() external pure returns (uint256, bool) {
-        return (Constants.NEGATIVE_TIME_OFFSET, false);
+    function dayBoundaryOffset() external pure returns (int256) {
+        return -int256(NEGATIVE_DAY_BOUNDARY_OFFSET);
     }
 
     /// @inheritdoc ILendingMarketPrimaryV2
@@ -2247,13 +2250,13 @@ contract LendingMarketV2 is
 
     /// @dev Calculates the day index that corresponds the specified timestamp.
     function _dayIndex(uint256 timestamp) internal pure returns (uint256) {
-        return (timestamp / 1 days);
+        return (timestamp + NEGATIVE_DAY_BOUNDARY_OFFSET) / 1 days;
     }
 
     /// @dev Returns the current block timestamp with the time offset applied.
     // TODO: 1. Rename to currentTimestamp or whatever. 2. Consider use timestamps without the offset
     function _blockTimestamp() internal view virtual returns (uint256) {
-        return block.timestamp - Constants.NEGATIVE_TIME_OFFSET;
+        return block.timestamp;
     }
 
     /// @dev Returns the maximum number of sub-loans for a loan. Can be overridden for testing purposes.

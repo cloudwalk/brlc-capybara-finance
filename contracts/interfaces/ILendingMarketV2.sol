@@ -496,10 +496,13 @@ interface ILendingMarketPrimaryV2 {
     function interestRateFactor() external view returns (uint256);
 
     /**
-     * @dev Returns time offset and whether it's positive (`true`) or negative (`false`).
-     * The time offset is used to adjust current day of a loan.
+     * @dev Returns time offset in seconds that is used to calculate the day boundary for the lending market.
+     *
+     * E.g. if the lending market is in the `America/Sao_Paulo` timezone (by default),
+     * then the day boundary offset is `-3 * 3600` seconds
+     * (3 hours before the UTC time).
      */
-    function timeOffset() external view returns (uint256, bool);
+    function dayBoundaryOffset() external view returns (int256);
 
     /// @dev Returns the total number of sub-loans taken.
     function subLoanCounter() external view returns (uint256);

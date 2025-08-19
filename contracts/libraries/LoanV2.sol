@@ -271,6 +271,7 @@ library LoanV2 {
     /**
      * @dev A struct that defines the preview of a sub-loan.
      * TODO
+     * The day index is calculated taking into account the day boundary offset.
      */
     struct SubLoanPreview {
         uint256 day;
