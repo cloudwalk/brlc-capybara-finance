@@ -1297,15 +1297,15 @@ contract LendingMarketV2 is
         operation.oldSubLoanValue = _packRepaidParts(subLoan);
 
         amount = _repayOrDiscountPartial(
-            subLoan, // Tools: prevent Prettier one-liner
-            amount,
-            uint256(LoanV2.SubLoanPartKind.LateFee),
-            operationKind
-        );
-        amount = _repayOrDiscountPartial(
             subLoan,
             amount,
             uint256(LoanV2.SubLoanPartKind.InterestMoratory),
+            operationKind
+        );
+        amount = _repayOrDiscountPartial(
+            subLoan, // Tools: prevent Prettier one-liner
+            amount,
+            uint256(LoanV2.SubLoanPartKind.LateFee),
             operationKind
         );
         amount = _repayOrDiscountPartial(
