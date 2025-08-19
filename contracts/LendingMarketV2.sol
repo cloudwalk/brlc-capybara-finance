@@ -1080,8 +1080,8 @@ contract LendingMarketV2 is
                     _accrueInterestMoratory(subLoan, finishDay - dueDay);
                 }
             } else {
-                _accrueInterestRemuneratory(subLoan, finishDay - dueDay);
-                _accrueInterestMoratory(subLoan, finishDay - dueDay);
+                _accrueInterestRemuneratory(subLoan, finishDay - startDay);
+                _accrueInterestMoratory(subLoan, finishDay - startDay);
             }
         }
     }
