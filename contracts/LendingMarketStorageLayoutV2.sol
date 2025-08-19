@@ -44,6 +44,7 @@ abstract contract LendingMarketStorageLayoutV2 {
         address token;
         uint40 subLoanIdCounter;
         uint24 programIdCounter;
+        // uint32 __reserved; // Reserved until the end of the storage slot
 
         // Slots 2...5
         mapping(uint256 subLoanId => LoanV2.SubLoan) subLoans;

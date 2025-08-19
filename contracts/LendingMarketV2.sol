@@ -48,7 +48,7 @@ contract LendingMarketV2 is
     using SafeCast for uint256;
 
     /// @dev Represents a sub-loan that is affected by an operation. For internal use only.
-    struct OperationAffectedSubLoan{
+    struct OperationAffectedSubLoan {
         uint256 subLoanId;
         uint256 minOperationTimestamp;
         address counterparty;
@@ -96,7 +96,7 @@ contract LendingMarketV2 is
 
     /// @inheritdoc ILendingMarketConfigurationV2
     function createProgram(
-        address creditLine, // Tools: this comment prevents Prettier from formatting into a single line.
+        address creditLine, // Tools: prevent Prettier one-liner
         address liquidityPool
     ) external whenNotPaused onlyRole(OWNER_ROLE) {
         _checkCreditLineAndLiquidityPool(creditLine, liquidityPool);
@@ -118,7 +118,7 @@ contract LendingMarketV2 is
 
     /// @inheritdoc ILendingMarketConfigurationV2
     function updateProgram(
-        uint32 programId, // Tools: this comment prevents Prettier from formatting into a single line.
+        uint32 programId, // Tools: prevent Prettier one-liner
         address creditLine,
         address liquidityPool
     ) external whenNotPaused onlyRole(OWNER_ROLE) {
@@ -159,7 +159,7 @@ contract LendingMarketV2 is
         for (uint256 i = 0; i < subLoanCount; ++i) {
             LoanV2.SubLoanTakingRequest calldata subLoanTakingRequest = subLoanTakingRequests[i];
             uint256 subLoanId = _takeSubLoan(
-                borrower, // Tools: this comment prevents Prettier from formatting into a single line.
+                borrower, // Tools: prevent Prettier one-liner
                 programId,
                 subLoanTakingRequest.borrowedAmount,
                 subLoanTakingRequest.addonAmount,
@@ -172,7 +172,7 @@ contract LendingMarketV2 is
         }
 
         emit LoanTaken(
-            firstSubLoanId,
+            firstSubLoanId, // Tools: prevent Prettier one-liner
             borrower,
             programId,
             subLoanCount,
@@ -206,7 +206,7 @@ contract LendingMarketV2 is
         }
 
         emit LoanRevoked(
-            firstSubLoanId,
+            firstSubLoanId, // Tools: prevent Prettier one-liner
             subLoanCount
         );
 
@@ -230,10 +230,7 @@ contract LendingMarketV2 is
     function discountSubLoanBatch(
         LoanV2.SubLoanOperationRequest[] calldata operationRequests
     ) external whenNotPaused onlyRole(ADMIN_ROLE) {
-        _executeOperationBatch(
-            uint256(LoanV2.OperationKind.Discounting),
-            operationRequests
-        );
+        _executeOperationBatch(uint256(LoanV2.OperationKind.Discounting), operationRequests);
     }
 
     /// @inheritdoc ILendingMarketPrimaryV2
@@ -278,7 +275,6 @@ contract LendingMarketV2 is
         _executeOperationBatch(uint256(LoanV2.OperationKind.Unfreezing), operationRequests);
     }
 
-
     /// @inheritdoc ILendingMarketPrimaryV2
     function voidOperationBatch(LoanV2.VoidOperationRequest[] calldata voidOperationRequests) external {
         _modifyOperationBatch(voidOperationRequests, new LoanV2.AddedOperationRequest[](0));
@@ -287,7 +283,9 @@ contract LendingMarketV2 is
     // ------------------ View functions -------------------------- //
 
     /// @inheritdoc ILendingMarketPrimaryV2
-    function getProgramCreditLineAndLiquidityPool(uint32 programId) external view returns (address creditLine, address liquidityPool) {
+    function getProgramCreditLineAndLiquidityPool(
+        uint32 programId
+    ) external view returns (address creditLine, address liquidityPool) {
         creditLine = _getLendingMarketStorage().programCreditLines[programId];
         liquidityPool = _getLendingMarketStorage().programLiquidityPools[programId];
     }
@@ -300,7 +298,7 @@ contract LendingMarketV2 is
         for (uint256 i = 0; i < len; ++i) {
             subLoans[i] = storageStruct.subLoans[subLoanIds[i]];
         }
-        
+
         return subLoans;
     }
 
@@ -330,7 +328,7 @@ contract LendingMarketV2 is
         // TODO: Implement this function
         subLoanIds; // Prevent unused variable warning
         timestamp; // Prevent unused variable warning
-        return new LoanV2.LoanPreview[](0);// _getLoanPreview(subLoanId, timestamp);
+        return new LoanV2.LoanPreview[](0); // _getLoanPreview(subLoanId, timestamp);
     }
 
     /// @inheritdoc ILendingMarketPrimaryV2
@@ -402,7 +400,7 @@ contract LendingMarketV2 is
         _checkLoanId(id);
 
         LoanV2.Terms memory terms = _determineLoanTerms(
-            borrower, // Tools: this comment prevents Prettier from formatting into a single line.
+            borrower, // Tools: prevent Prettier one-liner
             borrowedAmount,
             durationInDays
         );
@@ -468,12 +466,10 @@ contract LendingMarketV2 is
     //TODO: Somehow unite the following two functions.
 
     /// @dev TODO
-    function _executeRepaymentBatch(
-        LoanV2.RepaymentRequest[] calldata repaymentRequests
-    ) internal {
+    function _executeRepaymentBatch(LoanV2.RepaymentRequest[] calldata repaymentRequests) internal {
         uint256 count = repaymentRequests.length;
         LoanV2.AddedOperationRequest[] memory addingRequests = new LoanV2.AddedOperationRequest[](count);
-        for (uint256 i = 0; i < count; ++i){
+        for (uint256 i = 0; i < count; ++i) {
             LoanV2.RepaymentRequest memory repaymentRequest = repaymentRequests[i];
             uint256 operationTimestamp = repaymentRequest.timestamp;
             if (operationTimestamp == 0) {
@@ -500,7 +496,7 @@ contract LendingMarketV2 is
     ) internal {
         uint256 count = operationRequests.length;
         LoanV2.AddedOperationRequest[] memory addingRequests = new LoanV2.AddedOperationRequest[](count);
-        for (uint256 i = 0; i < count; ++i){
+        for (uint256 i = 0; i < count; ++i) {
             LoanV2.SubLoanOperationRequest memory operationRequest = operationRequests[i];
             uint256 operationTimestamp = operationRequest.timestamp;
             if (operationTimestamp == 0) {
@@ -526,7 +522,7 @@ contract LendingMarketV2 is
      */
     function _revokeSubLoan(LoanV2.ProcessingSubLoan memory subLoan) internal {
         _addOperation(
-            subLoan.id,
+            subLoan.id, // Tools: prevent Prettier one-liner
             uint256(LoanV2.OperationKind.Repayment),
             _blockTimestamp(),
             0,
@@ -586,9 +582,9 @@ contract LendingMarketV2 is
 
         if (timestamp > _blockTimestamp()) {
             emit OperationPended(
-                subLoanId,
+                subLoanId, // Tools: prevent Prettier one-liner
                 operationId,
-            LoanV2.OperationKind(kind),
+                LoanV2.OperationKind(kind),
                 timestamp,
                 inputValue,
                 account
@@ -605,7 +601,7 @@ contract LendingMarketV2 is
         uint256 subLoanId,
         uint256 operationId,
         address counterparty
-    ) internal returns (LoanV2.Operation storage operation){
+    ) internal returns (LoanV2.Operation storage operation) {
         operation = _getExistingOperationInStorage(subLoanId, operationId);
         uint256 previousStatus = uint256(operation.status);
         if (operation.kind == LoanV2.OperationKind.Revocation) {
@@ -615,7 +611,7 @@ contract LendingMarketV2 is
             operation.status = LoanV2.OperationStatus.Canceled;
 
             emit OperationCanceled(
-                subLoanId,
+                subLoanId, // Tools: prevent Prettier one-liner
                 operationId,
                 operation.kind
             );
@@ -623,7 +619,7 @@ contract LendingMarketV2 is
             operation.status = LoanV2.OperationStatus.Revoked;
 
             emit OperationRevoked(
-                subLoanId,
+                subLoanId, // Tools: prevent Prettier one-liner
                 operationId,
                 operation.kind,
                 counterparty
@@ -669,7 +665,7 @@ contract LendingMarketV2 is
      * @param subLoanCount The total number of sub-loans.
      */
     function _setLoanPartsData(
-        uint256 subLoanId, // Tools: this comment prevents Prettier from formatting into a single line.
+        uint256 subLoanId, // Tools: prevent Prettier one-liner
         uint256 firstSubLoanId,
         uint256 subLoanCount
     ) internal {
@@ -738,12 +734,11 @@ contract LendingMarketV2 is
         uint256 repaymentAmount = _calculateSumAmountByParts(operation.oldSubLoanValue);
         repaymentAmount -= _calculateSumAmountByParts(operation.newSubLoanValue);
         _transferToPool(
-            _getLendingMarketStorage().token,
+            _getLendingMarketStorage().token, // Tools: prevent Prettier one-liner
             liquidityPool,
             operation.account,
             repaymentAmount
         );
-
     }
 
     /**
@@ -771,10 +766,7 @@ contract LendingMarketV2 is
     }
 
     /// @dev TODO
-    function _findEarlierOperation( 
-        uint256 subLoanId,
-        uint256 timestamp
-    ) internal view returns (uint256) {
+    function _findEarlierOperation(uint256 subLoanId, uint256 timestamp) internal view returns (uint256) {
         uint256 operationId = _getSubLoanInStorage(subLoanId).latestOperationId;
         LendingMarketStorageV2 storage storageStruct = _getLendingMarketStorage();
         while (operationId != 0 && storageStruct.subLoanOperations[subLoanId][operationId].timestamp > timestamp) {
@@ -791,8 +783,9 @@ contract LendingMarketV2 is
         // TODO: Simplify and maybe split this function into parts
         uint256 affectedSubLoanCount = 0;
         uint256 count = voidOperationRequests.length;
-        OperationAffectedSubLoan[] memory affectedSubLoans =
-                    new OperationAffectedSubLoan[](count + addedOperationRequests.length);
+        OperationAffectedSubLoan[] memory affectedSubLoans = new OperationAffectedSubLoan[](
+            count + addedOperationRequests.length
+        );
         for (uint256 i = 0; i < count; ++i) {
             LoanV2.VoidOperationRequest memory voidingRequest = voidOperationRequests[i];
             OperationAffectedSubLoan memory affectedSubLoan = _findOperationAffectedSubLoan(
@@ -847,14 +840,16 @@ contract LendingMarketV2 is
 
         for (uint256 i = 0; i < affectedSubLoanCount; ++i) {
             OperationAffectedSubLoan memory affectedSubLoan = affectedSubLoans[i];
-            _treatOperations(affectedSubLoan.subLoanId, affectedSubLoan.minOperationTimestamp, affectedSubLoan.counterparty);
+            _treatOperations(
+                affectedSubLoan.subLoanId,
+                affectedSubLoan.minOperationTimestamp,
+                affectedSubLoan.counterparty
+            );
         }
     }
 
     /// @dev TODO
-    function _processOperations(
-        LoanV2.ProcessingSubLoan memory subLoan
-    ) internal {
+    function _processOperations(LoanV2.ProcessingSubLoan memory subLoan) internal {
         LendingMarketStorageV2 storage storageStruct = _getLendingMarketStorage();
         LoanV2.SubLoan storage subLoanStored = storageStruct.subLoans[subLoan.id];
         uint256 pastOperationId = subLoanStored.pastOperationId;
@@ -938,7 +933,7 @@ contract LendingMarketV2 is
         uint256 operationStatus = operation.status;
         uint256 operationKind = operation.kind;
         if (
-            operationStatus == uint256(LoanV2.OperationStatus.Applied) ||
+            operationStatus == uint256(LoanV2.OperationStatus.Applied) || // Tools: prevent Prettier one-liner
             operationStatus != operation.initialStatus
         ) {
             _acceptOperationApplying(subLoan, operation);
@@ -1001,14 +996,14 @@ contract LendingMarketV2 is
         } else if (operationKind == uint256(LoanV2.OperationKind.Freezing)) {
             // no tracked balance update needed
             emit SubLoanFrozen(
-                subLoan.id,
+                subLoan.id, // Tools: prevent Prettier one-liner
                 subLoan.revision,
                 operation.timestamp
             );
         } else if (operationKind == uint256(LoanV2.OperationKind.Unfreezing)) {
             _emitTrackedBalanceUpdate(subLoan);
             emit SubLoanUnfrozen(
-                subLoan.id,
+                subLoan.id, // Tools: prevent Prettier one-liner
                 subLoan.revision,
                 subLoan.trackedTimestamp
             );
@@ -1058,7 +1053,7 @@ contract LendingMarketV2 is
      * @dev TODO
      */
     function _accrueInterest(
-        LoanV2.ProcessingSubLoan memory subLoan,
+        LoanV2.ProcessingSubLoan memory subLoan, // Tools: prevent Prettier one-liner
         uint256 finishTimestamp
     ) internal pure {
         uint256 startDay = _dayIndex(subLoan.trackedTimestamp);
@@ -1074,23 +1069,22 @@ contract LendingMarketV2 is
         uint256 finishDay = _dayIndex(finishTimestamp);
 
         if (finishDay > startDay) {
-            uint256 dueDay =  _dayIndex(subLoan.startTimestamp) + subLoan.duration;
+            uint256 dueDay = _dayIndex(subLoan.startTimestamp) + subLoan.duration;
             if (startDay <= dueDay) {
                 if (finishDay <= dueDay) {
                     _accrueInterestRemuneratory(subLoan, finishDay - startDay);
                 } else {
-                     _accrueInterestRemuneratory(subLoan, dueDay - startDay);
+                    _accrueInterestRemuneratory(subLoan, dueDay - startDay);
                     _calculateInitialLateFee(subLoan);
-                    _accrueInterestRemuneratory(subLoan, finishDay  - dueDay);
+                    _accrueInterestRemuneratory(subLoan, finishDay - dueDay);
                     _accrueInterestMoratory(subLoan, finishDay - dueDay);
                 }
             } else {
-                _accrueInterestRemuneratory(subLoan, finishDay  - dueDay);
+                _accrueInterestRemuneratory(subLoan, finishDay - dueDay);
                 _accrueInterestMoratory(subLoan, finishDay - dueDay);
             }
         }
     }
-
     /**
      * @dev TODO
      */
@@ -1137,7 +1131,7 @@ contract LendingMarketV2 is
         uint256 amount,
         uint256 subLoanPartKind,
         uint256 operationKind
-    ) internal pure returns (uint256 newRepaymentAmount){
+    ) internal pure returns (uint256 newRepaymentAmount) {
         if (amount == 0) {
             return 0;
         }
@@ -1287,7 +1281,7 @@ contract LendingMarketV2 is
         operation.oldSubLoanValue = _packRepaidParts(subLoan);
 
         amount = _repayOrDiscountPartial(
-            subLoan,
+            subLoan, // Tools: prevent Prettier one-liner
             amount,
             uint256(LoanV2.SubLoanPartKind.LateFee),
             operationKind
@@ -1305,7 +1299,7 @@ contract LendingMarketV2 is
             operationKind
         );
         amount = _repayOrDiscountPartial(
-            subLoan,
+            subLoan, // Tools: prevent Prettier one-liner
             amount,
             uint256(LoanV2.SubLoanPartKind.Principal),
             operationKind
@@ -1498,7 +1492,7 @@ contract LendingMarketV2 is
             return;
         }
         if (newStatus == uint256(LoanV2.SubLoanStatus.Revoked)) {
-            (address creditLine,) = _getCreditLineAndLiquidityPool(newSubLoan.programId);
+            (address creditLine, ) = _getCreditLineAndLiquidityPool(newSubLoan.programId);
             ICreditLine(creditLine).onAfterLoanRevocation(newSubLoan.id);
         }
     }
@@ -1511,7 +1505,7 @@ contract LendingMarketV2 is
         uint256 dayCount,
         uint256 interestRate
     ) internal pure returns (uint256) {
-        return principal * dayCount * interestRate / Constants.INTEREST_RATE_FACTOR;
+        return (principal * dayCount * interestRate) / Constants.INTEREST_RATE_FACTOR;
     }
 
     /**
@@ -1519,7 +1513,7 @@ contract LendingMarketV2 is
      */
     function _calculateTrackedBalance(LoanV2.ProcessingSubLoan memory subLoan) internal pure returns (uint256) {
         return
-            subLoan.trackedPrincipal + 
+            subLoan.trackedPrincipal +
             subLoan.trackedInterestRemuneratory +
             subLoan.trackedInterestMoratory +
             subLoan.trackedLateFee;
@@ -1562,10 +1556,11 @@ contract LendingMarketV2 is
      * @dev TODO
      */
     function _calculateSumAmountByParts(uint256 packedParts) internal pure returns (uint256) {
-        return packedParts & type(uint64).max +
-            (packedParts >> 64) & type(uint64).max +
-            (packedParts >> 128) & type(uint64).max +
-            (packedParts >> 192) & type(uint64).max;
+        return
+            ((packedParts >> 0) & type(uint64).max) + // Tools: prevent Prettier one-liner
+            ((packedParts >> 64) & type(uint64).max) +
+            ((packedParts >> 128) & type(uint64).max) +
+            ((packedParts >> 192) & type(uint64).max);
     }
 
     /**
@@ -1573,7 +1568,7 @@ contract LendingMarketV2 is
      */
     function _calculateDiscountAmount(LoanV2.ProcessingSubLoan memory subLoan) internal pure returns (uint256) {
         return
-            subLoan.discountInterestRemuneratory +
+            subLoan.discountInterestRemuneratory + // Tools: prevent Prettier one-liner
             subLoan.discountInterestMoratory +
             subLoan.discountLateFee;
     }
@@ -1583,7 +1578,7 @@ contract LendingMarketV2 is
      */
     function _calculateDiscountAmountInStorage(LoanV2.SubLoan storage subLoan) internal view returns (uint256) {
         return
-            subLoan.discountInterestRemuneratory +
+            subLoan.discountInterestRemuneratory + // Tools: prevent Prettier one-liner
             subLoan.discountInterestMoratory +
             subLoan.discountLateFee;
     }
@@ -1593,7 +1588,7 @@ contract LendingMarketV2 is
      */
     function _calculateLateFeeAmount(LoanV2.ProcessingSubLoan memory subLoan) internal pure returns (uint256) {
         return
-            subLoan.trackedLateFee +
+            subLoan.trackedLateFee + // Tools: prevent Prettier one-liner
             subLoan.repaidLateFee +
             subLoan.discountLateFee;
     }
@@ -1692,14 +1687,12 @@ contract LendingMarketV2 is
     }
 
     /// TODO
-    function _checkOperationParameters(
-        LoanV2.AddedOperationRequest memory request
-    ) internal view {
+    function _checkOperationParameters(LoanV2.AddedOperationRequest memory request) internal view {
         uint256 kind = request.kind;
         uint256 inputValue = request.inputValue;
         address account = request.account;
         if (
-            kind == uint256(LoanV2.OperationKind.Nonexistent) ||
+            kind == uint256(LoanV2.OperationKind.Nonexistent) || // Tools: prevent Prettier one-liner
             kind >= uint256(type(LoanV2.OperationKind).max)
         ) {
             revert OperationKindInvalid();
@@ -1731,9 +1724,7 @@ contract LendingMarketV2 is
             }
         }
 
-        if (
-            kind == uint256(LoanV2.OperationKind.SetDuration)
-        ) {
+        if (kind == uint256(LoanV2.OperationKind.SetDuration)) {
             if (inputValue == 0 || inputValue > type(uint16).max) {
                 revert DurationInvalid();
             }
@@ -1743,12 +1734,12 @@ contract LendingMarketV2 is
             if (account == address(0)) {
                 revert RapayerAddressZero();
             }
-        } else if (account != address(0)){
+        } else if (account != address(0)) {
             revert OperationAccountNotZero();
         }
 
         if (
-            kind == uint256(LoanV2.OperationKind.Repayment) ||
+            kind == uint256(LoanV2.OperationKind.Repayment) || // Tools: prevent Prettier one-liner
             kind == uint256(LoanV2.OperationKind.Discounting)
         ) {
             if (request.timestamp > _blockTimestamp()) {
@@ -1756,7 +1747,6 @@ contract LendingMarketV2 is
             }
         }
     }
-
 
     /**
      * @dev Checks if the credit line and liquidity pool are valid.
@@ -1817,7 +1807,9 @@ contract LendingMarketV2 is
     /**
      * @dev TODO
      */
-    function _convertSubLoan(LoanV2.SubLoan storage subLoanStored) internal view returns (LoanV2.ProcessingSubLoan memory) {
+    function _convertSubLoan(
+        LoanV2.SubLoan storage subLoanStored
+    ) internal view returns (LoanV2.ProcessingSubLoan memory) {
         LoanV2.ProcessingSubLoan memory subLoan;
         // subLoan.id = 0;
         subLoan.status = uint256(subLoanStored.status);
@@ -1849,7 +1841,9 @@ contract LendingMarketV2 is
     /**
      * @dev TODO
      */
-    function _convertOperation(LoanV2.Operation storage operationInStorage) internal view returns (LoanV2.ProcessingOperation memory) {
+    function _convertOperation(
+        LoanV2.Operation storage operationInStorage
+    ) internal view returns (LoanV2.ProcessingOperation memory) {
         LoanV2.ProcessingOperation memory operation;
         // operation.id = 0;
         operation.initialStatus = uint256(operationInStorage.status);
@@ -1866,7 +1860,9 @@ contract LendingMarketV2 is
     /**
      * @dev TODO
      */
-    function _convertOperationToView(LoanV2.Operation storage operationInStorage) internal view returns (LoanV2.OperationView memory) {
+    function _convertOperationToView(
+        LoanV2.Operation storage operationInStorage
+    ) internal view returns (LoanV2.OperationView memory) {
         LoanV2.OperationView memory operation;
         // operation.id = 0;
         operation.status = operation.status;
@@ -1961,7 +1957,10 @@ contract LendingMarketV2 is
     /**
      * @dev TODO
      */
-    function _getOperationInStorage(uint256 subLoanId, uint256 operationId) internal view returns (LoanV2.Operation storage) {
+    function _getOperationInStorage(
+        uint256 subLoanId,
+        uint256 operationId
+    ) internal view returns (LoanV2.Operation storage) {
         return _getLendingMarketStorage().subLoanOperations[subLoanId][operationId];
     }
 
@@ -1985,7 +1984,10 @@ contract LendingMarketV2 is
     /**
      * @dev TODO
      */
-    function _getExistingOperationInStorage(uint256 subLoanId, uint256 operationId) internal view returns (LoanV2.Operation storage) {
+    function _getExistingOperationInStorage(
+        uint256 subLoanId,
+        uint256 operationId
+    ) internal view returns (LoanV2.Operation storage) {
         LoanV2.Operation storage operation = _getOperationInStorage(subLoanId, operationId);
         if (operation.status == LoanV2.OperationStatus.Nonexistent) {
             revert OperationNonexistent();
@@ -1996,7 +1998,10 @@ contract LendingMarketV2 is
     /**
      * @dev TODO
      */
-    function _getExistingOperation(uint256 subLoanId, uint256 operationId) internal view returns (LoanV2.ProcessingOperation memory) {
+    function _getExistingOperation(
+        uint256 subLoanId,
+        uint256 operationId
+    ) internal view returns (LoanV2.ProcessingOperation memory) {
         LoanV2.ProcessingOperation memory operation = _convertOperation(
             _getExistingOperationInStorage(subLoanId, operationId)
         );
@@ -2007,7 +2012,10 @@ contract LendingMarketV2 is
     /**
      * @dev TODO
      */
-    function _getOperationView(uint256 subLoanId, uint256 operationId) internal view returns (LoanV2.OperationView memory) {
+    function _getOperationView(
+        uint256 subLoanId,
+        uint256 operationId
+    ) internal view returns (LoanV2.OperationView memory) {
         LoanV2.OperationView memory operationView = _convertOperationToView(
             _getOperationInStorage(subLoanId, operationId)
         );
@@ -2041,13 +2049,14 @@ contract LendingMarketV2 is
         return subLoan;
     }
 
-
     /**
      * @dev Calculates the sub-loan preview.
      * @param subLoan TODO
      * @return The sub-loan preview.
      */
-    function _getSubLoanPreview(LoanV2.ProcessingSubLoan memory subLoan) internal view returns (LoanV2.SubLoanPreview memory) {
+    function _getSubLoanPreview(
+        LoanV2.ProcessingSubLoan memory subLoan
+    ) internal view returns (LoanV2.SubLoanPreview memory) {
         LoanV2.SubLoanPreview memory preview;
         LoanV2.SubLoan storage subLoanStored = _getSubLoanInStorage(subLoan.id);
 
@@ -2086,10 +2095,7 @@ contract LendingMarketV2 is
      * @param timestamp The timestamp to calculate the preview at.
      * @return The loan preview.
      */
-    function _getLoanPreview(
-        uint256 subLoanId,
-        uint256 timestamp
-    ) internal view returns (LoanV2.LoanPreview memory) {
+    function _getLoanPreview(uint256 subLoanId, uint256 timestamp) internal view returns (LoanV2.LoanPreview memory) {
         LoanV2.LoanPreview memory preview;
 
         if (timestamp == 0) {
@@ -2141,15 +2147,20 @@ contract LendingMarketV2 is
 
     /**
      * @dev TODO
-     * 
+     *
      * The packed amount parts of a sub-loan is a bitfield with the following bits:
-     * 
+     *
      * - 64 bits from 0 to 63: the principal.
      * - 64 bits from 64 to 127: the remuneratory interest.
      * - 64 bits from 128 to 191: the moratory interest.
      * - 64 bits from 192 to 255: the late fee.
      */
-    function _packAmountParts(uint256 part1, uint256 part2, uint256 part3, uint256 part4) internal pure returns (uint256) {
+    function _packAmountParts(
+        uint256 part1,
+        uint256 part2,
+        uint256 part3,
+        uint256 part4
+    ) internal pure returns (uint256) {
         return
             (part1 & type(uint64).max) +
             ((part2 & type(uint64).max) << 64) +
@@ -2161,60 +2172,65 @@ contract LendingMarketV2 is
      * @dev TODO
      */
     function _packRepaidParts(LoanV2.ProcessingSubLoan memory subLoan) internal pure returns (uint256) {
-        return _packAmountParts(
-            subLoan.repaidPrincipal,
-            subLoan.repaidInterestRemuneratory,
-            subLoan.repaidInterestMoratory,
-            subLoan.repaidLateFee
-        );
+        return
+            _packAmountParts(
+                subLoan.repaidPrincipal,
+                subLoan.repaidInterestRemuneratory,
+                subLoan.repaidInterestMoratory,
+                subLoan.repaidLateFee
+            );
     }
 
     /**
      * @dev TODO
      */
     function _packedRepaidPartsInStorage(LoanV2.SubLoan storage subLoan) internal view returns (uint256) {
-        return _packAmountParts(
-            subLoan.repaidPrincipal,
-            subLoan.repaidInterestRemuneratory,
-            subLoan.repaidInterestMoratory,
-            subLoan.repaidLateFee
-        );
+        return
+            _packAmountParts(
+                subLoan.repaidPrincipal,
+                subLoan.repaidInterestRemuneratory,
+                subLoan.repaidInterestMoratory,
+                subLoan.repaidLateFee
+            );
     }
 
     /**
      * @dev TODO
      */
     function _packDiscountParts(LoanV2.ProcessingSubLoan memory subLoan) internal pure returns (uint256) {
-        return _packAmountParts(
-            subLoan.discountPrincipal,
-            subLoan.discountInterestRemuneratory,
-            subLoan.discountInterestMoratory,
-            subLoan.discountLateFee
-        );
+        return
+            _packAmountParts(
+                subLoan.discountPrincipal,
+                subLoan.discountInterestRemuneratory,
+                subLoan.discountInterestMoratory,
+                subLoan.discountLateFee
+            );
     }
 
     /**
      * @dev TODO
      */
     function _packDiscountPartsInStorage(LoanV2.SubLoan storage subLoan) internal view returns (uint256) {
-        return _packAmountParts(
-            subLoan.discountPrincipal,
-            subLoan.discountInterestRemuneratory,
-            subLoan.discountInterestMoratory,
-            subLoan.discountLateFee
-        );
+        return
+            _packAmountParts(
+                subLoan.discountPrincipal,
+                subLoan.discountInterestRemuneratory,
+                subLoan.discountInterestMoratory,
+                subLoan.discountLateFee
+            );
     }
 
     /**
      * @dev TODO
      */
     function _packTrackedParts(LoanV2.ProcessingSubLoan memory subLoan) internal pure returns (uint256) {
-        return _packAmountParts(
-            subLoan.trackedPrincipal,
-            subLoan.trackedInterestRemuneratory,
-            subLoan.trackedInterestMoratory,
-            subLoan.trackedLateFee
-        );
+        return
+            _packAmountParts(
+                subLoan.trackedPrincipal,
+                subLoan.trackedInterestRemuneratory,
+                subLoan.trackedInterestMoratory,
+                subLoan.trackedLateFee
+            );
     }
 
     /**

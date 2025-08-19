@@ -54,7 +54,7 @@ interface ILendingMarketPrimaryV2 {
      * @param addonAmount The addon amount of the sub-loan.
      * @param duration The duration of the sub-loan in days.
      * @param packedRates The packed rates of the sub-loan. A bitfield with the following bits:
-     * 
+     *
      * - 64 bits from 0 to 63: the remuneratory interest rate.
      * - 64 bits from 64 to 127: the moratory interest rate.
      * - 64 bits from 128 to 191: the late fee rate.
@@ -84,7 +84,7 @@ interface ILendingMarketPrimaryV2 {
      * @dev Emitted when the tracked balance of a sub-loan is updated.
      *
      * This event accompanies all other sub-loan events with the revision field except the following:
-     * 
+     *
      * - `SubLoanDurationUpdated`
      * - `SubLoanFrozen`
      *
@@ -95,7 +95,7 @@ interface ILendingMarketPrimaryV2 {
      * @param trackedTimestamp The tracked timestamp of the sub-loan when its tracked balance was updated.
      * @param packedTrackedParts The current packed tracked parts of the sub-loan.
      */
-    event SubLoanTrackedBalanceUpdated (
+    event SubLoanTrackedBalanceUpdated(
         uint256 indexed subLoanId,
         uint256 indexed subLoanRevision,
         uint256 trackedTimestamp,
@@ -120,7 +120,7 @@ interface ILendingMarketPrimaryV2 {
      * @param newPackedRepaidParts The current packed repaid parts of the sub-loan.
      * @param oldPackedRepaidParts The previous packed repaid parts of the sub-loan.
      */
-    event SubLoanRepayment (
+    event SubLoanRepayment(
         uint256 indexed subLoanId,
         uint256 indexed subLoanRevision,
         uint256 trackedTimestamp,
@@ -139,7 +139,7 @@ interface ILendingMarketPrimaryV2 {
      * @param newPackedDiscountParts The current packed discount parts of the sub-loan.
      * @param oldPackedDiscountParts The previous packed discount parts of the sub-loan.
      */
-    event SubLoanDiscount (
+    event SubLoanDiscount(
         uint256 indexed subLoanId,
         uint256 indexed subLoanRevision,
         uint256 trackedTimestamp,
@@ -222,11 +222,7 @@ interface ILendingMarketPrimaryV2 {
      * @param subLoanRevision The revision number of the sub-loan.
      * @param trackedTimestamp The tracked timestamp of the sub-loan when it was frozen.
      */
-    event SubLoanFrozen(
-        uint256 indexed subLoanId,
-        uint256 indexed subLoanRevision,
-        uint256 trackedTimestamp
-    );
+    event SubLoanFrozen(uint256 indexed subLoanId, uint256 indexed subLoanRevision, uint256 trackedTimestamp);
 
     /**
      * @dev Emitted when a sub-loan is frozen.
@@ -235,11 +231,7 @@ interface ILendingMarketPrimaryV2 {
      * @param subLoanRevision The revision number of the sub-loan.
      * @param trackedTimestamp The tracked timestamp of the sub-loan when it was unfrozen.
      */
-    event SubLoanUnfrozen(
-        uint256 indexed subLoanId,
-        uint256 indexed subLoanRevision,
-        uint256 trackedTimestamp
-    );
+    event SubLoanUnfrozen(uint256 indexed subLoanId, uint256 indexed subLoanRevision, uint256 trackedTimestamp);
 
     /**
      * @dev Emitted when a sub-loan is revoked.
@@ -319,11 +311,7 @@ interface ILendingMarketPrimaryV2 {
      * @param operationId The unique identifier of the operation within the sub-loan.
      * @param kind The kind of the operation like repayment, discount, setting a new rate, etc.
      */
-    event OperationCanceled(
-        uint256 indexed subLoanId,
-        uint256 indexed operationId,
-        LoanV2.OperationKind indexed kind
-    );
+    event OperationCanceled(uint256 indexed subLoanId, uint256 indexed operationId, LoanV2.OperationKind indexed kind);
 
     // TODO: add more events if needed
     // TODO: add more parameters to the existing events if needed
@@ -389,7 +377,9 @@ interface ILendingMarketPrimaryV2 {
      *
      * @param operationRequests The operation request structures to set the remuneratory interest rate of the sub-loans.
      */
-    function setSubLoanInterestRateRemuneratoryBatch(LoanV2.SubLoanOperationRequest[] calldata operationRequests) external;
+    function setSubLoanInterestRateRemuneratoryBatch(
+        LoanV2.SubLoanOperationRequest[] calldata operationRequests
+    ) external;
 
     /**
      * @dev Sets the moratory interest rate of a batch of sub-loans.
@@ -429,7 +419,7 @@ interface ILendingMarketPrimaryV2 {
 
     /**
      * @dev Voids a batch of operations.
-     * 
+     *
      * Can be called only by an account with a special role.
      *
      * This function performs the following steps:
