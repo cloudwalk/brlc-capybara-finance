@@ -3,7 +3,6 @@
 pragma solidity 0.8.24;
 
 import { LoanV2 } from "../libraries/LoanV2.sol";
-import {IERC20} from "../../flatten/LendingMarketFlat.sol";
 
 /**
  * @title ILendingMarketPrimaryV2 interface

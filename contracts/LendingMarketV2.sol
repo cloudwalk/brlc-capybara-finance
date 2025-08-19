@@ -448,7 +448,6 @@ contract LendingMarketV2 is
         // All fields are zero: repaidPrincipal, repaidInterestRemuneratory, repaidInterestMoratory, repaidLateFee
 
         ICreditLine(creditLine).onBeforeLoanTaken(id);
-        ILiquidityPool(liquidityPool).onBeforeLoanTaken(id);
 
         emit SubLoanTaken(
             id,
@@ -690,9 +689,9 @@ contract LendingMarketV2 is
         if (addonTreasury == address(0)) {
             revert AddonTreasuryAddressZero();
         }
-        IERC20(token).safeTransferFrom(liquidityPool, subLoan.borrower, borrowedAmount);
+        _transferFromPool(token, liquidityPool, subLoan.borrower, borrowedAmount);
         if (addonAmount != 0) {
-            IERC20(token).safeTransferFrom(liquidityPool, addonTreasury, addonAmount);
+            _transferFromPool(token, liquidityPool, addonTreasury, addonAmount);
         }
     }
 
@@ -716,12 +715,12 @@ contract LendingMarketV2 is
             revert AddonTreasuryAddressZero();
         }
         if (repaidAmount < borrowedAmount) {
-            IERC20(token).safeTransferFrom(subLoan.borrower, liquidityPool, borrowedAmount - repaidAmount);
+            _transferToPool(token, liquidityPool, subLoan.borrower, borrowedAmount - repaidAmount);
         } else if (repaidAmount != borrowedAmount) {
-            IERC20(token).safeTransferFrom(liquidityPool, subLoan.borrower, repaidAmount - borrowedAmount);
+            _transferFromPool(token, liquidityPool, subLoan.borrower, repaidAmount - borrowedAmount);
         }
         if (addonAmount != 0) {
-            IERC20(token).safeTransferFrom(addonTreasury, liquidityPool, addonAmount);
+            _transferToPool(token, liquidityPool, addonTreasury, addonAmount);
         }
     }
 
@@ -733,10 +732,39 @@ contract LendingMarketV2 is
         LoanV2.ProcessingOperation memory operation
     ) internal {
         (, address liquidityPool) = _getCreditLineAndLiquidityPool(subLoan.programId);
-        address repayer = operation.account;
         uint256 repaymentAmount = _calculateSumAmountByParts(operation.oldSubLoanValue);
         repaymentAmount -= _calculateSumAmountByParts(operation.newSubLoanValue);
-        IERC20(_getLendingMarketStorage().token).safeTransferFrom(repayer, liquidityPool, repaymentAmount);
+        _transferToPool(
+            _getLendingMarketStorage().token,
+            liquidityPool,
+            operation.account,
+            repaymentAmount
+        );
+
+    }
+
+    /**
+     * @dev Transfers tokens from a liquidity pool to a receiver.
+     * @param token The address of the token.
+     * @param liquidityPool The address of the liquidity pool.
+     * @param receiver The address of the receiver.
+     * @param amount The amount of tokens to transfer.
+     */
+    function _transferFromPool(address token, address liquidityPool, address receiver, uint256 amount) internal {
+        ILiquidityPool(liquidityPool).onBeforeLiquidityOut(amount);
+        IERC20(token).safeTransferFrom(liquidityPool, receiver, amount);
+    }
+
+    /**
+     * @dev Transfers tokens from a sender to a liquidity pool.
+     * @param token The address of the token.
+     * @param liquidityPool The address of the liquidity pool.
+     * @param sender The address of the sender.
+     * @param amount The amount of tokens to transfer.
+     */
+    function _transferToPool(address token, address liquidityPool, address sender, uint256 amount) internal {
+        ILiquidityPool(liquidityPool).onBeforeLiquidityIn(amount);
+        IERC20(token).safeTransferFrom(sender, liquidityPool, amount);
     }
 
     /// @dev TODO
@@ -1428,15 +1456,13 @@ contract LendingMarketV2 is
             address counterparty = newSubLoan.counterparty;
             if (newRepaidSumAmount > oldRepaidSumAmount) {
                 uint256 repaymentChange = newRepaidSumAmount - oldRepaidSumAmount;
-                ILiquidityPool(liquidityPool).onAfterLoanRepaymentUndoing(newSubLoan.id, repaymentChange);
                 if (counterparty != address(0)) {
-                    IERC20(token).safeTransferFrom(liquidityPool, counterparty, repaymentChange);
+                    _transferFromPool(token, liquidityPool, counterparty, repaymentChange);
                 }
             } else {
                 uint256 repaymentChange = oldRepaidSumAmount - newRepaidSumAmount;
-                ILiquidityPool(liquidityPool).onAfterLoanPayment(newSubLoan.id, repaymentChange);
                 if (counterparty != address(0)) {
-                    IERC20(token).safeTransferFrom(counterparty, liquidityPool, repaymentChange);
+                    _transferToPool(token, liquidityPool, counterparty, repaymentChange);
                 }
             }
         }
@@ -1480,9 +1506,7 @@ contract LendingMarketV2 is
             return;
         }
         if (newStatus == uint256(LoanV2.SubLoanStatus.Revoked)) {
-            (address creditLine, address liquidityPool) = _getCreditLineAndLiquidityPool(newSubLoan.programId);
-
-            ILiquidityPool(liquidityPool).onAfterLoanRevocation(newSubLoan.id);
+            (address creditLine,) = _getCreditLineAndLiquidityPool(newSubLoan.programId);
             ICreditLine(creditLine).onAfterLoanRevocation(newSubLoan.id);
         }
     }
