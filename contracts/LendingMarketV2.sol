@@ -145,13 +145,17 @@ contract LendingMarketV2 is
     // TODO: Remove `For` in the name, consider the same for other fucntions
     function takeLoan(
         address borrower,
-        uint32 programId,
+        uint256 programId,
+        uint256 interestRateRemuneratory,
+        uint256 interestRateMoratory,
+        uint256 lateFeeRate,
         LoanV2.SubLoanTakingRequest[] calldata subLoanTakingRequests
     ) external whenNotPaused onlyRole(ADMIN_ROLE) returns (uint256 firstSubLoanId) {
         uint256 subLoanCount = subLoanTakingRequests.length;
 
         _checkSubLoanCount(subLoanCount);
         _checkSubLoanParameters(subLoanTakingRequests);
+        _checkSubLoanRates(interestRateRemuneratory, interestRateMoratory, lateFeeRate);
         (uint256 totalBorrowedAmount, uint256 totalAddonAmount) = _calculateTotalAmounts(subLoanTakingRequests);
         _checkMainLoanParameters(borrower, programId, totalBorrowedAmount, totalAddonAmount);
         // Arrays are not checked for emptiness because if the loan amount is zero, the transaction is reverted earlier
@@ -161,9 +165,10 @@ contract LendingMarketV2 is
             uint256 subLoanId = _takeSubLoan(
                 borrower, // Tools: prevent Prettier one-liner
                 programId,
-                subLoanTakingRequest.borrowedAmount,
-                subLoanTakingRequest.addonAmount,
-                subLoanTakingRequest.duration
+                subLoanTakingRequest,
+                interestRateRemuneratory,
+                interestRateMoratory,
+                lateFeeRate
             );
             if (i == 0) {
                 firstSubLoanId = subLoanId;
@@ -382,10 +387,11 @@ contract LendingMarketV2 is
      */
     function _takeSubLoan(
         address borrower,
-        uint32 programId,
-        uint256 borrowedAmount,
-        uint256 addonAmount,
-        uint256 durationInDays
+        uint256 programId,
+        uint256 interestRateRemuneratory,
+        uint256 interestRateMoratory,
+        uint256 lateFeeRate,
+        LoanV2.SubLoanTakingRequest subLoanTakingRequest
     ) internal returns (uint256) {
         (address creditLine, address liquidityPool) = _getCreditLineAndLiquidityPool(programId);
         if (creditLine == address(0)) {
@@ -399,12 +405,6 @@ contract LendingMarketV2 is
         uint256 id = _getLendingMarketStorage().subLoanIdCounter++;
         _checkLoanId(id);
 
-        LoanV2.Terms memory terms = _determineLoanTerms(
-            borrower, // Tools: prevent Prettier one-liner
-            borrowedAmount,
-            durationInDays
-        );
-
         uint32 blockTimestamp = _blockTimestamp().toUint32();
 
         LoanV2.SubLoan storage subLoan = _getSubLoanInStorage(id);
@@ -416,22 +416,22 @@ contract LendingMarketV2 is
         subLoan.borrowedAmount = uint64(borrowedAmount); // Safe cast due to prior checks
         subLoan.addonAmount = uint64(addonAmount); // Safe cast due to prior checks
         subLoan.startTimestamp = blockTimestamp;
-        subLoan.initialDuration = uint16(terms.duration); // Safe cast due to prior checks
+        subLoan.initialDuration = uint16(durationInDays); // Safe cast due to prior checks
         // Other loan fields are zero: firstSubLoanId, subLoanCount
 
         // Slot 2
         subLoan.borrower = borrower;
-        subLoan.initialInterestRateRemuneratory = uint32(terms.interestRateRemuneratory); // Safe cast
-        subLoan.initialInterestRateMoratory = uint32(terms.interestRateMoratory); // Safe cast due to prior checks
-        subLoan.initialLateFeeRate = uint32(terms.lateFeeRate); // Safe cast due to prior checks
+        subLoan.initialInterestRateRemuneratory = uint32(interestRateRemuneratory); // Safe cast
+        subLoan.initialInterestRateMoratory = uint32(interestRateMoratory); // Safe cast due to prior checks
+        subLoan.initialLateFeeRate = uint32(lateFeeRate); // Safe cast due to prior checks
 
         // Slot 3
         subLoan.status = LoanV2.SubLoanStatus.Ongoing;
         subLoan.revision = 1;
-        subLoan.duration = uint16(terms.duration); // Safe cast due to prior checks
-        subLoan.interestRateRemuneratory = uint32(terms.interestRateRemuneratory); // Safe cast due to prior checks
-        subLoan.interestRateMoratory = uint32(terms.interestRateMoratory);
-        subLoan.lateFeeRate = uint32(terms.lateFeeRate); // Safe cast due to prior checks
+        subLoan.duration = uint16(durationInDays); // Safe cast due to prior checks
+        subLoan.interestRateRemuneratory = uint32(interestRateRemuneratory); // Safe cast due to prior checks
+        subLoan.interestRateMoratory = uint32(interestRateMoratory);
+        subLoan.lateFeeRate = uint32(lateFeeRate); // Safe cast due to prior checks
         subLoan.trackedTimestamp = blockTimestamp;
         // subLoan.freezeTimestamp = 0;
         // subLoan.firstSubLoanId = 0;
@@ -456,8 +456,8 @@ contract LendingMarketV2 is
             programId,
             borrowedAmount,
             addonAmount,
-            terms.duration,
-            bytes32(_packRates(terms))
+            durationInDays,
+            bytes32(_packRates(interestRateRemuneratory, interestRateMoratory, lateFeeRate))
         );
 
         return id;
@@ -631,31 +631,6 @@ contract LendingMarketV2 is
                 revert OperationRevokedAlready();
             }
         }
-    }
-
-    /**
-     * @dev TODO
-     */
-    // TODO: Replace by taking from the credit line contract
-    function _determineLoanTerms(
-        address borrower,
-        uint256 borrowedAmount,
-        uint256 duration
-    ) public pure returns (LoanV2.Terms memory terms) {
-        if (borrower == address(0)) {
-            revert Error.ZeroAddress();
-        }
-        if (borrowedAmount == 0) {
-            revert Error.InvalidAmount();
-        }
-        if (duration > type(uint16).max) {
-            revert DurationInvalid();
-        }
-
-        terms.duration = duration;
-        terms.interestRateRemuneratory = Constants.INTEREST_RATE_FACTOR / 100; // 1%
-        terms.interestRateMoratory = Constants.INTEREST_RATE_FACTOR / 50; // 2%
-        terms.lateFeeRate = Constants.INTEREST_RATE_FACTOR / 1000; // 0.1%
     }
 
     /**
@@ -1634,7 +1609,7 @@ contract LendingMarketV2 is
      */
     function _checkMainLoanParameters(
         address borrower,
-        uint32 programId,
+        uint256 programId,
         uint256 borrowedAmount,
         uint256 addonAmount
     ) internal pure {
@@ -1684,7 +1659,29 @@ contract LendingMarketV2 is
             if (duration < previousDuration) {
                 revert SubLoanDurationsInvalid();
             }
+            if (duration > type(uint16).max) {
+                revert SubLoanDurationExcess();
+            }
             previousDuration = duration;
+        }
+    }
+
+    /**
+     * @dev TODO
+     */
+    function _checkSubLoanRates(
+        uint256 interestRateRemuneratory,
+        uint256 interestRateMoratory,
+        uint256 lateFeeRate
+    ) internal pure {
+        if (interestRateRemuneratory > type(uint32).max) {
+            revert RateValueInvalid();
+        }
+        if (interestRateMoratory > type(uint32).max) {
+            revert RateValueInvalid();
+        }
+        if (lateFeeRate > type(uint32).max) {
+            revert RateValueInvalid();
         }
     }
 
@@ -2140,11 +2137,15 @@ contract LendingMarketV2 is
      * - 32 bits from 32 to 63: the moratory interest rate.
      * - 32 bits from 64 to 95: the late fee rate.
      */
-    function _packRates(LoanV2.Terms memory terms) internal pure returns (uint256) {
+    function _packRates(
+        uint256 interestRateRemuneratory,
+        uint256 interestRateMoratory,
+        uint256 lateFeeRate
+    ) internal pure returns (uint256) {
         return
-            (terms.interestRateRemuneratory & type(uint32).max) +
-            ((terms.interestRateMoratory & type(uint32).max) << 32) +
-            ((terms.lateFeeRate & type(uint32).max) << 64);
+            (interestRateRemuneratory & type(uint32).max) +
+            ((interestRateMoratory & type(uint32).max) << 32) +
+            ((lateFeeRate & type(uint32).max) << 64);
     }
 
     /**

@@ -38,7 +38,7 @@ contract LiquidityPool is
     // ------------------ Constants ------------------------------- //
 
     /// @dev The role of an admin that is allowed to execute pool-related functions.
-    bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
+        bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
 
     /// @dev The role of the liquidity operator that is allowed to move liquidity and execute related hook functions.
     bytes32 public constant LIQUIDITY_OPERATOR_ROLE = keccak256("LIQUIDITY_OPERATOR_ROLE");

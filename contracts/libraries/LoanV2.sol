@@ -214,6 +214,15 @@ library LoanV2 {
     /**
      * @dev TODO
      */
+    struct SubLoanInternalTakingRequest {
+        uint256 borrowedAmount;
+        uint256 addonAmount;
+        uint256 duration;
+    }
+
+    /**
+     * @dev TODO
+     */
     struct SubLoanTakingRequest {
         uint256 borrowedAmount;
         uint256 addonAmount;

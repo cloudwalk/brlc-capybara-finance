@@ -40,7 +40,7 @@ interface ILendingMarketPrimaryV2 {
      * @param subLoanCount The total number of sub-loans.
      */
     event LoanRevoked(
-        uint256 indexed firstSubLoanId, // Tools: this comment prevents Prettier from formatting into a single line.
+        uint256 indexed firstSubLoanId, // Tools: prevent Prettier one-liner
         uint256 subLoanCount
     );
 
@@ -60,7 +60,7 @@ interface ILendingMarketPrimaryV2 {
      * - 64 bits from 128 to 191: the late fee rate.
      */
     event SubLoanTaken(
-        uint256 indexed subLoanId, // Tools: this comment prevents Prettier from formatting into a single line.
+        uint256 indexed subLoanId, // Tools: prevent Prettier one-liner
         address indexed borrower,
         uint256 indexed programId,
         uint256 borrowedAmount,
@@ -76,7 +76,7 @@ interface ILendingMarketPrimaryV2 {
      * @param subLoanRevision The revision number of the sub-loan.
      */
     event SubLoanRevision(
-        uint256 indexed subLoanId, // Tools: this comment prevents Prettier from formatting into a single line.
+        uint256 indexed subLoanId, // Tools: prevent Prettier one-liner
         uint256 indexed subLoanRevision
     );
 
@@ -326,12 +326,18 @@ interface ILendingMarketPrimaryV2 {
      *
      * @param borrower The account for whom the loan is taken.
      * @param programId The identifier of the lending program to take the loan.
+     * @param interestRateRemuneratory The remuneratory interest rate to apply to all sub-loans.
+     * @param interestRateMoratory The moratory interest rate to apply to all sub-loans.
+     * @param lateFeeRate The late fee rate to apply to all sub-loans.
      * @param subLoanTakingRequests The request structures to take the sub-loans.
      * @return firstSubLoanId The unique identifier of the first sub-loan of the loan.
      */
     function takeLoan(
         address borrower,
-        uint32 programId,
+        uint256 programId,
+        uint256 interestRateRemuneratory,
+        uint256 interestRateMoratory,
+        uint256 lateFeeRate,
         LoanV2.SubLoanTakingRequest[] calldata subLoanTakingRequests
     ) external returns (uint256 firstSubLoanId);
 
@@ -522,7 +528,7 @@ interface ILendingMarketConfigurationV2 {
      * @param creditLine The address of the credit line registered.
      */
     event CreditLineRegistered(
-        address indexed lender, // Tools: this comment prevents Prettier from formatting into a single line.
+        address indexed lender, // Tools: prevent Prettier one-liner
         address indexed creditLine
     );
 
@@ -539,7 +545,7 @@ interface ILendingMarketConfigurationV2 {
      *
      */
     event LiquidityPoolRegistered(
-        address indexed lender, // Tools: this comment prevents Prettier from formatting into a single line.
+        address indexed lender, // Tools: prevent Prettier one-liner
         address indexed liquidityPool
     );
 
@@ -549,7 +555,7 @@ interface ILendingMarketConfigurationV2 {
      * @param programId The unique identifier of the program.
      */
     event ProgramCreated(
-        address indexed lender, // Tools: this comment prevents Prettier from formatting into a single line.
+        address indexed lender, // Tools: prevent Prettier one-liner
         uint32 indexed programId
     );
 
@@ -560,7 +566,7 @@ interface ILendingMarketConfigurationV2 {
      * @param liquidityPool The address of the liquidity pool associated with the program.
      */
     event ProgramUpdated(
-        uint32 indexed programId, // Tools: this comment prevents Prettier from formatting into a single line.
+        uint32 indexed programId, // Tools: prevent Prettier one-liner
         address indexed creditLine,
         address indexed liquidityPool
     );
@@ -627,6 +633,9 @@ interface ILendingMarketErrorsV2 {
 
     /// @dev TODO
     error SubLoanBorrowedAmountInvalid(); // TODO: add parameters if needed
+
+    /// @dev TODO
+    error SubLoanDurationExcess(); // TODO: add parameters if needed
 
     /// @dev Thrown when the provided sub-loan duration is invalid.
     error DurationInvalid();
