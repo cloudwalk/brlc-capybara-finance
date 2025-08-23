@@ -25,6 +25,8 @@ const EVENT_NAME_MOCK_MINTING_FROM_RESERVE = "MockMintingFromReserve";
 const EVENT_NAME_OPERATIONAL_TREASURY_CHANGED = "OperationalTreasuryChanged";
 const EVENT_NAME_RESCUE = "Rescue";
 const EVENT_NAME_WITHDRAWAL = "Withdrawal";
+const EVENT_NAME_WORKING_TREASURY_REGISTERED = "WorkingTreasuryRegistered";
+const EVENT_NAME_WORKING_TREASURY_UNREGISTERED = "WorkingTreasuryUnregistered";
 
 // Errors of the library contracts
 const ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT = "AccessControlUnauthorizedAccount";
@@ -46,6 +48,9 @@ const ERROR_NAME_RESCUE_TOKEN_ADDRESS_ZERO = "LiquidityPool_RescueTokenAddressZe
 const ERROR_NAME_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST = "SafeCastOverflowedUintDowncast";
 const ERROR_NAME_SPENDER_ADDRESS_ZERO = "LiquidityPool_SpenderAddressZero";
 const ERROR_NAME_TOKEN_ADDRESS_ZERO = "LiquidityPool_TokenAddressZero";
+const ERROR_NAME_WORKING_TREASURY_ADDRESS_ZERO = "LiquidityPool_WorkingTreasuryAddressZero";
+const ERROR_NAME_WORKING_TREASURY_ZERO_ALLOWANCE_FOR_POOL = "LiquidityPool_WorkingTreasuryZeroAllowanceForPool";
+const ERROR_NAME_WORKING_TREASURY_UNREGISTERED = "LiquidityPool_WorkingTreasuryUnregistered";
 
 const DEFAULT_ADMIN_ROLE = ethers.ZeroHash;
 const GRANTOR_ROLE = ethers.id("GRANTOR_ROLE");
@@ -56,9 +61,11 @@ const LIQUIDITY_OPERATOR_ROLE = ethers.id("LIQUIDITY_OPERATOR_ROLE");
 
 const FUNC_SIGNATURE_DEPOSIT = "deposit(uint256)";
 const FUNC_SIGNATURE_DEPOSIT_FROM_OPERATIONAL_TREASURY = "depositFromOperationalTreasury(uint256)";
+const FUNC_SIGNATURE_DEPOSIT_FROM_WORKING_TREASURY = "depositFromWorkingTreasury(address,uint256)";
 const FUNC_SIGNATURE_DEPOSIT_FROM_RESERVE = "depositFromReserve(uint256)";
 const FUNC_SIGNATURE_WITHDRAW = "withdraw(uint256,uint256)";
 const FUNC_SIGNATURE_WITHDRAW_TO_OPERATIONAL_TREASURY = "withdrawToOperationalTreasury(uint256)";
+const FUNC_SIGNATURE_WITHDRAW_TO_WORKING_TREASURY = "withdrawToWorkingTreasury(address,uint256)";
 const FUNC_SIGNATURE_WITHDRAW_TO_RESERVE = "withdrawToReserve(uint256)";
 
 const ZERO_ADDRESS = ethers.ZeroAddress;
@@ -82,10 +89,12 @@ describe("Contract 'LiquidityPool'", async () => {
   let attacker: HardhatEthersSigner;
   let addonTreasury: HardhatEthersSigner;
   let operationalTreasury: HardhatEthersSigner;
+  let workingTreasuries: HardhatEthersSigner[];
 
   let tokenAddress: string;
 
   before(async () => {
+    let otherAccounts: HardhatEthersSigner[];
     [
       deployer,
       owner,
@@ -93,8 +102,11 @@ describe("Contract 'LiquidityPool'", async () => {
       liquidityOperator,
       attacker,
       addonTreasury,
-      operationalTreasury
+      operationalTreasury,
+      ...otherAccounts
     ] = await ethers.getSigners();
+
+    workingTreasuries = otherAccounts.slice(0, 3);
 
     // Factories with an explicitly specified deployer account
     liquidityPoolFactory = await ethers.getContractFactory("LiquidityPoolTestable");
@@ -108,6 +120,10 @@ describe("Contract 'LiquidityPool'", async () => {
     await token.mint(owner.address, MINT_AMOUNT);
     await token.mint(addonTreasury.address, MINT_AMOUNT);
     await token.mint(operationalTreasury.address, MINT_AMOUNT);
+    await token.mint(operationalTreasury.address, MINT_AMOUNT);
+    for (const workingTreasury of workingTreasuries) {
+      await token.mint(workingTreasury.address, MINT_AMOUNT);
+    }
   });
 
   async function deployLiquidityPool(): Promise<{ liquidityPool: Contract }> {
@@ -136,13 +152,18 @@ describe("Contract 'LiquidityPool'", async () => {
     await proveTx(liquidityPool.approveSpender(liquidityOperator.address, MAX_ALLOWANCE));
     await proveTx(connect(token, operationalTreasury).approve(getAddress(liquidityPool), MAX_ALLOWANCE));
     await proveTx(liquidityPool.setOperationalTreasury(operationalTreasury.address));
+    for (const workingTreasury of workingTreasuries) {
+      await proveTx(connect(token, workingTreasury).approve(getAddress(liquidityPool), MAX_ALLOWANCE));
+      await proveTx(liquidityPool.registerWorkingTreasury(workingTreasury.address));
+    }
     return { liquidityPool };
   }
 
   async function depositAndCheck(
     liquidityPool: Contract,
     depositAmount: bigint,
-    functionSignature: string = FUNC_SIGNATURE_DEPOSIT
+    functionSignature: string = FUNC_SIGNATURE_DEPOSIT,
+    treasury?: HardhatEthersSigner
   ): Promise<TransactionResponse> {
     const balancesBefore = await liquidityPool.getBalances();
 
@@ -164,6 +185,15 @@ describe("Contract 'LiquidityPool'", async () => {
           token,
           [liquidityPool, owner, admin, operationalTreasury],
           [depositAmount, 0, 0, -depositAmount]
+        );
+        break;
+      }
+      case FUNC_SIGNATURE_DEPOSIT_FROM_WORKING_TREASURY: {
+        tx = connect(liquidityPool, admin)[functionSignature](treasury?.address, depositAmount);
+        await expect(tx).to.changeTokenBalances(
+          token,
+          [liquidityPool, owner, admin, operationalTreasury, treasury],
+          [depositAmount, 0, 0, 0, -depositAmount]
         );
         break;
       }
@@ -196,7 +226,8 @@ describe("Contract 'LiquidityPool'", async () => {
   async function withdrawAndCheck(
     liquidityPool: Contract,
     withdrawalAmount: bigint,
-    functionSignature: string = FUNC_SIGNATURE_WITHDRAW
+    functionSignature: string = FUNC_SIGNATURE_WITHDRAW,
+    treasury?: HardhatEthersSigner
   ): Promise<TransactionResponse> {
     const borrowableBalance = withdrawalAmount * 2n;
     const borrowableAmount = (withdrawalAmount);
@@ -221,6 +252,15 @@ describe("Contract 'LiquidityPool'", async () => {
           token,
           [liquidityPool, owner, admin, operationalTreasury],
           [-borrowableAmount, 0, 0, borrowableAmount]
+        );
+        break;
+      }
+      case FUNC_SIGNATURE_WITHDRAW_TO_WORKING_TREASURY: {
+        tx = connect(liquidityPool, admin)[functionSignature](treasury?.address, borrowableAmount);
+        await expect(tx).to.changeTokenBalances(
+          token,
+          [liquidityPool, owner, admin, operationalTreasury, treasury],
+          [-borrowableAmount, 0, 0, 0, borrowableAmount]
         );
         break;
       }
@@ -381,7 +421,7 @@ describe("Contract 'LiquidityPool'", async () => {
       expect(await liquidityPool.addonTreasury()).to.eq(addonTreasury.address);
     });
 
-    it("Is reverted if caller does not have the owner role", async () => {
+    it("Is reverted if the caller does not have the owner role", async () => {
       const { liquidityPool } = await setUpFixture(deployLiquidityPool);
 
       await expect(connect(liquidityPool, attacker).setAddonTreasury(addonTreasury.address))
@@ -430,7 +470,7 @@ describe("Contract 'LiquidityPool'", async () => {
       expect(await liquidityPool.operationalTreasury()).to.eq(ZERO_ADDRESS);
     });
 
-    it("Is reverted if caller does not have the owner role", async () => {
+    it("Is reverted if the caller does not have the owner role", async () => {
       const { liquidityPool } = await setUpFixture(deployLiquidityPool);
 
       await expect(connect(liquidityPool, attacker).setOperationalTreasury(operationalTreasury.address))
@@ -459,6 +499,127 @@ describe("Contract 'LiquidityPool'", async () => {
     });
   });
 
+  describe("Function 'registerWorkingTreasury()", async () => {
+    it("Executes as expected and emits the correct event", async () => {
+      const { liquidityPool } = await setUpFixture(deployLiquidityPool);
+      const allowance = 1; // This allowance should be enough
+      await proveTx(connect(token, workingTreasuries[0]).approve(getAddress(liquidityPool), allowance));
+      await proveTx(connect(token, workingTreasuries[1]).approve(getAddress(liquidityPool), allowance));
+
+      await expect(liquidityPool.registerWorkingTreasury(workingTreasuries[0].address))
+        .to.emit(liquidityPool, EVENT_NAME_WORKING_TREASURY_REGISTERED)
+        .withArgs(workingTreasuries[0].address);
+
+      expect(await liquidityPool.workingTreasuries()).to.deep.equal([workingTreasuries[0].address]);
+
+      // Check registration of a second working pool
+      await expect(liquidityPool.registerWorkingTreasury(workingTreasuries[1].address))
+        .to.emit(liquidityPool, EVENT_NAME_WORKING_TREASURY_REGISTERED)
+        .withArgs(workingTreasuries[1].address);
+
+      expect(await liquidityPool.workingTreasuries()).to.deep.equal([
+        workingTreasuries[0].address,
+        workingTreasuries[1].address
+      ]);
+    });
+
+    it("Is reverted if the caller does not have the owner role", async () => {
+      const { liquidityPool } = await setUpFixture(deployLiquidityPool);
+      await proveTx(liquidityPool.grantRole(GRANTOR_ROLE, owner.address));
+      await proveTx(liquidityPool.grantRole(ADMIN_ROLE, admin.address));
+      await proveTx(liquidityPool.grantRole(LIQUIDITY_OPERATOR_ROLE, liquidityOperator.address));
+
+      await expect(connect(liquidityPool, attacker).registerWorkingTreasury(workingTreasuries[0].address))
+        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
+        .withArgs(attacker.address, OWNER_ROLE);
+
+      await expect(connect(liquidityPool, admin).registerWorkingTreasury(workingTreasuries[0].address))
+        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
+        .withArgs(admin.address, OWNER_ROLE);
+
+      await expect(connect(liquidityPool, liquidityOperator).registerWorkingTreasury(workingTreasuries[0].address))
+        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
+        .withArgs(liquidityOperator.address, OWNER_ROLE);
+    });
+
+    it("Is reverted if the provided working treasury address is zero", async () => {
+      const { liquidityPool } = await setUpFixture(deployLiquidityPool);
+
+      await expect(liquidityPool.registerWorkingTreasury(ZERO_ADDRESS))
+        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_WORKING_TREASURY_ADDRESS_ZERO);
+    });
+
+    it("Is reverted if the provided working treasury is already registered", async () => {
+      const { liquidityPool } = await setUpFixture(deployLiquidityPool);
+      const workingTreasury = workingTreasuries[0];
+      const allowance = 1; // This allowance should be enough
+
+      await proveTx(connect(token, workingTreasury).approve(getAddress(liquidityPool), allowance));
+      await proveTx(liquidityPool.registerWorkingTreasury(workingTreasury.address));
+
+      await expect(liquidityPool.registerWorkingTreasury(workingTreasury.address))
+        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_ALREADY_CONFIGURED);
+    });
+
+    it("Is reverted if the provided working treasury has not provided an allowance for the pool", async () => {
+      const { liquidityPool } = await setUpFixture(deployLiquidityPool);
+
+      await expect(liquidityPool.registerWorkingTreasury(workingTreasuries[0].address))
+        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_WORKING_TREASURY_ZERO_ALLOWANCE_FOR_POOL);
+    });
+  });
+
+  describe("Function 'unregisterWorkingTreasury()", async () => {
+    it("Executes as expected and emits the correct event", async () => {
+      const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
+      const lastWorkingTreasury = workingTreasuries[workingTreasuries.length - 1];
+      const firstWorkingTreasury = workingTreasuries[0];
+
+      await expect(liquidityPool.unregisterWorkingTreasury(lastWorkingTreasury.address))
+        .to.emit(liquidityPool, EVENT_NAME_WORKING_TREASURY_UNREGISTERED)
+        .withArgs(lastWorkingTreasury.address);
+
+      let expectedWorkingTreasuryAddresses: string[] = workingTreasuries
+        .map(treasury => treasury.address)
+        .slice(0, workingTreasuries.length - 1);
+      expect(await liquidityPool.workingTreasuries()).to.deep.equal(expectedWorkingTreasuryAddresses);
+
+      // Check unregistration of a second working pool
+      await expect(liquidityPool.unregisterWorkingTreasury(firstWorkingTreasury.address))
+        .to.emit(liquidityPool, EVENT_NAME_WORKING_TREASURY_UNREGISTERED)
+        .withArgs(firstWorkingTreasury.address);
+
+      expectedWorkingTreasuryAddresses = expectedWorkingTreasuryAddresses.slice(1);
+      expect(await liquidityPool.workingTreasuries()).to.deep.equal(expectedWorkingTreasuryAddresses);
+    });
+
+    it("Is reverted if the caller does not have the owner role", async () => {
+      const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
+
+      await expect(connect(liquidityPool, attacker).unregisterWorkingTreasury(workingTreasuries[0].address))
+        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
+        .withArgs(attacker.address, OWNER_ROLE);
+
+      await expect(connect(liquidityPool, admin).unregisterWorkingTreasury(workingTreasuries[0].address))
+        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
+        .withArgs(admin.address, OWNER_ROLE);
+
+      await expect(connect(liquidityPool, liquidityOperator).unregisterWorkingTreasury(workingTreasuries[0].address))
+        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
+        .withArgs(liquidityOperator.address, OWNER_ROLE);
+    });
+
+    it("Is reverted if the provided working treasury address is zero or unregistered", async () => {
+      const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
+
+      await expect(liquidityPool.unregisterWorkingTreasury(ZERO_ADDRESS))
+        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_WORKING_TREASURY_UNREGISTERED);
+
+      await expect(liquidityPool.unregisterWorkingTreasury(operationalTreasury.address))
+        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_WORKING_TREASURY_UNREGISTERED);
+    });
+  });
+
   describe("Function 'approveSpender()", async () => {
     it("Executes as expected", async () => {
       const { liquidityPool } = await setUpFixture(deployLiquidityPool);
@@ -483,7 +644,7 @@ describe("Contract 'LiquidityPool'", async () => {
       expect(actualAllowance).to.eq(expectedAllowance);
     });
 
-    it("Is reverted if caller does not have the owner role", async () => {
+    it("Is reverted if the caller does not have the owner role", async () => {
       const { liquidityPool } = await setUpFixture(deployLiquidityPool);
 
       await expect(connect(liquidityPool, attacker).approveSpender(attacker.address, MAX_ALLOWANCE))
@@ -511,7 +672,7 @@ describe("Contract 'LiquidityPool'", async () => {
       expect(await liquidityPool.hasRole(ADMIN_ROLE, owner.address)).to.equal(true);
     });
 
-    it("Is reverted if caller does not have the owner role", async () => {
+    it("Is reverted if the caller does not have the owner role", async () => {
       const { liquidityPool } = await setUpFixture(deployLiquidityPool);
 
       await expect(connect(liquidityPool, attacker).initAdminRole())
@@ -553,7 +714,7 @@ describe("Contract 'LiquidityPool'", async () => {
     });
   });
 
-  describe("Function 'depositFromExternalTreasury()'", async () => {
+  describe("Function 'depositFromOperationalTreasury()'", async () => {
     it("Executes as expected", async () => {
       const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
       const tx = depositAndCheck(liquidityPool, DEPOSIT_AMOUNT, FUNC_SIGNATURE_DEPOSIT_FROM_OPERATIONAL_TREASURY);
@@ -591,6 +752,63 @@ describe("Contract 'LiquidityPool'", async () => {
       const amount = maxUintForBits(64) + 1n;
 
       await expect(connect(liquidityPool, admin).depositFromOperationalTreasury(amount))
+        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST)
+        .withArgs(64, amount);
+    });
+  });
+
+  describe("Function 'depositFromWorkingTreasury()'", async () => {
+    it("Executes as expected", async () => {
+      const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
+      const tx = depositAndCheck(
+        liquidityPool,
+        DEPOSIT_AMOUNT,
+        FUNC_SIGNATURE_DEPOSIT_FROM_WORKING_TREASURY,
+        workingTreasuries[0]
+      );
+      await expect(tx).not.to.emit(token, EVENT_NAME_APPROVAL); // No approval must happen within the deposit function
+    });
+
+    it("Is reverted if the caller does not have the admin role", async () => {
+      const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
+      const workingTreasury = workingTreasuries[0];
+
+      await expect(connect(liquidityPool, owner).depositFromWorkingTreasury(workingTreasury.address, DEPOSIT_AMOUNT))
+        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
+        .withArgs(owner.address, ADMIN_ROLE);
+      await expect(
+        connect(liquidityPool, liquidityOperator).depositFromWorkingTreasury(workingTreasury.address, DEPOSIT_AMOUNT)
+      ).to.be.revertedWithCustomError(
+        liquidityPool,
+        ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT
+      ).withArgs(liquidityOperator.address, ADMIN_ROLE);
+      await expect(connect(liquidityPool, attacker).depositFromWorkingTreasury(workingTreasury.address, DEPOSIT_AMOUNT))
+        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
+        .withArgs(attacker.address, ADMIN_ROLE);
+    });
+
+    it("Is reverted if the provided treasury is not a registered working one", async () => {
+      const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
+      const wrongWorkingTreasury = (operationalTreasury);
+
+      await expect(connect(liquidityPool, admin).depositFromWorkingTreasury(wrongWorkingTreasury.address, 0))
+        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_WORKING_TREASURY_UNREGISTERED);
+    });
+
+    it("Is reverted if the deposit amount is zero", async () => {
+      const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
+      const workingTreasury = workingTreasuries[0];
+
+      await expect(connect(liquidityPool, admin).depositFromWorkingTreasury(workingTreasury.address, 0))
+        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_AMOUNT_INVALID);
+    });
+
+    it("Is reverted if the deposit amount is greater than 64-bit unsigned integer", async () => {
+      const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
+      const workingTreasury = workingTreasuries[0];
+      const amount = maxUintForBits(64) + 1n;
+
+      await expect(connect(liquidityPool, admin).depositFromWorkingTreasury(workingTreasury.address, amount))
         .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST)
         .withArgs(64, amount);
     });
@@ -728,6 +946,70 @@ describe("Contract 'LiquidityPool'", async () => {
     });
   });
 
+  describe("Function 'withdrawToWorkingTreasury()'", async () => {
+    it("Executes as expected", async () => {
+      const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
+      await withdrawAndCheck(
+        liquidityPool,
+        WITHDRAWAL_AMOUNT,
+        FUNC_SIGNATURE_WITHDRAW_TO_WORKING_TREASURY,
+        workingTreasuries[0]
+      );
+    });
+
+    it("Is reverted if the caller does not have the admin role", async () => {
+      const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
+      const workintTreasury = workingTreasuries[0];
+
+      await expect(connect(liquidityPool, owner).withdrawToWorkingTreasury(workintTreasury.address, WITHDRAWAL_AMOUNT))
+        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
+        .withArgs(owner.address, ADMIN_ROLE);
+
+      await expect(connect(liquidityPool, liquidityOperator).withdrawToWorkingTreasury(
+        workintTreasury.address,
+        WITHDRAWAL_AMOUNT
+      )).to.be.revertedWithCustomError(
+        liquidityPool,
+        ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT
+      ).withArgs(liquidityOperator.address, ADMIN_ROLE);
+
+      await expect(connect(liquidityPool, attacker).withdrawToWorkingTreasury(
+        workintTreasury.address,
+        WITHDRAWAL_AMOUNT
+      )).to.be.revertedWithCustomError(
+        liquidityPool,
+        ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT
+      ).withArgs(attacker.address, ADMIN_ROLE);
+    });
+
+    it("Is reverted if the provided treasury is not registered working one", async () => {
+      const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
+      const wrongWorkingTreasury = (operationalTreasury);
+
+      await expect(
+        connect(liquidityPool, admin).withdrawToWorkingTreasury(wrongWorkingTreasury.address, WITHDRAWAL_AMOUNT)
+      ).to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_WORKING_TREASURY_UNREGISTERED);
+    });
+
+    it("Is reverted if the amount is zero", async () => {
+      const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
+
+      await expect(connect(liquidityPool, admin).withdrawToWorkingTreasury(workingTreasuries[0].address, 0))
+        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_AMOUNT_INVALID);
+    });
+
+    it("Is reverted if the liquidity pool balance is enough but borrowable balance is not", async () => {
+      const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
+      // Make the pool token balance enough for the withdrawal
+      await proveTx(token.mint(getAddress(liquidityPool), WITHDRAWAL_AMOUNT));
+      await proveTx(liquidityPool.deposit(WITHDRAWAL_AMOUNT - 1n));
+
+      await expect(
+        connect(liquidityPool, admin).withdrawToWorkingTreasury(workingTreasuries[0].address, WITHDRAWAL_AMOUNT)
+      ).to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_BALANCE_INSUFFICIENT);
+    });
+  });
+
   describe("Function 'withdrawToReserve()'", async () => {
     it("Executes as expected", async () => {
       const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
@@ -803,7 +1085,7 @@ describe("Contract 'LiquidityPool'", async () => {
         .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_AMOUNT_INVALID);
     });
 
-    it("Is reverted if caller does not have the owner role", async () => {
+    it("Is reverted if the caller does not have the owner role", async () => {
       const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
 
       await expect(connect(liquidityPool, attacker).rescue(tokenAddress, rescuedAmount))
