@@ -47,7 +47,11 @@ abstract contract LiquidityPoolStorage {
      */
     address internal _operationalTreasury;
 
-    /// @dev TODO
+    /**
+     * @dev The working treasures.
+     *
+     * See the {workingTreasuries} function comments for more details.
+     */
     EnumerableSet.AddressSet internal _workingTreasures;
 
     /**
