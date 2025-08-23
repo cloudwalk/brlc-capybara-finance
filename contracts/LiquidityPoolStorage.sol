@@ -2,6 +2,8 @@
 
 pragma solidity 0.8.24;
 
+import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+
 /**
  * @title LiquidityPoolStorage contract
  * @author CloudWalk Inc. (See https://www.cloudwalk.io)
@@ -45,9 +47,12 @@ abstract contract LiquidityPoolStorage {
      */
     address internal _operationalTreasury;
 
+    /// @dev TODO
+    EnumerableSet.AddressSet internal _workingTreasures;
+
     /**
      * @dev This empty reserved space is put in place to allow future versions
      * to add new variables without shifting down storage in the inheritance chain.
      */
-    uint256[45] private __gap;
+    uint256[43] private __gap;
 }

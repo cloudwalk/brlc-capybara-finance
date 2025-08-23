@@ -4,6 +4,7 @@ pragma solidity 0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 import { AccessControlExtUpgradeable } from "./base/AccessControlExtUpgradeable.sol";
 import { PausableExtUpgradeable } from "./base/PausableExtUpgradeable.sol";
@@ -34,6 +35,7 @@ contract LiquidityPool is
 {
     using SafeERC20 for IERC20;
     using SafeCast for uint256;
+    using EnumerableSet for EnumerableSet.AddressSet;
 
     // ------------------ Constants ------------------------------- //
 
@@ -107,6 +109,16 @@ contract LiquidityPool is
     }
 
     /// @inheritdoc ILiquidityPoolConfiguration
+    function registerWorkingTreasury(address newTreasury) external onlyRole(OWNER_ROLE) {
+        _registerWorkingTreasury(newTreasury);
+    }
+
+    /// @inheritdoc ILiquidityPoolConfiguration
+    function unregisterWorkingTreasury(address treasury) external onlyRole(OWNER_ROLE) {
+        _unregisterWorkingTreasury(treasury);
+    }
+
+    /// @inheritdoc ILiquidityPoolConfiguration
     function approveSpender(address spender, uint256 newAllowance) external onlyRole(OWNER_ROLE) {
         if (spender == address(0)) {
             revert LiquidityPool_SpenderAddressZero();
@@ -137,6 +149,12 @@ contract LiquidityPool is
     }
 
     /// @inheritdoc ILiquidityPoolPrimary
+    function depositFromWorkingTreasury(address treasury, uint256 amount) external onlyRole(ADMIN_ROLE) {
+        _checkWorkingTreasuryRegistered(treasury);
+        _deposit(amount, treasury);
+    }
+
+    /// @inheritdoc ILiquidityPoolPrimary
     function depositFromReserve(uint256 amount) external onlyRole(ADMIN_ROLE) {
         IERC20Mintable(_token).mintFromReserve(address(this), amount);
         _deposit(amount, address(this));
@@ -150,6 +168,12 @@ contract LiquidityPool is
     /// @inheritdoc ILiquidityPoolPrimary
     function withdrawToOperationalTreasury(uint256 amount) external onlyRole(ADMIN_ROLE) {
         _withdraw(amount, 0, _getAndCheckOperationalTreasury());
+    }
+
+    /// @inheritdoc ILiquidityPoolPrimary
+    function withdrawToWorkingTreasury(address treasury, uint256 amount) external onlyRole(ADMIN_ROLE) {
+        _checkWorkingTreasuryRegistered(treasury);
+        _withdraw(amount, 0, treasury);
     }
 
     /// @inheritdoc ILiquidityPoolPrimary
@@ -254,6 +278,11 @@ contract LiquidityPool is
     }
 
     /// @inheritdoc ILiquidityPoolPrimary
+    function workingTreasuries() external view returns (address[] memory) {
+        return _workingTreasures.values();
+    }
+
+    /// @inheritdoc ILiquidityPoolPrimary
     function getBalances() external view returns (uint256, uint256) {
         return (_borrowableBalance, _addonsBalance);
     }
@@ -318,6 +347,13 @@ contract LiquidityPool is
     }
 
     /// @dev Sets the new address of the addon treasury internally.
+    function _checkWorkingTreasuryRegistered(address treasury) internal view {
+        if (!_workingTreasures.contains(treasury)) {
+            revert LiquidityPool_WorkingTreasuryUnregistered();
+        }
+    }
+
+    /// @dev Sets the new address of the addon treasury internally.
     function _setAddonTreasury(address newTreasury) internal {
         address oldTreasury = _addonTreasury;
         if (oldTreasury == newTreasury) {
@@ -346,6 +382,34 @@ contract LiquidityPool is
         }
         emit OperationalTreasuryChanged(newTreasury, oldTreasury);
         _operationalTreasury = newTreasury;
+    }
+
+    /**
+     * @dev Registers a new working treasury internally.
+     * @param newTreasury The new address of the working treasury.
+     */
+    function _registerWorkingTreasury(address newTreasury) internal {
+        if (newTreasury == address(0)) {
+            revert LiquidityPool_WorkingTreasuryAddressZero();
+        }
+        if (_workingTreasures.contains(newTreasury)) {
+            revert LiquidityPool_AlreadyConfigured();
+        }
+        if (IERC20(_token).allowance(newTreasury, address(this)) == 0) {
+            revert LiquidityPool_WorkingTreasuryZeroAllowanceForPool();
+        }
+        emit WorkingTreasuryRegistered(newTreasury);
+        _workingTreasures.add(newTreasury);
+    }
+
+    /**
+     * @dev Unregisters an exiting working treasury internally.
+     * @param treasury The address of the working treasury to unregister.
+     */
+    function _unregisterWorkingTreasury(address treasury) internal {
+        _checkWorkingTreasuryRegistered(treasury);
+        emit WorkingTreasuryUnregistered(treasury);
+        _workingTreasures.remove(treasury);
     }
 
     /// @dev Returns the operational treasury address and validates it.
