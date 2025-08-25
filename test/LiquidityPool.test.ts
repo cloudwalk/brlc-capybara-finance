@@ -49,8 +49,8 @@ const ERROR_NAME_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST = "SafeCastOverflowedUintDow
 const ERROR_NAME_SPENDER_ADDRESS_ZERO = "LiquidityPool_SpenderAddressZero";
 const ERROR_NAME_TOKEN_ADDRESS_ZERO = "LiquidityPool_TokenAddressZero";
 const ERROR_NAME_WORKING_TREASURY_ADDRESS_ZERO = "LiquidityPool_WorkingTreasuryAddressZero";
-const ERROR_NAME_WORKING_TREASURY_ZERO_ALLOWANCE_FOR_POOL = "LiquidityPool_WorkingTreasuryZeroAllowanceForPool";
 const ERROR_NAME_WORKING_TREASURY_UNREGISTERED = "LiquidityPool_WorkingTreasuryUnregistered";
+const ERROR_NAME_WORKING_TREASURY_ZERO_ALLOWANCE_FOR_POOL = "LiquidityPool_WorkingTreasuryZeroAllowanceForPool";
 
 const DEFAULT_ADMIN_ROLE = ethers.ZeroHash;
 const GRANTOR_ROLE = ethers.id("GRANTOR_ROLE");
@@ -693,12 +693,14 @@ describe("Contract 'LiquidityPool'", async () => {
       await expect(connect(liquidityPool, owner).depositFromWorkingTreasury(workingTreasury.address, DEPOSIT_AMOUNT))
         .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
         .withArgs(owner.address, ADMIN_ROLE);
+
       await expect(
         connect(liquidityPool, liquidityOperator).depositFromWorkingTreasury(workingTreasury.address, DEPOSIT_AMOUNT)
       ).to.be.revertedWithCustomError(
         liquidityPool,
         ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT
       ).withArgs(liquidityOperator.address, ADMIN_ROLE);
+
       await expect(connect(liquidityPool, attacker).depositFromWorkingTreasury(workingTreasury.address, DEPOSIT_AMOUNT))
         .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
         .withArgs(attacker.address, ADMIN_ROLE);
@@ -706,10 +708,11 @@ describe("Contract 'LiquidityPool'", async () => {
 
     it("Is reverted if the provided treasury is not a registered working one", async () => {
       const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
-      const wrongWorkingTreasury = (operationalTreasury);
 
-      await expect(connect(liquidityPool, admin).depositFromWorkingTreasury(wrongWorkingTreasury.address, 0))
-        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_WORKING_TREASURY_UNREGISTERED);
+      for (const wrongWorkingTreasury of [operationalTreasury, addonTreasury]) {
+        await expect(connect(liquidityPool, admin).depositFromWorkingTreasury(wrongWorkingTreasury.address, 0))
+          .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_WORKING_TREASURY_UNREGISTERED);
+      }
     });
 
     it("Is reverted if the deposit amount is zero", async () => {
@@ -932,11 +935,12 @@ describe("Contract 'LiquidityPool'", async () => {
 
     it("Is reverted if the provided treasury is not registered working one", async () => {
       const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
-      const wrongWorkingTreasury = (operationalTreasury);
 
-      await expect(
-        connect(liquidityPool, admin).withdrawToWorkingTreasury(wrongWorkingTreasury.address, WITHDRAWAL_AMOUNT)
-      ).to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_WORKING_TREASURY_UNREGISTERED);
+      for (const wrongWorkingTreasury of [operationalTreasury, addonTreasury]) {
+        await expect(
+          connect(liquidityPool, admin).withdrawToWorkingTreasury(wrongWorkingTreasury.address, WITHDRAWAL_AMOUNT)
+        ).to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_WORKING_TREASURY_UNREGISTERED);
+      }
     });
 
     it("Is reverted if the amount is zero", async () => {
