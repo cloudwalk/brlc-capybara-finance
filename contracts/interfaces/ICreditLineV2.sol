@@ -13,6 +13,7 @@ interface ICreditLineTypesV2 {
      *
      * Possible values:
      *
+     *
      * - SingleActiveLoan = 0 -------- Only one active loan is allowed; additional loan requests will be rejected.
      * - MultipleActiveLoans = 1 ----- Multiple active loans are allowed, with no limit on the total borrowed amount.
      * - TotalActiveAmountLimit = 2 -- Multiple active loans are allowed, but their total borrowed amount cannot
@@ -20,6 +21,7 @@ interface ICreditLineTypesV2 {
      *
      * Note: In all cases, each individual loan must comply with the maximum amount limit.
      */
+    // TODO use 0 for a prohibited account
     enum BorrowingPolicy {
         SingleActiveLoan,
         MultipleActiveLoans,
