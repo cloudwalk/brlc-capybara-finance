@@ -45,6 +45,16 @@ interface ILiquidityPoolPrimary {
     function depositFromOperationalTreasury(uint256 amount) external;
 
     /**
+     * @dev Deposits tokens to the liquidity pool from a working treasury that was previously registered in the pool.
+     *
+     * See the {workingTreasuries} function comments for more details.
+     *
+     * @param treasury The address of the treasury to deposit tokens from.
+     * @param amount The amount of tokens to deposit.
+     */
+    function depositFromWorkingTreasury(address treasury, uint256 amount) external;
+
+    /**
      * @dev Deposits tokens to the liquidity pool by minting them from the reserve
      * using a special function of the underlying token smart-contract.
      *
@@ -67,6 +77,16 @@ interface ILiquidityPoolPrimary {
      * @param amount The amount of tokens to withdraw from the borrowable balance.
      */
     function withdrawToOperationalTreasury(uint256 amount) external;
+
+    /**
+     * @dev Withdraws tokens from the liquidity pool to a working treasury that was previously registered in the pool.
+     *
+     * See the {workingTreasuries} function comments for more details.
+     *
+     * @param treasury The address of the treasury to withdraw tokens to.
+     * @param amount The amount of tokens to withdraw from the borrowable balance.
+     */
+    function withdrawToWorkingTreasury(address treasury, uint256 amount) external;
 
     /**
      * @dev Withdraws tokens from the liquidity pool by burning them to the reserve
@@ -111,6 +131,20 @@ interface ILiquidityPoolPrimary {
     function operationalTreasury() external view returns (address);
 
     /**
+     * @dev Returns the whole array of working treasury addresses that were previously registered in the pool.
+     *
+     * The working treasuries are used to deposit and withdraw tokens through special functions.
+     * If the array contains the treasury address provided for an operation it is executed. Otherwise it is reverted.
+     *
+     * There are no guarantees on the ordering of treasure address inside the returned array,
+     * and it may change non-sequence when some treasures are being unregistered not from the end of the array.
+     * During registration new treasures are always added at the end of the array.
+     *
+     * @return The current address of the operational treasury.
+     */
+    function workingTreasuries() external view returns (address[] memory);
+
+    /**
      * @dev Gets the borrowable and addons balances of the liquidity pool.
      *
      * The addons part of the balance has been deprecated since version 1.8.0 and now it always equals zero.
@@ -148,6 +182,24 @@ interface ILiquidityPoolConfiguration {
      */
     event OperationalTreasuryChanged(address newTreasury, address oldTreasury);
 
+    /**
+     * @dev Emitted when a working treasury has been registered in the pool.
+     *
+     * See the {workingTreasuries} function comments for more details.
+     *
+     * @param newTreasury The address of the registered working treasury.
+     */
+    event WorkingTreasuryRegistered(address newTreasury);
+
+    /**
+     * @dev Emitted when a working treasury has been unregistered from the pool.
+     *
+     * See the {workingTreasuries} function comments for more details.
+     *
+     * @param treasury The address of the unregistered working treasury.
+     */
+    event WorkingTreasuryUnregistered(address treasury);
+
     // ------------------ Transactional functions ----------------- //
 
     /**
@@ -167,6 +219,26 @@ interface ILiquidityPoolConfiguration {
      * @param newTreasury The new address of the operational treasury to set.
      */
     function setOperationalTreasury(address newTreasury) external;
+
+    /**
+     * @dev Registers a working treasury in the pool.
+     *
+     * See the {workingTreasuries} function comments for more details.
+     *
+     * @param newTreasury The new address of the working treasury to register.
+     */
+    function registerWorkingTreasury(address newTreasury) external;
+
+    /**
+     * @dev Unregisters a working treasury from the pool.
+     *
+     * The provided treasure must be previously registered in the pool.
+     *
+     * See the {workingTreasuries} function comments for more details.
+     *
+     * @param treasury The address of the working treasury to unregister.
+     */
+    function unregisterWorkingTreasury(address treasury) external;
 
     /**
      * @dev Approves a spender to spend tokens on behalf of the liquidity pool contract.
@@ -260,6 +332,15 @@ interface ILiquidityPoolErrors {
 
     /// @dev Thrown when the token address is zero during initialization.
     error LiquidityPool_TokenAddressZero();
+
+    /// @dev Thrown when the provided treasury address is zero.
+    error LiquidityPool_WorkingTreasuryAddressZero();
+
+    /// @dev Thrown when the provided treasury address is not registered in the pool.
+    error LiquidityPool_WorkingTreasuryUnregistered();
+
+    /// @dev Thrown when the working treasury has not provided an allowance for the pool to transfer its tokens.
+    error LiquidityPool_WorkingTreasuryZeroAllowanceForPool();
 }
 
 /**
