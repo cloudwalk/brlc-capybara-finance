@@ -27,7 +27,7 @@ export function checkEquality<T extends Record<string, unknown>>(
 }
 
 export async function setUpFixture<T>(func: () => Promise<T>): Promise<T> {
-  if (network.name === "hardhat") {
+  if (network.name === "hardhat" && process.env.FIXTURE_DISABLED !== "true") {
     return loadFixture(func);
   } else {
     return func();
