@@ -13,19 +13,20 @@ interface ICreditLineTypesV2 {
      *
      * Possible values:
      *
-     *
-     * - SingleActiveLoan = 0 -------- Only one active loan is allowed; additional loan requests will be rejected.
-     * - MultipleActiveLoans = 1 ----- Multiple active loans are allowed, with no limit on the total borrowed amount.
+     * - Prohibited = 0 -------------- The default value. TODO: suggest a better name and write the comment
+     * - SingleActiveLoan = 1 -------- Only one active loan is allowed; additional loan requests will be rejected.
      * - TotalActiveAmountLimit = 2 -- Multiple active loans are allowed, but their total borrowed amount cannot
      *                                 exceed the maximum borrowed amount of a single loan specified for the borrower.
+     * - MultipleActiveLoans = 3 ----- Multiple active loans are allowed, with no limit on the total borrowed amount.
      *
      * Note: In all cases, each individual loan must comply with the maximum amount limit.
      */
-    // TODO use 0 for a prohibited account
+    // TODO Tell the other teams about the changes in the borrowing policy: 0 => 1, 2 => 2, 2 => 3,
     enum BorrowingPolicy {
+        Prohibited,
         SingleActiveLoan,
-        MultipleActiveLoans,
-        TotalActiveAmountLimit
+        TotalActiveAmountLimit,
+        MultipleActiveLoans
     }
 
     /**
@@ -227,9 +228,6 @@ interface ICreditLineHooksV2 {
 interface ICreditLineErrorsV2 {
     // TODO Order alphabetically
 
-    /// @dev Thrown when the borrower configuration is invalid.
-    error CreditLine_BorrowerConfigurationInvalid();
-
     /// @dev TODO
     error CreditLine_LinkedCreditLineUnchanged();
 
@@ -251,7 +249,10 @@ interface ICreditLineErrorsV2 {
     /// @dev TODO
     error CreditLine_MaxBorrowedAmountExcess();
 
-    /// @dev Thrown when another loan is requested by an account but only one active loan is allowed.
+    /// @dev Thrown when a loan is requested but loans are prohibited for that borrower.
+    error CreditLine_LoansProhibited(); // TODO: Suggest a better name and improve the comment
+
+    /// @dev Thrown when another loan is requested for a borrower but only one active loan is allowed.
     error CreditLine_LimitViolationOnSingleActiveLoan();
 
     /// @dev Thrown when the total borrowed amount of active loans exceeds the maximum borrowed amount of a single loan.
@@ -259,6 +260,9 @@ interface ICreditLineErrorsV2 {
 
     /// @dev Thrown when the borrower state counters or amounts would overflow their maximum values.
     error CreditLine_BorrowerStateOverflow();
+
+    /// @dev TODO
+    error CreditLine_ImplementationAddressInvalid();
 }
 
 /**

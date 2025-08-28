@@ -23,6 +23,8 @@ interface ILendingMarketPrimaryV2 {
      * @param totalBorrowedAmount The total amount borrowed in the loan as the sum of all sub-loans.
      * @param totalAddonAmount The total addon amount of the loan as the sum of all sub-loans.
      * @param subLoanCount The total number of sub-loans.
+     * @param creditLine The address of the credit line that was used to take the loan.
+     * @param liquidityPool The address of the liquidity pool that was used to take the loan.
      */
     event LoanTaken(
         uint256 indexed firstSubLoanId,
@@ -30,7 +32,9 @@ interface ILendingMarketPrimaryV2 {
         uint256 indexed programId,
         uint256 totalBorrowedAmount,
         uint256 totalAddonAmount,
-        uint256 subLoanCount
+        uint256 subLoanCount,
+        address creditLine,
+        address liquidityPool
     );
 
     /**
@@ -48,8 +52,6 @@ interface ILendingMarketPrimaryV2 {
      * @dev Emitted when a sub-loan is taken.
      *
      * @param subLoanId The unique identifier of the sub-loan.
-     * @param borrower The address of the borrower of the sub-loan.
-     * @param programId The ID of the lending program that was used to take the sub-loan.
      * @param borrowedAmount The amount of tokens borrowed for the sub-loan.
      * @param addonAmount The addon amount of the sub-loan.
      * @param duration The duration of the sub-loan in days.
@@ -61,8 +63,6 @@ interface ILendingMarketPrimaryV2 {
      */
     event SubLoanTaken(
         uint256 indexed subLoanId, // Tools: prevent Prettier one-liner
-        address indexed borrower,
-        uint256 indexed programId,
         uint256 borrowedAmount,
         uint256 addonAmount,
         uint256 duration,
@@ -516,48 +516,10 @@ interface ILendingMarketConfigurationV2 {
     // ------------------ Events ---------------------------------- //
 
     /**
-     * @dev Emitted when a new credit line is registered.
-     *
-     * NOTES:
-     *
-     * 1. This event is deprecated since version 1.9.0 and in no longer used. Kept for historical reason.
-     * 2. Registration of credit lines before creating lending programs is no longer required.
-     * 3. All previously registered credit lines have been unregistered without an event since version 1.9.0.
-     *
-     * @param lender The address of the lender who registered the credit line.
-     * @param creditLine The address of the credit line registered.
-     */
-    event CreditLineRegistered(
-        address indexed lender, // Tools: prevent Prettier one-liner
-        address indexed creditLine
-    );
-
-    /**
-     * @dev Emitted when a new liquidity pool is registered.
-     * @param lender The address of the lender who registered the liquidity pool.
-     * @param liquidityPool The address of the liquidity pool registered.
-     *
-     * NOTES:
-     *
-     * 1. This event is deprecated since version 1.9.0 and in no longer used. Kept for historical reason.
-     * 2. Registration of liquidity pools before creating lending programs is no longer required.
-     * 3. All previously registered liquidity pools have been unregistered without an event since version 1.9.0.
-     *
-     */
-    event LiquidityPoolRegistered(
-        address indexed lender, // Tools: prevent Prettier one-liner
-        address indexed liquidityPool
-    );
-
-    /**
      * @dev Emitted when a new program is created.
-     * @param lender The address of the lender who created the program.
      * @param programId The unique identifier of the program.
      */
-    event ProgramCreated(
-        address indexed lender, // Tools: prevent Prettier one-liner
-        uint32 indexed programId
-    );
+    event ProgramCreated(uint256 indexed programId);
 
     /**
      * @dev Emitted when a program is updated.
@@ -566,7 +528,7 @@ interface ILendingMarketConfigurationV2 {
      * @param liquidityPool The address of the liquidity pool associated with the program.
      */
     event ProgramUpdated(
-        uint32 indexed programId, // Tools: prevent Prettier one-liner
+        uint256 indexed programId, // Tools: prevent Prettier one-liner
         address indexed creditLine,
         address indexed liquidityPool
     );
@@ -598,8 +560,41 @@ interface ILendingMarketErrorsV2 {
     // TODO: add prefixes to error names, like "LendingMarket_..."
     // TODO: order by names
 
+    /// @dev TODO
+    error AlreadyConfigured();
+
     /// @dev Thrown when the addon treasury address is zero.
     error AddonTreasuryAddressZero();
+
+    /// @dev TODO
+    error BorrowerAddressZero();
+
+    /// @dev TODO
+    error CreditLineAddressZero();
+
+    /// @dev TODO
+    error CreditLineAddressInvalid();
+
+    /// @dev TODO
+    error LiquidityPoolAddressZero();
+
+    /// @dev TODO
+    error LiquidityPoolAddressInvalid();
+
+    /// @dev TODO
+    error ImplementationAddressInvalid();
+
+    /// @dev TODO
+    error BlockTimestampExcess();
+
+    /// @dev TODO
+    error BorrowedAmountInvalidAmount();
+
+    /// @dev TODO
+    error AddonAmountInvalid();
+
+    /// @dev TODO
+    error PrincipalAmountInvalid();
 
     /// @dev TODO
     error SubLoanIdExcess();
@@ -639,6 +634,9 @@ interface ILendingMarketErrorsV2 {
 
     /// @dev Thrown when the provided sub-loan duration is invalid.
     error DurationInvalid();
+
+    /// @dev Thrown when the number of sub-loans to take is zero.
+    error SubLoanCountZero();
 
     /// @dev Thrown when the sub-loan count exceeds the maximum allowed value.
     error SubLoanCountExcess();

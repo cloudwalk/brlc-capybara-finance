@@ -7,11 +7,7 @@ import { PausableExtUpgradeable } from "./base/PausableExtUpgradeable.sol";
 import { UUPSExtUpgradeable } from "./base/UUPSExtUpgradeable.sol";
 import { Versionable } from "./base/Versionable.sol";
 
-import { Constants } from "./libraries/Constants.sol";
-import { Error } from "./libraries/Error.sol";
-import { Loan } from "./libraries/Loan.sol";
-import { SafeCast } from "./libraries/SafeCast.sol";
-
+import { ICreditLineV1 } from "./interfaces/ICreditLineV1.sol";
 import { ICreditLineV2 } from "./interfaces/ICreditLineV2.sol";
 import { ICreditLineConfigurationV2 } from "./interfaces/ICreditLineV2.sol";
 import { ICreditLineHooksV2 } from "./interfaces/ICreditLineV2.sol";
@@ -19,8 +15,6 @@ import { ICreditLinePrimaryV2 } from "./interfaces/ICreditLineV2.sol";
 import { IVersionable } from "./interfaces/IVersionable.sol";
 
 import { CreditLineStorageLayoutV2 } from "./CreditLineStorageLayoutV2.sol";
-import { ICreditLineV1 } from "./interfaces/ICreditLineV1.sol";
-import { ICreditLineV2 } from "./interfaces/ICreditLineV2.sol";
 
 /**
  * @title CreditLineV2 contract
@@ -31,11 +25,10 @@ contract CreditLineV2 is
     CreditLineStorageLayoutV2,
     AccessControlExtUpgradeable,
     PausableExtUpgradeable,
-    ICreditLineV2,
     Versionable,
-    UUPSExtUpgradeable
+    UUPSExtUpgradeable,
+    ICreditLineV2
 {
-    using SafeCast for uint256;
 
     // ------------------ Constants ------------------------------- //
 
@@ -88,8 +81,7 @@ contract CreditLineV2 is
             if (newLinkedCreditLine.code.length == 0) {
                 revert CreditLine_LinkedCreditLineNotContract();
             }
-            // TODO: User v1 instead
-            try ICreditLineV2(newLinkedCreditLine).proveCreditLine() {} catch {
+            try ICreditLineV1(newLinkedCreditLine).proveCreditLine() {} catch {
                 revert CreditLine_LinkedCreditLineContractInvalid();
             }
 
@@ -213,7 +205,12 @@ contract CreditLineV2 is
                 if (aggregatedActiveLoanAmount > borrowerConfig.maxBorrowedAmount) {
                     revert CreditLone_LimitViolationOnTotalActiveLoanAmount(aggregatedActiveLoanAmount);
                 }
-            } // else borrowerConfig.borrowingPolicy == BorrowingPolicy.MultipleActiveLoans
+            } else if (borrowerConfig.borrowingPolicy == BorrowingPolicy.MultipleActiveLoans) {
+                // Do nothing
+            } else {
+                // Loan are prohibited for the requested borrower
+                revert CreditLine_LoansProhibited();
+            }
 
             if (
                 newActiveLoanCount + borrowerState.closedLoanCount > type(uint16).max ||
@@ -310,7 +307,7 @@ contract CreditLineV2 is
      */
     function _validateUpgrade(address newImplementation) internal view override onlyRole(OWNER_ROLE) {
         try ICreditLineV2(newImplementation).proveCreditLine() {} catch {
-            revert Error.ImplementationAddressInvalid();
+            revert CreditLine_ImplementationAddressInvalid();
         }
     }
 }

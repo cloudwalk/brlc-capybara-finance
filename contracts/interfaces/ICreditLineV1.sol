@@ -37,4 +37,9 @@ interface ICreditLineV1 {
      * @return The structure containing the borrower state.
      */
     function getBorrowerState(address borrower) external view returns (BorrowerState memory);
+
+    // ------------------ Pure functions -------------------------- //
+
+    /// @dev Proves the contract is the credit line one. A marker function.
+    function proveCreditLine() external pure;
 }
