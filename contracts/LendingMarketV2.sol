@@ -430,7 +430,7 @@ contract LendingMarketV2 is
             // subLoan.operationCount = 0;
             // subLoan.earliestOperationId = 0;
             // subLoan.latestOperationId = 0;
-            // subLoan.pastOperationId = 0;
+            // subLoan.recentOperationId = 0;
 
             // Slot 4
             subLoan.trackedPrincipal = uint64(principal); // Safe cast due to prior checks
@@ -803,12 +803,12 @@ contract LendingMarketV2 is
     function _processOperations(ProcessingSubLoan memory subLoan) internal {
         LendingMarketStorageV2 storage storageStruct = _getLendingMarketStorage();
         SubLoan storage subLoanStored = storageStruct.subLoans[subLoan.id];
-        uint256 pastOperationId = subLoanStored.pastOperationId;
+        uint256 recentOperationId = subLoanStored.recentOperationId;
         uint256 operationId = 0;
-        if (pastOperationId == 0) {
+        if (recentOperationId == 0) {
             operationId = subLoanStored.earliestOperationId;
         } else {
-            operationId = storageStruct.subLoanOperations[subLoan.id][pastOperationId].nextOperationId;
+            operationId = storageStruct.subLoanOperations[subLoan.id][recentOperationId].nextOperationId;
         }
         if (operationId == 0) {
             return;
@@ -821,13 +821,13 @@ contract LendingMarketV2 is
             }
             _processSingleOperation(subLoan, operation, currentTimestamp);
             _postProcessOperation(subLoan, operation);
-            pastOperationId = operationId;
+            recentOperationId = operationId;
             if (operation.kind == uint256(OperationKind.Revocation)) {
                 break;
             }
             operationId = storageStruct.subLoanOperations[subLoan.id][operationId].nextOperationId;
         }
-        subLoanStored.pastOperationId = uint16(pastOperationId); // Safe cast due to prior checks
+        subLoanStored.recentOperationId = uint16(recentOperationId); // Safe cast due to prior checks
         _updateSubLoan(subLoan);
     }
 
@@ -835,7 +835,7 @@ contract LendingMarketV2 is
     function _replayOperations(ProcessingSubLoan memory subLoan, address counterparty) internal {
         _initiateSubLoan(subLoan);
         subLoan.counterparty = counterparty;
-        _getLendingMarketStorage().subLoans[subLoan.id].pastOperationId = 0;
+        _getLendingMarketStorage().subLoans[subLoan.id].recentOperationId = 0;
         _processOperations(subLoan);
     }
 
