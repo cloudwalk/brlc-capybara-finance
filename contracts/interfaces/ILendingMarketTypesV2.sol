@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.24;
+pragma solidity ^0.8.0;
 
 /**
- * @title LoanV2 library
+ * @title ILendingMarketTypesV2 interface
  * @author CloudWalk Inc. (See https://www.cloudwalk.io)
- * @dev This library contains the core data structures and enums used in the LendingMarketV2 contract.
+ * @dev Defines types that are used in the lending market contract V2.
  */
-library LoanV2 {
+interface ILendingMarketTypesV2 {
     /**
      * @dev TODO.
      */

@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
 
+//TODO: fix here and everywhere the version pragma
 pragma solidity 0.8.24;
 
-import { LoanV2 } from "../libraries/LoanV2.sol";
+import { ILendingMarketTypesV2 } from "./ILendingMarketTypesV2.sol";
 
 /**
  * @title ILendingMarketPrimaryV2 interface
@@ -11,7 +12,7 @@ import { LoanV2 } from "../libraries/LoanV2.sol";
  *
  * TODO
  */
-interface ILendingMarketPrimaryV2 {
+interface ILendingMarketPrimaryV2 is ILendingMarketTypesV2 {
     // ------------------ Events ---------------------------------- //
 
     /**
@@ -245,9 +246,9 @@ interface ILendingMarketPrimaryV2 {
     event SubLoanStatusUpdated(
         uint256 indexed subLoanId,
         uint256 indexed subLoanRevision,
-        LoanV2.SubLoanStatus indexed newStatus,
+        SubLoanStatus indexed newStatus,
         uint256 trackedTimestamp,
-        LoanV2.SubLoanStatus oldStatus
+        SubLoanStatus oldStatus
     );
 
     /**
@@ -264,7 +265,7 @@ interface ILendingMarketPrimaryV2 {
     event OperationApplied(
         uint256 indexed subLoanId,
         uint256 indexed operationId,
-        LoanV2.OperationKind indexed kind,
+        OperationKind indexed kind,
         uint256 timestamp,
         uint256 inputValue, //TODO: consider another name, same for similar events
         address account //TODO: consider another name, same for similar events
@@ -276,14 +277,14 @@ interface ILendingMarketPrimaryV2 {
      * @param subLoanId The unique identifier of the sub-loan.
      * @param operationId The unique identifier of the operation within the sub-loan.
      * @param kind The kind of the operation like repayment, discount, setting a new rate, etc.
-     * @param timestamp The timestamp when the operaion will be applied.
+     * @param timestamp The timestamp when the operation will be applied.
      * @param inputValue The input value of the operation like the amount to repay, new rate, new duration, etc.
      * @param account The account related to the operation, e.g. the repayer.
      */
     event OperationPended(
         uint256 indexed subLoanId,
         uint256 indexed operationId,
-        LoanV2.OperationKind indexed kind,
+        OperationKind indexed kind,
         uint256 timestamp,
         uint256 inputValue,
         address account
@@ -300,7 +301,7 @@ interface ILendingMarketPrimaryV2 {
     event OperationRevoked(
         uint256 indexed subLoanId,
         uint256 indexed operationId,
-        LoanV2.OperationKind indexed kind,
+        OperationKind indexed kind,
         address counterparty
     );
 
@@ -311,7 +312,7 @@ interface ILendingMarketPrimaryV2 {
      * @param operationId The unique identifier of the operation within the sub-loan.
      * @param kind The kind of the operation like repayment, discount, setting a new rate, etc.
      */
-    event OperationCanceled(uint256 indexed subLoanId, uint256 indexed operationId, LoanV2.OperationKind indexed kind);
+    event OperationCanceled(uint256 indexed subLoanId, uint256 indexed operationId, OperationKind indexed kind);
 
     // TODO: add more events if needed
     // TODO: add more parameters to the existing events if needed
@@ -338,7 +339,7 @@ interface ILendingMarketPrimaryV2 {
         uint256 interestRateRemuneratory,
         uint256 interestRateMoratory,
         uint256 lateFeeRate,
-        LoanV2.SubLoanTakingRequest[] calldata subLoanTakingRequests
+        SubLoanTakingRequest[] calldata subLoanTakingRequests
     ) external returns (uint256 firstSubLoanId);
 
     /**
@@ -354,7 +355,7 @@ interface ILendingMarketPrimaryV2 {
      *
      * @param repaymentRequests The request structures to repay the sub-loans.
      */
-    function repaySubLoanBatch(LoanV2.RepaymentRequest[] calldata repaymentRequests) external;
+    function repaySubLoanBatch(RepaymentRequest[] calldata repaymentRequests) external;
 
     // TODO: Ask if discount can be greater than the principal amount
 
@@ -365,7 +366,7 @@ interface ILendingMarketPrimaryV2 {
      *
      * @param operationRequests The operation request structures to discount the sub-loans.
      */
-    function discountSubLoanBatch(LoanV2.SubLoanOperationRequest[] calldata operationRequests) external;
+    function discountSubLoanBatch(SubLoanOperationRequest[] calldata operationRequests) external;
 
     /**
      * @dev Sets the duration of a batch of sub-loans.
@@ -374,7 +375,7 @@ interface ILendingMarketPrimaryV2 {
      *
      * @param operationRequests The operation request structures to set the duration of the sub-loans.
      */
-    function setSubLoanDurationBatch(LoanV2.SubLoanOperationRequest[] calldata operationRequests) external;
+    function setSubLoanDurationBatch(SubLoanOperationRequest[] calldata operationRequests) external;
 
     /**
      * @dev Sets the remuneratory interest rate of a batch of sub-loans.
@@ -384,7 +385,7 @@ interface ILendingMarketPrimaryV2 {
      * @param operationRequests The operation request structures to set the remuneratory interest rate of the sub-loans.
      */
     function setSubLoanInterestRateRemuneratoryBatch(
-        LoanV2.SubLoanOperationRequest[] calldata operationRequests
+        SubLoanOperationRequest[] calldata operationRequests
     ) external;
 
     /**
@@ -394,7 +395,7 @@ interface ILendingMarketPrimaryV2 {
      *
      * @param operationRequests The operation request structures to set the moratory interest rate of the sub-loans.
      */
-    function setSubLoanInterestRateMoratoryBatch(LoanV2.SubLoanOperationRequest[] calldata operationRequests) external;
+    function setSubLoanInterestRateMoratoryBatch(SubLoanOperationRequest[] calldata operationRequests) external;
 
     /**
      * @dev Sets the late fee rate of a batch of sub-loans.
@@ -403,7 +404,7 @@ interface ILendingMarketPrimaryV2 {
      *
      * @param operationRequests The operation request structures to set the late fee rate of the sub-loans.
      */
-    function setSubLoanLateFeeRateBatch(LoanV2.SubLoanOperationRequest[] calldata operationRequests) external;
+    function setSubLoanLateFeeRateBatch(SubLoanOperationRequest[] calldata operationRequests) external;
 
     /**
      * @dev Freezes a batch of sub-loans.
@@ -412,7 +413,7 @@ interface ILendingMarketPrimaryV2 {
      *
      * @param operationRequests The operation request structures to freeze the sub-loans.
      */
-    function freezeSubLoanBatch(LoanV2.SubLoanOperationRequest[] calldata operationRequests) external;
+    function freezeSubLoanBatch(SubLoanOperationRequest[] calldata operationRequests) external;
 
     /**
      * @dev Unfreezes a batch of sub-loans.
@@ -421,7 +422,7 @@ interface ILendingMarketPrimaryV2 {
      *
      * @param operationRequests The operation request structures to unfreeze the sub-loans.
      */
-    function unfreezeSubLoanBatch(LoanV2.SubLoanOperationRequest[] calldata operationRequests) external;
+    function unfreezeSubLoanBatch(SubLoanOperationRequest[] calldata operationRequests) external;
 
     /**
      * @dev Voids a batch of operations.
@@ -436,7 +437,7 @@ interface ILendingMarketPrimaryV2 {
      *
      * @param voidOperationRequests The requests to void the operations.
      */
-    function voidOperationBatch(LoanV2.VoidOperationRequest[] calldata voidOperationRequests) external;
+    function voidOperationBatch(VoidOperationRequest[] calldata voidOperationRequests) external;
 
     // ------------------ View functions -------------------------- //
 
@@ -455,7 +456,7 @@ interface ILendingMarketPrimaryV2 {
      * @param subLoanIds The unique identifiers of the sub-loans to get
      * @return The stored states of the sub-loans
      */
-    function getSubLoanStateBatch(uint256[] calldata subLoanIds) external view returns (LoanV2.SubLoan[] memory);
+    function getSubLoanStateBatch(uint256[] calldata subLoanIds) external view returns (SubLoan[] memory);
 
     /**
      * @dev Gets the sub-loan preview at a specific timestamp for a batch of sub-loans.
@@ -466,7 +467,7 @@ interface ILendingMarketPrimaryV2 {
     function getSubLoanPreviewBatch(
         uint256[] calldata subLoanIds,
         uint256 timestamp
-    ) external view returns (LoanV2.SubLoanPreview[] memory);
+    ) external view returns (SubLoanPreview[] memory);
 
     /**
      * @dev Gets the preview of a loan at a specific timestamp.
@@ -478,7 +479,7 @@ interface ILendingMarketPrimaryV2 {
     function getLoanPreviewBatch(
         uint256[] calldata subLoanIds,
         uint256 timestamp
-    ) external view returns (LoanV2.LoanPreview[] memory);
+    ) external view returns (LoanPreview[] memory);
 
     /**
      * @dev Gets the list of operations for a sub-loan in the order of their timestamp.
@@ -486,7 +487,7 @@ interface ILendingMarketPrimaryV2 {
      * @param subLoanId The unique identifier of the sub-loan to get the operations for.
      * @return The list of operations for the sub-loan.
      */
-    function getSubLoanOperations(uint256 subLoanId) external view returns (LoanV2.OperationView[] memory);
+    function getSubLoanOperations(uint256 subLoanId) external view returns (OperationView[] memory);
 
     /// @dev Returns the rate factor used to for interest rate calculations.
     function interestRateFactor() external view returns (uint256);

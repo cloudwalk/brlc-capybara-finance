@@ -2,14 +2,14 @@
 
 pragma solidity 0.8.24;
 
-import { LoanV2 } from "./libraries/LoanV2.sol";
+import { ILendingMarketTypesV2 } from "./interfaces/ILendingMarketTypesV2.sol";
 
 /**
  * @title LendingMarketStorageV2 contract
  * @author CloudWalk Inc. (See https://www.cloudwalk.io)
  * @dev Defines the storage layout for the lending market contract.
  */
-abstract contract LendingMarketStorageLayoutV2 {
+abstract contract LendingMarketStorageLayoutV2 is ILendingMarketTypesV2 {
     // ------------------ Storage layout -------------------------- //
 
     /**
@@ -47,10 +47,10 @@ abstract contract LendingMarketStorageLayoutV2 {
         // uint32 __reserved; // Reserved until the end of the storage slot
 
         // Slots 2...5
-        mapping(uint256 subLoanId => LoanV2.SubLoan) subLoans;
+        mapping(uint256 subLoanId => SubLoan) subLoans;
         mapping(uint256 programId => address) programCreditLines;
         mapping(uint256 programId => address) programLiquidityPools;
-        mapping(uint256 subLoanId => mapping(uint256 operationId => LoanV2.Operation)) subLoanOperations;
+        mapping(uint256 subLoanId => mapping(uint256 operationId => Operation)) subLoanOperations;
     }
 
     // ------------------ Internal functions ---------------------- //
