@@ -527,22 +527,15 @@ contract LendingMarketV2 is
         if (prevOperationId == 0) {
             // Add at the beginning of the operation list
             nextOperationId = subLoan.earliestOperationId;
-            if (nextOperationId != 0) {
-                storageStruct.subLoanOperations[subLoanId][nextOperationId].prevOperationId = uint16(operationId);
-            }
             subLoan.earliestOperationId = uint16(operationId);
         } else {
             // Insert in the middle or at the end of the operation list
             nextOperationId = storageStruct.subLoanOperations[subLoanId][prevOperationId].nextOperationId;
             storageStruct.subLoanOperations[subLoanId][prevOperationId].nextOperationId = uint16(operationId);
-            if (nextOperationId != 0) {
-                storageStruct.subLoanOperations[subLoanId][nextOperationId].prevOperationId = uint16(operationId);
-            }
         }
         Operation storage operation = storageStruct.subLoanOperations[subLoanId][operationId];
         operation.status = OperationStatus.Pending;
         operation.kind = OperationKind(kind);
-        operation.prevOperationId = uint16(prevOperationId); // Safe cast due to prior checks
         operation.nextOperationId = uint16(nextOperationId); // Safe cast due to prior checks
         operation.timestamp = uint32(timestamp); // Safe cast due to prior checks
         operation.inputValue = uint64(inputValue); // Safe cast due to prior checks

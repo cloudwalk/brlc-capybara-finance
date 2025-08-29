@@ -173,10 +173,9 @@ interface ILendingMarketTypesV2 {
         OperationStatus status;
         OperationKind kind;
         uint16 nextOperationId;
-        uint16 prevOperationId;
         uint32 timestamp;
         uint64 inputValue;
-        // uint112 __reserved; // Reserved until the end of the storage slot
+        // uint128 __reserved; // Reserved until the end of the storage slot
 
         // Slot2
         address account;
