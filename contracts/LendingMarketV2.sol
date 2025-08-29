@@ -429,7 +429,6 @@ contract LendingMarketV2 is
             // subLoan.subLoanCount = 0;
             // subLoan.operationCount = 0;
             // subLoan.earliestOperationId = 0;
-            // subLoan.latestOperationId = 0;
             // subLoan.recentOperationId = 0;
 
             // Slot 4
@@ -524,21 +523,19 @@ contract LendingMarketV2 is
         subLoan.operationCount = uint16(operationId);
         uint256 prevOperationId = _findEarlierOperation(subLoanId, timestamp);
         uint256 nextOperationId;
-        // TODO: Check and fix the logic of inserting a new operation in the chain
+
         if (prevOperationId == 0) {
             // Add at the beginning of the operation list
             nextOperationId = subLoan.earliestOperationId;
-            storageStruct.subLoanOperations[subLoanId][nextOperationId].prevOperationId = uint16(operationId);
+            if (nextOperationId != 0) {
+                storageStruct.subLoanOperations[subLoanId][nextOperationId].prevOperationId = uint16(operationId);
+            }
             subLoan.earliestOperationId = uint16(operationId);
         } else {
             // Insert in the middle or at the end of the operation list
-            if (prevOperationId == subLoan.latestOperationId) {
-                // Add at the end of the operation list
-                storageStruct.subLoanOperations[subLoanId][prevOperationId].nextOperationId = uint16(operationId);
-                subLoan.latestOperationId = uint16(operationId);
-            } else {
-                nextOperationId = storageStruct.subLoanOperations[subLoanId][prevOperationId].nextOperationId;
-                storageStruct.subLoanOperations[subLoanId][prevOperationId].nextOperationId = uint16(operationId);
+            nextOperationId = storageStruct.subLoanOperations[subLoanId][prevOperationId].nextOperationId;
+            storageStruct.subLoanOperations[subLoanId][prevOperationId].nextOperationId = uint16(operationId);
+            if (nextOperationId != 0) {
                 storageStruct.subLoanOperations[subLoanId][nextOperationId].prevOperationId = uint16(operationId);
             }
         }
@@ -716,14 +713,45 @@ contract LendingMarketV2 is
         IERC20(token).safeTransfer(liquidityPool, amount);
     }
 
-    /// @dev TODO
+    /**
+     * @dev Finds the operation that should come before a new operation with the given timestamp.
+     * @param subLoanId The ID of the sub-loan.
+     * @param timestamp The timestamp of the operation to be inserted.
+     * @return The ID of the operation that should precede the new operation, or 0 if it should be first.
+     */
     function _findEarlierOperation(uint256 subLoanId, uint256 timestamp) internal view returns (uint256) {
-        uint256 operationId = _getSubLoanInStorage(subLoanId).latestOperationId;
-        LendingMarketStorageV2 storage storageStruct = _getLendingMarketStorage();
-        while (operationId != 0 && storageStruct.subLoanOperations[subLoanId][operationId].timestamp > timestamp) {
-            operationId = storageStruct.subLoanOperations[subLoanId][operationId].prevOperationId;
+        LendingMarketStorageV2 storage $ = _getLendingMarketStorage();
+        SubLoan storage subLoan = $.subLoans[subLoanId];
+        
+        // Start from recentOperationId if available and valid
+        uint256 operationId = subLoan.recentOperationId;
+
+        if (operationId != 0 && $.subLoanOperations[subLoanId][operationId].timestamp <= timestamp) {
+            // recentOperationId exists and has timestamp <= target
+            uint256 nextId = $.subLoanOperations[subLoanId][operationId].nextOperationId;
+            if (nextId == 0 || $.subLoanOperations[subLoanId][nextId].timestamp > timestamp) {
+                // Either no more operations or next operation has timestamp > target
+                // recentOperationId is the correct predecessor
+                return operationId;
+            }
+            // Continue searching from the next operation after recentOperationId
+            operationId = nextId;
+        } else {
+            // Start from the beginning
+            operationId = subLoan.earliestOperationId;
         }
-        return operationId;
+        
+        uint256 prevOperationId = 0;
+
+        while (operationId != 0) {
+            if ($.subLoanOperations[subLoanId][operationId].timestamp > timestamp) {
+                return prevOperationId;
+            }
+            prevOperationId = operationId;
+            operationId = $.subLoanOperations[subLoanId][operationId].nextOperationId;
+        }
+
+        return prevOperationId;
     }
 
     /// @dev TODO

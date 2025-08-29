@@ -108,7 +108,7 @@ interface ILendingMarketTypesV2 {
         uint16 operationCount;
         uint16 earliestOperationId;
         uint16 recentOperationId;
-        uint16 latestOperationId; //TODO: consider removing this field as redundant
+        // uint16 __reserved; // Reserved until the end of the storage slot
         // No reserve until the end of the storage slot
 
         // Slot 4 //trackedBalance
