@@ -140,7 +140,7 @@ contract LendingMarketV2 is
             uint256 subLoanId = _takeSubLoan(
                 borrower, // Tools: prevent Prettier one-liner
                 programId,
-            packedRates,
+                packedRates,
                 subLoanTakingRequests[i]
             );
             if (i == 0) {
@@ -456,11 +456,12 @@ contract LendingMarketV2 is
     function _executeRepaymentBatch(RepaymentRequest[] calldata repaymentRequests) internal {
         uint256 count = repaymentRequests.length;
         AddedOperationRequest[] memory addingRequests = new AddedOperationRequest[](count);
+        uint256 currentTimestamp = _blockTimestamp();
         for (uint256 i = 0; i < count; ++i) {
             RepaymentRequest memory repaymentRequest = repaymentRequests[i];
             uint256 operationTimestamp = repaymentRequest.timestamp;
             if (operationTimestamp == 0) {
-                operationTimestamp = _blockTimestamp();
+                operationTimestamp = currentTimestamp;
             }
             addingRequests[i] = AddedOperationRequest({
                 subLoanId: repaymentRequest.subLoanId,
@@ -483,11 +484,12 @@ contract LendingMarketV2 is
     ) internal {
         uint256 count = operationRequests.length;
         AddedOperationRequest[] memory addingRequests = new AddedOperationRequest[](count);
+        uint256 currentTimestamp = _blockTimestamp();
         for (uint256 i = 0; i < count; ++i) {
             SubLoanOperationRequest memory operationRequest = operationRequests[i];
             uint256 operationTimestamp = operationRequest.timestamp;
             if (operationTimestamp == 0) {
-                operationTimestamp = _blockTimestamp();
+                operationTimestamp = currentTimestamp;
             }
             addingRequests[i] = AddedOperationRequest({
                 subLoanId: operationRequest.subLoanId,
@@ -1116,8 +1118,11 @@ contract LendingMarketV2 is
                 trackedPartAmount = 0;
             }
         } else {
-            trackedPartAmount -= changeAmount;
-            repaidOrDiscountPartAmount += changeAmount;
+            unchecked {
+                trackedPartAmount -= changeAmount;
+                repaidOrDiscountPartAmount += changeAmount;
+                changeAmount = 0;
+            }
         }
 
         return (changeAmount, trackedPartAmount, repaidOrDiscountPartAmount);
@@ -1134,7 +1139,7 @@ contract LendingMarketV2 is
             subLoan.interestRateRemuneratory,
             Constants.INTEREST_RATE_FACTOR
         );
-        subLoan.interestRateRemuneratory += newTrackedBalance - oldTrackedBalance;
+        subLoan.trackedInterestRemuneratory += newTrackedBalance - oldTrackedBalance;
     }
 
     /**
@@ -1159,7 +1164,7 @@ contract LendingMarketV2 is
         uint256 remainder = product % Constants.INTEREST_RATE_FACTOR;
         uint256 result = product / Constants.INTEREST_RATE_FACTOR;
         if (remainder >= (Constants.INTEREST_RATE_FACTOR / 2)) {
-            ++result;
+            unchecked { ++result; }
         }
         subLoan.trackedLateFee = uint64(_roundMath(result)); // Safe cast due to prior checks
     }
@@ -1549,11 +1554,13 @@ contract LendingMarketV2 is
      * @dev TODO
      */
     function _calculateSumAmountByParts(uint256 packedParts) internal pure returns (uint256) {
-        return
-            ((packedParts >> 0) & type(uint64).max) + // Tools: prevent Prettier one-liner
-            ((packedParts >> 64) & type(uint64).max) +
-            ((packedParts >> 128) & type(uint64).max) +
-            ((packedParts >> 192) & type(uint64).max);
+        unchecked {
+            return
+                ((packedParts) & type(uint64).max) + // Tools: prevent Prettier one-liner
+                ((packedParts >> 64) & type(uint64).max) +
+                ((packedParts >> 128) & type(uint64).max) +
+                ((packedParts >> 192) & type(uint64).max);
+        }
     }
 
     /**
@@ -1621,26 +1628,23 @@ contract LendingMarketV2 is
         if (borrower == address(0)) {
             revert BorrowerAddressZero();
         }
-        if (borrowedAmount == 0) {
+        if (
+            borrowedAmount == 0 ||
+            borrowedAmount > type(uint64).max ||
+            borrowedAmount != _roundMath(borrowedAmount)
+        ) {
             revert BorrowedAmountInvalidAmount();
         }
-        if (borrowedAmount > type(uint64).max) {
-            revert BorrowedAmountInvalidAmount();
-        }
-        if (borrowedAmount != _roundMath(borrowedAmount)) {
-            revert BorrowedAmountInvalidAmount();
-        }
-        if (addonAmount != _roundMath(addonAmount)) {
+        if (
+            addonAmount > type(uint64).max ||
+            addonAmount != _roundMath(addonAmount)
+        ) {
             revert AddonAmountInvalid();
         }
-        if (addonAmount > type(uint64).max) {
-            revert AddonAmountInvalid();
-        }
-        if (borrowedAmount > type(uint64).max) {
-            revert AddonAmountInvalid();
-        }
-        if (addonAmount + borrowedAmount > type(uint64).max) {
-            revert PrincipalAmountInvalid();
+        unchecked {
+            if (addonAmount + borrowedAmount > type(uint64).max) {
+                revert PrincipalAmountInvalid();
+            }
         }
 
         (address creditLine, address liquidityPool) = _getCreditLineAndLiquidityPool(programId);
@@ -1682,13 +1686,11 @@ contract LendingMarketV2 is
         uint256 interestRateMoratory,
         uint256 lateFeeRate
     ) internal pure {
-        if (interestRateRemuneratory > type(uint32).max) {
-            revert RateValueInvalid();
-        }
-        if (interestRateMoratory > type(uint32).max) {
-            revert RateValueInvalid();
-        }
-        if (lateFeeRate > type(uint32).max) {
+        if (
+            interestRateRemuneratory > type(uint32).max ||
+            interestRateMoratory > type(uint32).max ||
+            lateFeeRate > type(uint32).max
+        ) {
             revert RateValueInvalid();
         }
     }
@@ -2145,7 +2147,9 @@ contract LendingMarketV2 is
             preview.totalLateFeeAmount += _calculateLateFeeAmount(subLoan);
             preview.totalDiscountAmount += _calculateDiscountAmount(subLoan);
             preview.subLoanPreviews[i] = singleLoanPreview;
-            ++subLoanId;
+            unchecked {
+                ++subLoanId;
+            }
         }
         preview.day = singleLoanPreview.day;
 
@@ -2186,9 +2190,9 @@ contract LendingMarketV2 is
         uint256 part4
     ) internal pure returns (uint256) {
         return
-            (part1 & type(uint64).max) +
-            ((part2 & type(uint64).max) << 64) +
-            ((part3 & type(uint64).max) << 128) +
+            (part1 & type(uint64).max) |
+            ((part2 & type(uint64).max) << 64) |
+            ((part3 & type(uint64).max) << 128) |
             ((part4 & type(uint64).max) << 192);
     }
 
@@ -2246,8 +2250,8 @@ contract LendingMarketV2 is
         uint256 lateFeeRate
     ) internal pure returns (uint256) {
         return
-            (interestRateRemuneratory & type(uint64).max) +
-            ((interestRateMoratory & type(uint64).max) << 64) +
+            (interestRateRemuneratory & type(uint64).max) |
+            ((interestRateMoratory & type(uint64).max) << 64) |
             ((lateFeeRate & type(uint64).max) << 128);
     }
 
@@ -2259,7 +2263,7 @@ contract LendingMarketV2 is
         uint256 interestRateMoratory,
         uint256 lateFeeRate
     ) {
-        interestRateRemuneratory = (packedRates >> 0) & type(uint64).max;
+        interestRateRemuneratory = packedRates & type(uint64).max;
         interestRateMoratory = (packedRates >> 64) & type(uint64).max;
         lateFeeRate = (packedRates >> 128) & type(uint64).max;
     }
