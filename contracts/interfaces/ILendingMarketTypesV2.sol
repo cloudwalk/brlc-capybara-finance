@@ -242,15 +242,6 @@ interface ILendingMarketTypesV2 {
     /**
      * @dev TODO
      */
-    struct DiscountRequest {
-        uint256 subLoanId;
-        uint256 timestamp;
-        uint256 discountAmount;
-    }
-
-    /**
-     * @dev TODO
-     */
     struct SubLoanOperationRequest {
         uint256 subLoanId;
         uint256 timestamp;
