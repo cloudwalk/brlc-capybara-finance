@@ -250,7 +250,7 @@ interface ILendingMarketTypesV2 {
     /**
      * @dev TODO
      */
-    struct VoidOperationRequest {
+    struct OperationVoidingRequest {
         uint256 subLoanId;
         uint256 operationId;
         address counterparty;
@@ -259,7 +259,7 @@ interface ILendingMarketTypesV2 {
     /**
      * @dev TODO
      */
-    struct AddedOperationRequest {
+    struct OperationAdditionRequest {
         uint256 subLoanId;
         uint256 kind;
         uint256 timestamp;

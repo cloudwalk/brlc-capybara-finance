@@ -6,15 +6,13 @@ pragma solidity 0.8.24;
 import { ILendingMarketTypesV2 } from "./ILendingMarketTypesV2.sol";
 
 /**
- * @title ILendingMarketPrimaryV2 interface
+ * @title ILendingMarketPrimaryEventsV2 interface
  * @author CloudWalk Inc. (See https://www.cloudwalk.io)
- * @dev The primary part of the lending market contract interface.
+ * @dev The primary events of the lending market contract interface.
  *
  * TODO
  */
-interface ILendingMarketPrimaryV2 is ILendingMarketTypesV2 {
-    // ------------------ Events ---------------------------------- //
-
+interface ILendingMarketPrimaryEventsV2 is ILendingMarketTypesV2 {
     /**
      * @dev Emitted when a loan is taken in the form of multiple sub-loans.
      *
@@ -317,7 +315,16 @@ interface ILendingMarketPrimaryV2 is ILendingMarketTypesV2 {
     // TODO: add more events if needed
     // TODO: add more parameters to the existing events if needed
     // TODO: consider replacing a single repaymentAmount with its parts, same for
+}
 
+/**
+ * @title ILendingMarketPrimaryV2 interface
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
+ * @dev The primary part of the lending market contract interface.
+ *
+ * TODO
+ */
+interface ILendingMarketPrimaryV2 is ILendingMarketTypesV2, ILendingMarketPrimaryEventsV2 {
     // ------------------ Transactional functions ----------------- //
 
     /**
@@ -437,7 +444,7 @@ interface ILendingMarketPrimaryV2 is ILendingMarketTypesV2 {
      *
      * @param voidOperationRequests The requests to void the operations.
      */
-    function voidOperationBatch(VoidOperationRequest[] calldata voidOperationRequests) external;
+    function voidOperationBatch(OperationVoidingRequest[] calldata voidOperationRequests) external;
 
     // ------------------ View functions -------------------------- //
 
@@ -569,6 +576,9 @@ interface ILendingMarketErrorsV2 {
 
     /// @dev TODO
     error BorrowerAddressZero();
+
+    /// @dev TODO
+    error EngineUnconfigured();
 
     /// @dev TODO
     error CreditLineAddressZero();

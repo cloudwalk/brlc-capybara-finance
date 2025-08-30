@@ -46,6 +46,9 @@ abstract contract LendingMarketStorageLayoutV2 is ILendingMarketTypesV2 {
         uint24 programIdCounter;
         // uint32 __reserved; // Reserved until the end of the storage slot
 
+        // Slot 2
+        address engine;
+
         // Slots 2...5
         mapping(uint256 subLoanId => SubLoan) subLoans;
         mapping(uint256 programId => address) programCreditLines;
