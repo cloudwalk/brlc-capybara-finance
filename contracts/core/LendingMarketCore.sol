@@ -7,7 +7,7 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 
 import { ABDKMath64x64 } from "../libraries/ABDKMath64x64.sol";
 
-import { LendingMarketStorageLayoutV2 } from "../LendingMarketStorageLayoutV2.sol";
+import { LendingMarketStorageLayoutV2 } from "../storage/LendingMarketStorageLayoutV2.sol";
 
 import { ICreditLineV2 } from "../interfaces/ICreditLineV2.sol"; // TODO V2
 import { ILendingMarketErrorsV2 } from "../interfaces/ILendingMarketV2.sol";

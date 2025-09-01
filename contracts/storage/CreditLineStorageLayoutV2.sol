@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.18;
 
-import { ICreditLineTypesV2 } from "./interfaces/ICreditLineV2.sol";
+import { ICreditLineTypesV2 } from "../interfaces/ICreditLineV2.sol";
 
 /**
  * @title CreditLineStorageLayoutV2 contract

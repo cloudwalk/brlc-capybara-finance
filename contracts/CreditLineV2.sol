@@ -14,7 +14,7 @@ import { ICreditLineHooksV2 } from "./interfaces/ICreditLineV2.sol";
 import { ICreditLinePrimaryV2 } from "./interfaces/ICreditLineV2.sol";
 import { IVersionable } from "./interfaces/IVersionable.sol";
 
-import { CreditLineStorageLayoutV2 } from "./CreditLineStorageLayoutV2.sol";
+import { CreditLineStorageLayoutV2 } from "./storage/CreditLineStorageLayoutV2.sol";
 
 /**
  * @title CreditLineV2 contract
