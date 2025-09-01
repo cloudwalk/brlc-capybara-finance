@@ -2,6 +2,9 @@
 
 pragma solidity 0.8.24;
 
+import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+
+import { UUPSExtUpgradeable } from "./base/UUPSExtUpgradeable.sol";
 import { Versionable } from "./base/Versionable.sol";
 
 import { ILendingMarketEngine } from "./interfaces/ILendingMarketEngine.sol";
@@ -15,7 +18,13 @@ import { LendingMarketCore } from "./core/LendingMarketCore.sol";
  *
  * See additional notes in the comments of the interface `ILendingMarket.sol`.
  */
-contract LendingMarketEngine is LendingMarketCore, Versionable, ILendingMarketEngine {
+contract LendingMarketEngine is
+    OwnableUpgradeable,
+    LendingMarketCore,
+    Versionable,
+    UUPSExtUpgradeable,
+    ILendingMarketEngine
+{
 
     // ------------------ Constructor ----------------------------- //
 
@@ -23,6 +32,17 @@ contract LendingMarketEngine is LendingMarketCore, Versionable, ILendingMarketEn
      * @dev Explicitly defined  empty constructor
      */
     constructor() {}
+
+    // ------------------ Initializers ---------------------------- //
+
+    /**
+     * @dev Initializer of the upgradeable contract.
+     * See details https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable.
+     */
+    function initialize() external initializer {
+        __Ownable_init(_msgSender());
+        __UUPSExt_init_unchained();
+    }
 
     // ------------------ Transactional functions ------------------ //
 
@@ -154,7 +174,18 @@ contract LendingMarketEngine is LendingMarketCore, Versionable, ILendingMarketEn
 
     // ------------------ Pure functions -------------------------- //
 
-
     /// @inheritdoc ILendingMarketEngine
     function proveLendingMarketEngine() external pure {}
+
+    // ------------------ Internal functions -------------------- //
+
+    /**
+     * @dev The upgrade validation function for the UUPSExtUpgradeable contract.
+     * @param newImplementation The address of the new implementation.
+     */
+    function _validateUpgrade(address newImplementation) internal view override onlyOwner() {
+        try ILendingMarketEngine(newImplementation).proveLendingMarketEngine() {} catch {
+            revert ImplementationAddressInvalid();
+        }
+    }
 }
