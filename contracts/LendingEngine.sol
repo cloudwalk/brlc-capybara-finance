@@ -7,23 +7,23 @@ import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/O
 import { UUPSExtUpgradeable } from "./base/UUPSExtUpgradeable.sol";
 import { Versionable } from "./base/Versionable.sol";
 
-import { ILendingMarketEngine } from "./interfaces/ILendingMarketEngine.sol";
+import { ILendingEngine } from "./interfaces/ILendingEngine.sol";
 
 import { LendingMarketCore } from "./core/LendingMarketCore.sol";
 
 /**
- * @title LendingMarketEngine contract
+ * @title LendingEngine contract
  * @author CloudWalk Inc. (See https://www.cloudwalk.io)
- * @dev The lending market engine contract. TODO: add description
+ * @dev The lending engine contract. TODO: add description
  *
  * See additional notes in the comments of the interface `ILendingMarket.sol`.
  */
-contract LendingMarketEngine is
+contract LendingEngine is
     OwnableUpgradeable,
     LendingMarketCore,
     Versionable,
     UUPSExtUpgradeable,
-    ILendingMarketEngine
+    ILendingEngine
 {
 
     // ------------------ Constructor ----------------------------- //
@@ -47,7 +47,7 @@ contract LendingMarketEngine is
     // ------------------ Transactional functions ------------------ //
 
 
-    /// @inheritdoc ILendingMarketEngine
+    /// @inheritdoc ILendingEngine
     // TODO: Remove `For` in the name, consider the same for other fucntions
     function takeLoan(
         address borrower,
@@ -96,7 +96,7 @@ contract LendingMarketEngine is
         _transferTokensOnLoanTaking(firstSubLoanId, totalBorrowedAmount, totalAddonAmount);
     }
 
-    /// @inheritdoc ILendingMarketEngine
+    /// @inheritdoc ILendingEngine
     function revokeLoan(uint256 subLoanId) external {
         SubLoan storage subLoanStored = _getExitingSubLoanInStorage(subLoanId);
 
@@ -174,8 +174,8 @@ contract LendingMarketEngine is
 
     // ------------------ Pure functions -------------------------- //
 
-    /// @inheritdoc ILendingMarketEngine
-    function proveLendingMarketEngine() external pure {}
+    /// @inheritdoc ILendingEngine
+    function proveLendingEngine() external pure {}
 
     // ------------------ Internal functions -------------------- //
 
@@ -184,7 +184,7 @@ contract LendingMarketEngine is
      * @param newImplementation The address of the new implementation.
      */
     function _validateUpgrade(address newImplementation) internal view override onlyOwner() {
-        try ILendingMarketEngine(newImplementation).proveLendingMarketEngine() {} catch {
+        try ILendingEngine(newImplementation).proveLendingEngine() {} catch {
             revert ImplementationAddressInvalid();
         }
     }

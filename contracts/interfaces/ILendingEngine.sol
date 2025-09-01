@@ -5,13 +5,13 @@ pragma solidity ^0.8.0;
 import { ILendingMarketTypesV2 } from "./ILendingMarketTypesV2.sol";
 
 /**
- * @title ILendingMarketEngine interface
+ * @title ILendingEngine interface
  * @author CloudWalk Inc. (See https://www.cloudwalk.io)
- * @dev The lending market engine contract interface.
+ * @dev The lending engine contract interface.
  *
  * TODO
  */
-interface ILendingMarketEngine is ILendingMarketTypesV2 {
+interface ILendingEngine is ILendingMarketTypesV2 {
     // ------------------ Transactional functions ----------------- //
 
     /**
@@ -136,6 +136,6 @@ interface ILendingMarketEngine is ILendingMarketTypesV2 {
     // ------------------ Pure functions ------------------ //
 
     /// @dev Proves the contract is the lending market engine one. A marker function.
-    function proveLendingMarketEngine() external pure;
+    function proveLendingEngine() external pure;
 }
 

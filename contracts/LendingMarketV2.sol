@@ -10,7 +10,7 @@ import { UUPSExtUpgradeable } from "./base/UUPSExtUpgradeable.sol";
 import { Versionable } from "./base/Versionable.sol";
 
 import { ILendingMarketV2 } from "./interfaces/ILendingMarketV2.sol";
-import { ILendingMarketEngine } from "./interfaces/ILendingMarketEngine.sol";
+import { ILendingEngine } from "./interfaces/ILendingEngine.sol";
 import { ILendingMarketConfigurationV2 } from "./interfaces/ILendingMarketV2.sol";
 import { ILendingMarketPrimaryV2 } from "./interfaces/ILendingMarketV2.sol";
 
