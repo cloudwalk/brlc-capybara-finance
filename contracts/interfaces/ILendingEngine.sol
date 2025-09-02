@@ -10,6 +10,8 @@ import { ILendingMarketTypesV2 } from "./ILendingMarketTypesV2.sol";
  * @dev The lending engine contract interface.
  *
  * TODO
+ *
+ * All engine functions must be called through `delegatecall` from the `LendingMarket` contract.
  */
 interface ILendingEngine is ILendingMarketTypesV2 {
     // ------------------ Transactional functions ----------------- //
