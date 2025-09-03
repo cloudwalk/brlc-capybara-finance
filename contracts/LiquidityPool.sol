@@ -84,6 +84,7 @@ contract LiquidityPool is
         try IERC20(token_).balanceOf(address(0)) {} catch {
             revert LiquidityPool_ContractAddressInvalid();
         }
+
         __AccessControlExt_init_unchained();
         __PausableExt_init_unchained();
         __UUPSExt_init_unchained();

@@ -641,7 +641,12 @@ contract LendingMarket is
         (newTrackedBalance, repaymentAmount) = _processTrackedBalanceChange(loan, repaymentAmount);
         loan.repaidAmount += repaymentAmount.toUint64();
 
-        _transferToPool(loan.token, _programLiquidityPools[loan.programId], repayer, repaymentAmount);
+        _transferToPool(
+            loan.token,
+            _programLiquidityPools[loan.programId],
+            repayer,
+            repaymentAmount
+        );
         ICreditLine(_programCreditLines[loan.programId]).onAfterLoanPayment(loanId, repaymentAmount);
 
         emit LoanRepayment(loanId, repayer, loan.borrower, repaymentAmount, newTrackedBalance);
@@ -1154,6 +1159,7 @@ contract LendingMarket is
         try ICreditLine(creditLine).proveCreditLine() {} catch {
             revert Error.ContractAddressInvalid();
         }
+
         if (liquidityPool == address(0)) {
             revert Error.ZeroAddress();
         }
@@ -1207,12 +1213,27 @@ contract LendingMarket is
         }
 
         if (repaidAmount < borrowedAmount) {
-            _transferToPool(token, liquidityPool, loan.borrower, borrowedAmount - repaidAmount);
+            _transferToPool(
+                token,
+                liquidityPool,
+                loan.borrower,
+                borrowedAmount - repaidAmount
+            );
         } else if (repaidAmount != borrowedAmount) {
-            _transferFromPool(token, liquidityPool, loan.borrower, repaidAmount - borrowedAmount);
+            _transferFromPool(
+                token,
+                liquidityPool,
+                loan.borrower,
+                repaidAmount - borrowedAmount
+            );
         }
         if (addonAmount != 0) {
-            _transferToPool(token, liquidityPool, addonTreasury, addonAmount);
+            _transferToPool(
+                token,
+                liquidityPool,
+                addonTreasury,
+                addonAmount
+            );
         }
     }
 
