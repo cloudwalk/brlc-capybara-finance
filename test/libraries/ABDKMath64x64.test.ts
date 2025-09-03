@@ -22,7 +22,7 @@ describe("Library 'ABDKMath64x64'", async () => {
     await mathContract.waitForDeployment();
 
     return {
-      mathContract
+      mathContract,
     };
   }
 

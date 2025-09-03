@@ -19,7 +19,7 @@ export function connect(contract: BaseContract, signer: HardhatEthersSigner): Co
 
 export async function checkContractUupsUpgrading(
   contract: Contract,
-  contractFactory: ContractFactory
+  contractFactory: ContractFactory,
 ) {
   const contractAddress = await contract.getAddress();
   const oldImplementationAddress = await upgrades.erc1967.getImplementationAddress(contractAddress);
@@ -71,7 +71,7 @@ export async function increaseBlockTimestampTo(target: number) {
 export async function getNumberOfEvents(
   tx: TransactionResponse | Promise<TransactionResponse>,
   contract: Contract,
-  eventName: string
+  eventName: string,
 ): Promise<number> {
   const topic = contract.filters[eventName].fragment.topicHash;
   return (await proveTx(tx)).logs.filter(log => log.topics[0] == topic).length;
@@ -79,7 +79,7 @@ export async function getNumberOfEvents(
 
 export async function deployAndConnectContract(
   contractFactory: ContractFactory,
-  account: HardhatEthersSigner
+  account: HardhatEthersSigner,
 ): Promise<Contract> {
   let contract = (await contractFactory.deploy()) as Contract;
   await contract.waitForDeployment();
