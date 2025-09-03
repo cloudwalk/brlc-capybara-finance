@@ -93,7 +93,6 @@ contract CreditLine is
         try ILendingMarket(market_).proveLendingMarket() {} catch {
             revert Error.ContractAddressInvalid();
         }
-
         if (token_ == address(0)) {
             revert Error.ZeroAddress();
         }
@@ -103,7 +102,6 @@ contract CreditLine is
         try IERC20(token_).balanceOf(address(0)) {} catch {
             revert Error.ContractAddressInvalid();
         }
-
         __AccessControlExt_init_unchained();
         __PausableExt_init_unchained();
         __UUPSExt_init_unchained();
