@@ -129,28 +129,27 @@ contract LendingEngine is
         uint256 firstSubLoanId = subLoanStored.firstSubLoanId;
         uint256 subLoanCount = subLoanStored.subLoanCount;
         uint256 ongoingSubLoanCount = 0;
-        OperationAdditionRequest[] memory addingOperationRequests = new OperationAdditionRequest[](subLoanCount);
+        uint256 currentTimestamp = _blockTimestamp();
 
         for (uint256 i = 0; i < subLoanCount; ++i) {
-            subLoanStored = _getNonRevokedSubLoanInStorage(firstSubLoanId + i);
-            if (subLoanStored.status != SubLoanStatus.FullyRepaid) {
+            subLoanId = firstSubLoanId + i;
+            ProcessingSubLoan memory subLoan = _getNonRevokedSubLoan(subLoanId);
+            _addOperation(subLoanId,
+                uint256(OperationKind.Revocation),
+                currentTimestamp,
+                0,
+                address(0)
+            );
+            _processOperations(subLoan);
+            if (subLoan.status != uint256(SubLoanStatus.FullyRepaid)) {
                 ++ongoingSubLoanCount;
             }
-            addingOperationRequests[i] = OperationAdditionRequest({
-                subLoanId: firstSubLoanId + i,
-                kind: uint256(OperationKind.Revocation),
-                timestamp: 0,
-                inputValue: 0,
-                account: address(0)
-            });
         }
 
         // If all the sub-loans are repaid the revocation is prohibited
         if (ongoingSubLoanCount == 0) {
             revert LoanStatusFullyRepaid();
         }
-
-        _modifyOperationBatch(new OperationVoidingRequest[](0), addingOperationRequests);
 
         emit LoanRevoked(
             firstSubLoanId, // Tools: prevent Prettier one-liner
@@ -212,7 +211,7 @@ contract LendingEngine is
     function voidOperationBatch(
         OperationVoidingRequest[] calldata voidOperationRequests
     ) external onlySelfDelegatecall() {
-        _modifyOperationBatch(voidOperationRequests, new OperationAdditionRequest[](0));
+        _voidOperationBatch(voidOperationRequests);
     }
 
     // ------------------ Pure functions -------------------------- //

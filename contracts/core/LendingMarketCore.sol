@@ -130,59 +130,103 @@ abstract contract LendingMarketCore is
         return id;
     }
 
-    //TODO: Somehow unite the following two functions.
-
     /// @dev TODO
     function _executeRepaymentBatch(RepaymentRequest[] calldata repaymentRequests) internal {
+        uint256 affectedSubLoanCount = 0;
         uint256 count = repaymentRequests.length;
-        OperationAdditionRequest[] memory addingRequests = new OperationAdditionRequest[](count);
-        uint256 currentTimestamp = _blockTimestamp();
+        OperationAffectedSubLoan[] memory affectedSubLoans = new OperationAffectedSubLoan[](count);
         for (uint256 i = 0; i < count; ++i) {
-            RepaymentRequest memory repaymentRequest = repaymentRequests[i];
-            uint256 operationTimestamp = repaymentRequest.timestamp;
-            if (operationTimestamp == 0) {
-                operationTimestamp = currentTimestamp;
-            }
-            addingRequests[i] = OperationAdditionRequest({
-                subLoanId: repaymentRequest.subLoanId,
-                kind: uint256(OperationKind.Repayment),
-                timestamp: operationTimestamp,
-                inputValue: repaymentRequest.repaymentAmount,
-                account: repaymentRequest.repayer
-            });
+            RepaymentRequest calldata repaymentRequest = repaymentRequests[i];
+            uint256 timestamp = repaymentRequest.timestamp == 0 ? _blockTimestamp() : repaymentRequest.timestamp;
+            affectedSubLoanCount = _scheduleOperation(
+                repaymentRequest.subLoanId,
+                uint256(OperationKind.Repayment),
+                timestamp,
+                repaymentRequest.repaymentAmount,
+                repaymentRequest.repayer,
+                affectedSubLoans,
+                affectedSubLoanCount
+            );
         }
-        _modifyOperationBatch(
-            new OperationVoidingRequest[](0), // No voiding requests
-            addingRequests
-        );
+        _processAffectedSubLoans(affectedSubLoans, affectedSubLoanCount);
     }
 
     /// @dev TODO
     function _executeOperationBatch(
         uint256 operationKind,
-        SubLoanOperationRequest[] memory operationRequests
+        SubLoanOperationRequest[] calldata operationRequests
     ) internal {
+        uint256 affectedSubLoanCount = 0;
         uint256 count = operationRequests.length;
-        OperationAdditionRequest[] memory addingRequests = new OperationAdditionRequest[](count);
-        uint256 currentTimestamp = _blockTimestamp();
+        OperationAffectedSubLoan[] memory affectedSubLoans = new OperationAffectedSubLoan[](count);
         for (uint256 i = 0; i < count; ++i) {
-            SubLoanOperationRequest memory operationRequest = operationRequests[i];
-            uint256 operationTimestamp = operationRequest.timestamp;
-            if (operationTimestamp == 0) {
-                operationTimestamp = currentTimestamp;
-            }
-            addingRequests[i] = OperationAdditionRequest({
-                subLoanId: operationRequest.subLoanId,
-                kind: operationKind,
-                timestamp: operationTimestamp,
-                inputValue: operationRequest.value,
-                account: address(0) // No account is needed for this operation
-            });
+            SubLoanOperationRequest calldata operationRequest = operationRequests[i];
+            uint256 timestamp = operationRequest.timestamp == 0 ? _blockTimestamp() : operationRequest.timestamp;
+            affectedSubLoanCount = _scheduleOperation(
+                operationRequest.subLoanId,
+                operationKind,
+                timestamp,
+                operationRequest.value,
+                address(0), // account is not needed for these operations
+                affectedSubLoans,
+                affectedSubLoanCount
+            );
         }
-        _modifyOperationBatch(
-            new OperationVoidingRequest[](0), // No voiding requests
-            addingRequests
+        _processAffectedSubLoans(affectedSubLoans, affectedSubLoanCount);
+    }
+
+    function _scheduleOperation(
+        uint256 subLoanId,
+        uint256 kind,
+        uint256 timestamp,
+        uint256 inputValue,
+        address account,
+        OperationAffectedSubLoan[] memory affectedSubLoans,
+        uint256 affectedSubLoanCount
+    ) internal returns (uint256 newAffectedSubLoanCount) {
+        _checkOperationParameters(
+            kind,
+            timestamp,
+            inputValue,
+            account
         );
+        _addOperation(
+            subLoanId,
+            kind,
+            timestamp,
+            inputValue,
+            account
+        );
+        return _includeAffectedSubLoan(
+            affectedSubLoans,
+            affectedSubLoanCount,
+            subLoanId,
+            timestamp,
+            address(0) // counterparty is not needed for added operations
+        );
+    }
+
+    /// @dev TODO
+    function _voidOperationBatch(OperationVoidingRequest[] memory OperationVoidingRequests) internal {
+        uint256 affectedSubLoanCount = 0;
+        uint256 count = OperationVoidingRequests.length;
+        OperationAffectedSubLoan[] memory affectedSubLoans = new OperationAffectedSubLoan[](count);
+        for (uint256 i = 0; i < count; ++i) {
+            OperationVoidingRequest memory voidingRequest = OperationVoidingRequests[i];
+            Operation storage operation = _voidOperation(
+                voidingRequest.subLoanId,
+                voidingRequest.operationId,
+                voidingRequest.counterparty
+            );
+            affectedSubLoanCount = _includeAffectedSubLoan(
+                affectedSubLoans,
+                affectedSubLoanCount,
+                voidingRequest.subLoanId,
+                operation.timestamp,
+                voidingRequest.counterparty
+            );
+        }
+        _processAffectedSubLoans(affectedSubLoans, affectedSubLoanCount);
     }
 
     /**
@@ -427,79 +471,6 @@ abstract contract LendingMarketCore is
         }
 
         return prevOperationId;
-    }
-
-    /// @dev TODO
-    function _modifyOperationBatch(
-        OperationVoidingRequest[] memory OperationVoidingRequests,
-        OperationAdditionRequest[] memory OperationAdditionRequests
-    ) internal {
-        // TODO: Simplify and maybe split this function into parts
-        uint256 affectedSubLoanCount = 0;
-        uint256 count = OperationVoidingRequests.length;
-        OperationAffectedSubLoan[] memory affectedSubLoans = new OperationAffectedSubLoan[](
-            count + OperationAdditionRequests.length
-        );
-        for (uint256 i = 0; i < count; ++i) {
-            OperationVoidingRequest memory voidingRequest = OperationVoidingRequests[i];
-            OperationAffectedSubLoan memory affectedSubLoan = _findOperationAffectedSubLoan(
-                affectedSubLoans,
-                affectedSubLoanCount,
-                voidingRequest.subLoanId
-            );
-            if (affectedSubLoan.subLoanId == 0) {
-                ++affectedSubLoanCount;
-                affectedSubLoan.subLoanId = voidingRequest.subLoanId;
-                affectedSubLoan.counterparty = voidingRequest.counterparty;
-                affectedSubLoan.minOperationTimestamp = type(uint256).max;
-            } else if (affectedSubLoan.counterparty != voidingRequest.counterparty) {
-                revert OperationRequestArrayCounterpartyDifference();
-            }
-            Operation storage operation = _voidOperation(
-                voidingRequest.subLoanId,
-                voidingRequest.operationId,
-                voidingRequest.counterparty
-            );
-            if (operation.status == OperationStatus.Revoked) {
-                if (operation.timestamp > affectedSubLoan.minOperationTimestamp) {
-                    affectedSubLoan.minOperationTimestamp = operation.timestamp;
-                }
-            }
-        }
-        count = OperationAdditionRequests.length;
-        for (uint256 i = 0; i < count; ++i) {
-            OperationAdditionRequest memory addingRequest = OperationAdditionRequests[i];
-            OperationAffectedSubLoan memory affectedSubLoan = _findOperationAffectedSubLoan(
-                affectedSubLoans,
-                affectedSubLoanCount,
-                addingRequest.subLoanId
-            );
-            if (affectedSubLoan.subLoanId == 0) {
-                ++affectedSubLoanCount;
-                affectedSubLoan.subLoanId = addingRequest.subLoanId;
-                affectedSubLoan.minOperationTimestamp = type(uint256).max;
-            }
-            _checkOperationParameters(addingRequest);
-            _addOperation(
-                addingRequest.subLoanId,
-                addingRequest.kind,
-                addingRequest.timestamp,
-                addingRequest.inputValue,
-                addingRequest.account
-            );
-            if (addingRequest.timestamp > affectedSubLoan.minOperationTimestamp) {
-                affectedSubLoan.minOperationTimestamp = addingRequest.timestamp;
-            }
-        }
-
-        for (uint256 i = 0; i < affectedSubLoanCount; ++i) {
-            OperationAffectedSubLoan memory affectedSubLoan = affectedSubLoans[i];
-            _treatOperations(
-                affectedSubLoan.subLoanId,
-                affectedSubLoan.minOperationTimestamp,
-                affectedSubLoan.counterparty
-            );
-        }
     }
 
     /// @dev TODO
@@ -1406,10 +1377,12 @@ abstract contract LendingMarketCore is
     }
 
     /// TODO
-    function _checkOperationParameters(OperationAdditionRequest memory request) internal view {
-        uint256 kind = request.kind;
-        uint256 inputValue = request.inputValue;
-        address account = request.account;
+    function _checkOperationParameters(
+        uint256 kind,
+        uint256 timestamp,
+        uint256 inputValue,
+        address account
+    ) internal view {
         if (
             kind == uint256(OperationKind.Nonexistent) || // Tools: prevent Prettier one-liner
             kind >= uint256(type(OperationKind).max)
@@ -1461,7 +1434,7 @@ abstract contract LendingMarketCore is
             kind == uint256(OperationKind.Repayment) || // Tools: prevent Prettier one-liner
             kind == uint256(OperationKind.Discounting)
         ) {
-            if (request.timestamp > _blockTimestamp()) {
+            if (timestamp > _blockTimestamp()) {
                 revert OperationRepaymentOrDiscountProhibitedInFuture();
             }
         }
@@ -1869,18 +1842,53 @@ abstract contract LendingMarketCore is
     /**
      * @dev TODO
      */
-    function _findOperationAffectedSubLoan(
+    function _includeAffectedSubLoan(
         OperationAffectedSubLoan[] memory affectedSubLoans,
         uint256 affectedSubLoanCount,
-        uint256 subLoanId
-    ) internal pure returns (OperationAffectedSubLoan memory) {
+        uint256 subLoanId,
+        uint256 timestamp,
+        address counterparty
+    ) internal pure returns (uint256 newAffectedSubLoanCount) {
         for (uint256 i = 0; i < affectedSubLoanCount; ++i) {
             OperationAffectedSubLoan memory affectedSubLoan = affectedSubLoans[i];
-            if (affectedSubLoan.subLoanId == subLoanId || affectedSubLoan.subLoanId == 0) {
-                return affectedSubLoans[i];
+            if (affectedSubLoan.subLoanId == subLoanId) {
+                // An existing affected sub-loan found, check and update its data
+                if (timestamp > affectedSubLoan.minOperationTimestamp) {
+                    affectedSubLoan.minOperationTimestamp = timestamp;
+                }
+                if (affectedSubLoan.counterparty != counterparty) {
+                    revert OperationRequestArrayCounterpartyDifference();
+                }
+                return affectedSubLoanCount; // The same count as before
             }
         }
-        return affectedSubLoans[0];
+
+        // No existing affected sub-loan found, add a new one
+        {
+            OperationAffectedSubLoan memory affectedSubLoan = affectedSubLoans[affectedSubLoanCount];
+            ++affectedSubLoanCount;
+            affectedSubLoan.subLoanId = subLoanId;
+            affectedSubLoan.counterparty = counterparty;
+            affectedSubLoan.minOperationTimestamp = timestamp;
+        }
+        return affectedSubLoanCount;
+    }
+
+    /**
+     * @dev TODO
+     */
+    function _processAffectedSubLoans(
+        OperationAffectedSubLoan[] memory affectedSubLoans,
+        uint256 affectedSubLoanCount
+    ) internal {
+        for (uint256 i = 0; i < affectedSubLoanCount; ++i) {
+            OperationAffectedSubLoan memory affectedSubLoan = affectedSubLoans[i];
+            _treatOperations(
+                affectedSubLoan.subLoanId,
+                affectedSubLoan.minOperationTimestamp,
+                affectedSubLoan.counterparty
+            );
+        }
     }
 
     /**

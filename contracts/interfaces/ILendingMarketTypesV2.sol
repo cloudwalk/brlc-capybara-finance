@@ -257,17 +257,6 @@ interface ILendingMarketTypesV2 {
     }
 
     /**
-     * @dev TODO
-     */
-    struct OperationAdditionRequest {
-        uint256 subLoanId;
-        uint256 kind;
-        uint256 timestamp;
-        uint256 inputValue;
-        address account;
-    }
-
-    /**
      * @dev A struct that defines the preview of a sub-loan.
      * TODO
      * The day index is calculated taking into account the day boundary offset.
