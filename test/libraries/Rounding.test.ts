@@ -15,7 +15,7 @@ describe("Library 'Rounding'", async () => {
     await roundingContract.waitForDeployment();
 
     return {
-      roundingContract
+      roundingContract,
     };
   }
 

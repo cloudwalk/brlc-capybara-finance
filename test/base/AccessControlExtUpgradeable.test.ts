@@ -1,6 +1,6 @@
 import { ethers, upgrades } from "hardhat";
 import { expect } from "chai";
-import { Contract, TransactionResponse } from "ethers";
+import { Contract, ContractFactory, TransactionResponse } from "ethers";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import { connect, proveTx } from "../../test-utils/eth";
 import { setUpFixture } from "../../test-utils/common";
@@ -33,7 +33,8 @@ describe("Contract 'AccessControlExtUpgradeable'", async () => {
 
   async function deployAccessControlExtMock(): Promise<{ accessControlExtMock: Contract }> {
     // The contract factory with the explicitly specified deployer account
-    let accessControlExtMockFactory = await ethers.getContractFactory("AccessControlExtUpgradeableMock");
+    let accessControlExtMockFactory: ContractFactory =
+      await ethers.getContractFactory("AccessControlExtUpgradeableMock");
     accessControlExtMockFactory = accessControlExtMockFactory.connect(deployer);
 
     // The contract under test with the explicitly specified initial account

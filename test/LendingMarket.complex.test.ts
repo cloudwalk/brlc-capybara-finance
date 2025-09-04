@@ -8,7 +8,7 @@ import {
   getBlockTimestamp,
   getLatestBlockTimestamp,
   increaseBlockTimestampTo,
-  proveTx
+  proveTx,
 } from "../test-utils/eth";
 
 const GRANTOR_ROLE = ethers.id("GRANTOR_ROLE");
@@ -28,11 +28,11 @@ const FUNC_CONFIGURE_BORROWER_NEW =
 enum BorrowingPolicy {
   // SingleActiveLoan = 0,
   // MultipleActiveLoans = 1
-  TotalActiveAmountLimit = 2
+  TotalActiveAmountLimit = 2,
 }
 
 enum LateFeePolicy {
-  Common = 0
+  Common = 0,
   // Individual = 1
 }
 
@@ -40,7 +40,7 @@ enum ScenarioFinalAction {
   None = 0,
   FullRepayment = 1,
   Revocation = 2,
-  FullRepaymentCheck = 3
+  FullRepaymentCheck = 3,
 }
 
 interface Fixture {
@@ -135,7 +135,7 @@ const testScenarioDefault: TestScenario = {
   repaymentAmounts: [],
   expectedOutstandingBalancesBeforeRepayment: [],
   frozenStepIndexes: [],
-  finalAction: ScenarioFinalAction.None
+  finalAction: ScenarioFinalAction.None,
 };
 
 const testScenarioContextDefault: TestScenarioContext = {
@@ -147,7 +147,7 @@ const testScenarioContextDefault: TestScenarioContext = {
   frozenState: false,
   poolBalanceAtStart: 0n,
   poolBalanceAtFinish: 0n,
-  totalRepaymentAmount: 0
+  totalRepaymentAmount: 0,
 };
 
 function calculateLoanPeriodIndex(timestamp: number): number {
@@ -198,7 +198,7 @@ describe("Contract 'LendingMarket': complex tests", async () => {
     let lendingMarket = await upgrades.deployProxy(
       lendingMarketFactory,
       [owner.address],
-      { kind: "uups" }
+      { kind: "uups" },
     ) as Contract;
     await lendingMarket.waitForDeployment();
     lendingMarket = connect(lendingMarket, owner); // Explicitly specifying the initial account
@@ -208,7 +208,7 @@ describe("Contract 'LendingMarket': complex tests", async () => {
     let creditLine = await upgrades.deployProxy(
       creditLineFactory,
       [owner.address, lendingMarketAddress, tokenAddress],
-      { kind: "uups" }
+      { kind: "uups" },
     ) as Contract;
     await creditLine.waitForDeployment();
     creditLine = connect(creditLine, owner); // Explicitly specifying the initial account
@@ -219,9 +219,9 @@ describe("Contract 'LendingMarket': complex tests", async () => {
       liquidityPoolFactory,
       [
         owner.address,
-        tokenAddress
+        tokenAddress,
       ],
-      { kind: "uups" }
+      { kind: "uups" },
     ) as Contract;
     await liquidityPool.waitForDeployment();
     liquidityPool = connect(liquidityPool, owner); // Explicitly specifying the initial account
@@ -241,7 +241,7 @@ describe("Contract 'LendingMarket': complex tests", async () => {
       tokenAddress,
       lendingMarketAddress,
       creditLineAddress,
-      liquidityPoolAddress
+      liquidityPoolAddress,
     };
   }
 
@@ -326,7 +326,7 @@ describe("Contract 'LendingMarket': complex tests", async () => {
       maxAddonFixedRate: 0,
       minAddonPeriodRate: 0,
       maxAddonPeriodRate: 0,
-      lateFeeRate: scenario.lateFeeRate
+      lateFeeRate: scenario.lateFeeRate,
     };
   }
 
@@ -343,7 +343,7 @@ describe("Contract 'LendingMarket': complex tests", async () => {
       borrowingPolicy: BorrowingPolicy.TotalActiveAmountLimit,
       expiration: 2 ** 32 - 1,
       lateFeePolicy: LateFeePolicy.Common,
-      lateFeeRate: 0
+      lateFeeRate: 0,
     };
   }
 
@@ -381,13 +381,13 @@ describe("Contract 'LendingMarket': complex tests", async () => {
       PROGRAM_ID,
       scenario.borrowedAmount,
       scenario.addonAmount,
-      scenario.durationInPeriods
+      scenario.durationInPeriods,
     );
 
     await expect(tx).to.changeTokenBalances(
       token,
       [lendingMarket, liquidityPool, borrower, addonTreasury, owner],
-      [0, -(scenario.borrowedAmount + scenario.addonAmount), scenario.borrowedAmount, scenario.addonAmount, 0]
+      [0, -(scenario.borrowedAmount + scenario.addonAmount), scenario.borrowedAmount, scenario.addonAmount, 0],
     );
 
     const liquidityPoolBalancesAfter = await liquidityPool.getBalances();
@@ -424,11 +424,11 @@ describe("Contract 'LendingMarket': complex tests", async () => {
     if (repaymentAmount != 0) {
       const liquidityPoolBalancesBefore = await liquidityPool.getBalances();
       await expect(
-        connect(lendingMarket, borrower).repayLoan(context.loanId, repaymentAmount)
+        connect(lendingMarket, borrower).repayLoan(context.loanId, repaymentAmount),
       ).to.changeTokenBalances(
         token,
         [lendingMarket, liquidityPool, borrower],
-        [0, +repaymentAmount, -repaymentAmount]
+        [0, +repaymentAmount, -repaymentAmount],
       );
       const liquidityPoolBalancesAfter = await liquidityPool.getBalances();
       expect(liquidityPoolBalancesAfter[0] - liquidityPoolBalancesBefore[0]).to.eq(repaymentAmount);
@@ -441,7 +441,7 @@ describe("Contract 'LendingMarket': complex tests", async () => {
 
   async function checkLoanRepaymentForScenario(
     loanPreviewBefore: Record<string, bigint>,
-    context: TestScenarioContext
+    context: TestScenarioContext,
   ) {
     const { lendingMarket } = context.fixture as Fixture;
     const scenario = context.scenario;
@@ -508,11 +508,11 @@ describe("Contract 'LendingMarket': complex tests", async () => {
     const outstandingBalance = (await lendingMarket.getLoanPreview(context.loanId, 0)).outstandingBalance;
     const liquidityPoolBalancesBefore = await liquidityPool.getBalances();
     await expect(
-      connect(lendingMarket, borrower).repayLoan(context.loanId, ethers.MaxUint256)
+      connect(lendingMarket, borrower).repayLoan(context.loanId, ethers.MaxUint256),
     ).changeTokenBalances(
       token,
       [lendingMarket, liquidityPool, borrower],
-      [0, outstandingBalance, -outstandingBalance]
+      [0, outstandingBalance, -outstandingBalance],
     );
     const liquidityPoolBalancesAfter = await liquidityPool.getBalances();
     expect(liquidityPoolBalancesAfter[0] - liquidityPoolBalancesBefore[0]).to.eq(outstandingBalance);
@@ -533,11 +533,11 @@ describe("Contract 'LendingMarket': complex tests", async () => {
     expect(liquidityPoolBalancesBefore[1]).to.eq(0); // The addonsBalance must be zero because addonTreasury != 0
 
     await expect(
-      lendingMarket.revokeLoan(context.loanId)
+      lendingMarket.revokeLoan(context.loanId),
     ).to.changeTokenBalances(
       token,
       [lendingMarket, liquidityPool, borrower, addonTreasury],
-      [0, -refundAmount + scenario.addonAmount, refundAmount, -scenario.addonAmount]
+      [0, -refundAmount + scenario.addonAmount, refundAmount, -scenario.addonAmount],
     );
 
     const liquidityPoolBalancesAfter = await liquidityPool.getBalances();
@@ -572,12 +572,12 @@ describe("Contract 'LendingMarket': complex tests", async () => {
       const frozenStepIndexes: number[] = [8, 9];
 
       const expectedOutstandingBalancesBeforeRepayment: number[] = [
-        /* eslint-disable @stylistic/array-element-newline*/
+
         // The numbers below are taken from the spreadsheet:
         // https://docs.google.com/spreadsheets/d/148elvx9Yd0QuaDtc7AkaelIn3t5rvZCx5iG2ceVfpe8
         1085060000, 992900000, 892900000, 968850000, 1051260000, 956220000,
-        905800000, 831090000, 661090000, 491090000, 362670000, 217620000
-        /* eslint-enable @stylistic/array-element-newline*/
+        905800000, 831090000, 661090000, 491090000, 362670000, 217620000,
+
       ];
 
       const scenario: TestScenario = {
@@ -589,7 +589,7 @@ describe("Contract 'LendingMarket': complex tests", async () => {
         repaymentAmounts,
         expectedOutstandingBalancesBeforeRepayment,
         frozenStepIndexes,
-        finalAction: ScenarioFinalAction.FullRepayment
+        finalAction: ScenarioFinalAction.FullRepayment,
       };
       await runScenario(scenario);
     });
@@ -608,12 +608,12 @@ describe("Contract 'LendingMarket': complex tests", async () => {
       const frozenStepIndexes: number[] = [2, 3];
 
       const expectedOutstandingBalancesBeforeRepayment: number[] = [
-        /* eslint-disable @stylistic/array-element-newline*/
+
         // The numbers below are taken from the spreadsheet:
         // https://docs.google.com/spreadsheets/d/148elvx9Yd0QuaDtc7AkaelIn3t5rvZCx5iG2ceVfpe8
         1085060000, 1177360000, 1177360000, 1177360000, 1277510000, 1386180000,
-        1504090000, 1632030000, 1880240000, 2123740000, 2398760000, 1015150000
-        /* eslint-enable @stylistic/array-element-newline*/
+        1504090000, 1632030000, 1880240000, 2123740000, 2398760000, 1015150000,
+
       ];
 
       const scenario: TestScenario = {
@@ -624,7 +624,7 @@ describe("Contract 'LendingMarket': complex tests", async () => {
         repaymentAmounts,
         expectedOutstandingBalancesBeforeRepayment,
         frozenStepIndexes,
-        finalAction: ScenarioFinalAction.FullRepaymentCheck
+        finalAction: ScenarioFinalAction.FullRepaymentCheck,
       };
       await runScenario(scenario);
     });
@@ -641,14 +641,14 @@ describe("Contract 'LendingMarket': complex tests", async () => {
       const frozenStepIndexes: number[] = [];
 
       const expectedOutstandingBalancesBeforeRepayment: number[] = [
-        /* eslint-disable @stylistic/array-element-newline*/
+
         // The numbers below are taken from the spreadsheet:
         // https://docs.google.com/spreadsheets/d/148elvx9Yd0QuaDtc7AkaelIn3t5rvZCx5iG2ceVfpe8
         1134642760000, 1287300730000, 1460512990000, 1657047030000, 1880042950000, 2133063660000,
         2588953760000, 3080691310000, 3665850520000, 4362179870000, 5190799790000, 6176843200000,
         7350217850000, 8746513440000, 10408081090000, 12385317940000, 14738195680000, 17538079600000,
-        20869893150000, 24834693800000, 29552738180000, 35167129580000, 41848158500000, 49798467640000
-        /* eslint-enable @stylistic/array-element-newline*/
+        20869893150000, 24834693800000, 29552738180000, 35167129580000, 41848158500000, 49798467640000,
+
       ];
 
       const scenario: TestScenario = {
@@ -660,7 +660,7 @@ describe("Contract 'LendingMarket': complex tests", async () => {
         repaymentAmounts,
         expectedOutstandingBalancesBeforeRepayment,
         frozenStepIndexes,
-        finalAction: ScenarioFinalAction.Revocation
+        finalAction: ScenarioFinalAction.Revocation,
       };
       await runScenario(scenario);
     });
@@ -678,12 +678,12 @@ describe("Contract 'LendingMarket': complex tests", async () => {
       const frozenStepIndexes: number[] = [];
 
       const expectedOutstandingBalancesBeforeRepayment: number[] = [
-        /* eslint-disable @stylistic/array-element-newline*/
+
         // The numbers below are taken from the spreadsheet:
         // https://docs.google.com/spreadsheets/d/148elvx9Yd0QuaDtc7AkaelIn3t5rvZCx5iG2ceVfpe8
         1010000, 930000, 840000, 760000, 670000, 590000,
-        520000, 430000, 350000, 260000, 170000, 80000
-        /* eslint-enable @stylistic/array-element-newline*/
+        520000, 430000, 350000, 260000, 170000, 80000,
+
       ];
 
       const scenario: TestScenario = {
@@ -695,7 +695,7 @@ describe("Contract 'LendingMarket': complex tests", async () => {
         repaymentAmounts,
         expectedOutstandingBalancesBeforeRepayment,
         frozenStepIndexes,
-        finalAction: ScenarioFinalAction.FullRepaymentCheck
+        finalAction: ScenarioFinalAction.FullRepaymentCheck,
       };
       await runScenario(scenario);
     });

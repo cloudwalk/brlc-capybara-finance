@@ -8,7 +8,7 @@ import {
   deployAndConnectContract,
   getAddress,
   getNumberOfEvents,
-  proveTx
+  proveTx,
 } from "../test-utils/eth";
 import { checkEquality, maxUintForBits, setUpFixture } from "../test-utils/common";
 import { EXPECTED_VERSION } from "../test-utils/specific";
@@ -123,9 +123,9 @@ describe("Contract 'LiquidityPool'", async () => {
       liquidityPoolFactory,
       [
         owner.address,
-        tokenAddress
+        tokenAddress,
       ],
-      { kind: "uups" }
+      { kind: "uups" },
     ) as Contract;
 
     await liquidityPool.waitForDeployment();
@@ -155,7 +155,7 @@ describe("Contract 'LiquidityPool'", async () => {
     liquidityPool: Contract,
     tx: Promise<TransactionResponse>,
     depositAmount: bigint,
-    balancesBefore: bigint[]
+    balancesBefore: bigint[],
   ) {
     await expect(tx)
       .to.emit(liquidityPool, EVENT_NAME_DEPOSIT)
@@ -173,7 +173,7 @@ describe("Contract 'LiquidityPool'", async () => {
     liquidityPool: Contract,
     tx: Promise<TransactionResponse>,
     withdrawalAmount: bigint,
-    balancesBefore: bigint[]
+    balancesBefore: bigint[],
   ): Promise<TransactionResponse> {
     await expect(tx)
       .to.emit(liquidityPool, EVENT_NAME_WITHDRAWAL)
@@ -229,7 +229,7 @@ describe("Contract 'LiquidityPool'", async () => {
       const wrongOwnerAddress = (ZERO_ADDRESS);
       await expect(upgrades.deployProxy(liquidityPoolFactory, [
         wrongOwnerAddress,
-        tokenAddress
+        tokenAddress,
       ])).to.be.revertedWithCustomError(liquidityPoolFactory, ERROR_NAME_OWNER_ADDRESS_ZERO);
     });
 
@@ -237,7 +237,7 @@ describe("Contract 'LiquidityPool'", async () => {
       const wrongTokenAddress = (ZERO_ADDRESS);
       await expect(upgrades.deployProxy(liquidityPoolFactory, [
         owner.address,
-        wrongTokenAddress
+        wrongTokenAddress,
       ])).to.be.revertedWithCustomError(liquidityPoolFactory, ERROR_NAME_TOKEN_ADDRESS_ZERO);
     });
 
@@ -245,7 +245,7 @@ describe("Contract 'LiquidityPool'", async () => {
       const wrongTokenAddress = deployer.address;
       await expect(upgrades.deployProxy(liquidityPoolFactory, [
         owner.address,
-        wrongTokenAddress
+        wrongTokenAddress,
       ])).to.be.revertedWithCustomError(liquidityPoolFactory, ERROR_NAME_CONTRACT_ADDRESS_INVALID);
     });
 
@@ -254,7 +254,7 @@ describe("Contract 'LiquidityPool'", async () => {
       const wrongTokenAddress = getAddress(liquidityPool);
       await expect(upgrades.deployProxy(liquidityPoolFactory, [
         owner.address,
-        wrongTokenAddress
+        wrongTokenAddress,
       ])).to.be.revertedWithCustomError(liquidityPoolFactory, ERROR_NAME_CONTRACT_ADDRESS_INVALID);
     });
 
@@ -298,7 +298,7 @@ describe("Contract 'LiquidityPool'", async () => {
 
     it("Is reverted if the provided implementation address is not a liquidity pool contract", async () => {
       const { liquidityPool } = await setUpFixture(deployLiquidityPool);
-      const mockContractFactory = await ethers.getContractFactory("UUPSExtUpgradeableMock");
+      const mockContractFactory: ContractFactory = await ethers.getContractFactory("UUPSExtUpgradeableMock");
       const mockContract = await mockContractFactory.deploy() as Contract;
       await mockContract.waitForDeployment();
 
@@ -416,7 +416,7 @@ describe("Contract 'LiquidityPool'", async () => {
 
       expect(await liquidityPool.workingTreasuries()).to.deep.equal([
         workingTreasuries[0].address,
-        workingTreasuries[1].address
+        workingTreasuries[1].address,
       ]);
     });
 
@@ -588,7 +588,7 @@ describe("Contract 'LiquidityPool'", async () => {
       await expect(tx).to.changeTokenBalances(
         token,
         [liquidityPool, owner, admin, operationalTreasury],
-        [depositAmount, -depositAmount, 0, 0]
+        [depositAmount, -depositAmount, 0, 0],
       );
 
       await checkDepositTx(liquidityPool, tx, depositAmount, balancesBefore);
@@ -629,7 +629,7 @@ describe("Contract 'LiquidityPool'", async () => {
       await expect(tx).to.changeTokenBalances(
         token,
         [liquidityPool, owner, admin, operationalTreasury],
-        [depositAmount, 0, 0, -depositAmount]
+        [depositAmount, 0, 0, -depositAmount],
       );
       await checkDepositTx(liquidityPool, tx, depositAmount, balancesBefore);
     });
@@ -681,7 +681,7 @@ describe("Contract 'LiquidityPool'", async () => {
       await expect(tx).to.changeTokenBalances(
         token,
         [liquidityPool, owner, admin, operationalTreasury, workingTreasury],
-        [depositAmount, 0, 0, 0, -depositAmount]
+        [depositAmount, 0, 0, 0, -depositAmount],
       );
       await checkDepositTx(liquidityPool, tx, depositAmount, balancesBefore);
     });
@@ -695,10 +695,10 @@ describe("Contract 'LiquidityPool'", async () => {
         .withArgs(owner.address, ADMIN_ROLE);
 
       await expect(
-        connect(liquidityPool, liquidityOperator).depositFromWorkingTreasury(workingTreasury.address, DEPOSIT_AMOUNT)
+        connect(liquidityPool, liquidityOperator).depositFromWorkingTreasury(workingTreasury.address, DEPOSIT_AMOUNT),
       ).to.be.revertedWithCustomError(
         liquidityPool,
-        ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT
+        ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT,
       ).withArgs(liquidityOperator.address, ADMIN_ROLE);
 
       await expect(connect(liquidityPool, attacker).depositFromWorkingTreasury(workingTreasury.address, DEPOSIT_AMOUNT))
@@ -745,7 +745,7 @@ describe("Contract 'LiquidityPool'", async () => {
       await expect(tx).to.changeTokenBalances(
         token,
         [liquidityPool, owner, admin, operationalTreasury],
-        [depositAmount, 0, 0, 0]
+        [depositAmount, 0, 0, 0],
       );
       await checkDepositTx(liquidityPool, tx, depositAmount, balancesBefore);
       await expect(tx)
@@ -793,7 +793,7 @@ describe("Contract 'LiquidityPool'", async () => {
       await expect(tx).to.changeTokenBalances(
         token,
         [liquidityPool, owner, admin, operationalTreasury],
-        [-withdrawalAmount, withdrawalAmount, 0, 0]
+        [-withdrawalAmount, withdrawalAmount, 0, 0],
       );
       await checkWithdrawalTx(liquidityPool, tx, withdrawalAmount, balancesBefore);
     });
@@ -848,7 +848,7 @@ describe("Contract 'LiquidityPool'", async () => {
       await expect(tx).to.changeTokenBalances(
         token,
         [liquidityPool, owner, admin, operationalTreasury],
-        [-withdrawalAmount, 0, 0, withdrawalAmount]
+        [-withdrawalAmount, 0, 0, withdrawalAmount],
       );
       await checkWithdrawalTx(liquidityPool, tx, withdrawalAmount, balancesBefore);
     });
@@ -903,33 +903,33 @@ describe("Contract 'LiquidityPool'", async () => {
       await expect(tx).to.changeTokenBalances(
         token,
         [liquidityPool, owner, admin, operationalTreasury, workingTreasury],
-        [-withdrawalAmount, 0, 0, 0, withdrawalAmount]
+        [-withdrawalAmount, 0, 0, 0, withdrawalAmount],
       );
       await checkWithdrawalTx(liquidityPool, tx, withdrawalAmount, balancesBefore);
     });
 
     it("Is reverted if the caller does not have the admin role", async () => {
       const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
-      const workintTreasury = workingTreasuries[0];
+      const workingTreasury = workingTreasuries[0];
 
-      await expect(connect(liquidityPool, owner).withdrawToWorkingTreasury(workintTreasury.address, WITHDRAWAL_AMOUNT))
+      await expect(connect(liquidityPool, owner).withdrawToWorkingTreasury(workingTreasury.address, WITHDRAWAL_AMOUNT))
         .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
         .withArgs(owner.address, ADMIN_ROLE);
 
       await expect(connect(liquidityPool, liquidityOperator).withdrawToWorkingTreasury(
-        workintTreasury.address,
-        WITHDRAWAL_AMOUNT
+        workingTreasury.address,
+        WITHDRAWAL_AMOUNT,
       )).to.be.revertedWithCustomError(
         liquidityPool,
-        ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT
+        ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT,
       ).withArgs(liquidityOperator.address, ADMIN_ROLE);
 
       await expect(connect(liquidityPool, attacker).withdrawToWorkingTreasury(
-        workintTreasury.address,
-        WITHDRAWAL_AMOUNT
+        workingTreasury.address,
+        WITHDRAWAL_AMOUNT,
       )).to.be.revertedWithCustomError(
         liquidityPool,
-        ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT
+        ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT,
       ).withArgs(attacker.address, ADMIN_ROLE);
     });
 
@@ -938,7 +938,7 @@ describe("Contract 'LiquidityPool'", async () => {
 
       for (const wrongWorkingTreasury of [operationalTreasury, addonTreasury]) {
         await expect(
-          connect(liquidityPool, admin).withdrawToWorkingTreasury(wrongWorkingTreasury.address, WITHDRAWAL_AMOUNT)
+          connect(liquidityPool, admin).withdrawToWorkingTreasury(wrongWorkingTreasury.address, WITHDRAWAL_AMOUNT),
         ).to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_WORKING_TREASURY_UNREGISTERED);
       }
     });
@@ -957,7 +957,7 @@ describe("Contract 'LiquidityPool'", async () => {
       await proveTx(liquidityPool.deposit(WITHDRAWAL_AMOUNT - 1n));
 
       await expect(
-        connect(liquidityPool, admin).withdrawToWorkingTreasury(workingTreasuries[0].address, WITHDRAWAL_AMOUNT)
+        connect(liquidityPool, admin).withdrawToWorkingTreasury(workingTreasuries[0].address, WITHDRAWAL_AMOUNT),
       ).to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_BALANCE_INSUFFICIENT);
     });
   });
@@ -973,7 +973,7 @@ describe("Contract 'LiquidityPool'", async () => {
       await expect(tx).to.changeTokenBalances(
         token,
         [liquidityPool, owner, admin, operationalTreasury],
-        [-withdrawalAmount, 0, 0, 0]
+        [-withdrawalAmount, 0, 0, 0],
       );
       await checkWithdrawalTx(liquidityPool, tx, withdrawalAmount, balancesBefore);
       await expect(tx)
@@ -1024,7 +1024,7 @@ describe("Contract 'LiquidityPool'", async () => {
       await expect(tx).to.changeTokenBalances(
         token,
         [owner.address, getAddress(liquidityPool)],
-        [(rescuedAmount), -(rescuedAmount)]
+        [(rescuedAmount), -(rescuedAmount)],
       );
 
       await expect(tx)
@@ -1170,7 +1170,7 @@ describe("Contract 'LiquidityPool'", async () => {
         DEPOSIT_AMOUNT / 100n,
         DEPOSIT_AMOUNT / 10n,
         -DEPOSIT_AMOUNT / 20n,
-        -DEPOSIT_AMOUNT / 50n
+        -DEPOSIT_AMOUNT / 50n,
       ];
 
       for (const adjustment of adjustments) {
@@ -1247,7 +1247,7 @@ describe("Contract 'LiquidityPool'", async () => {
       await proveTx(liquidityPool.pause());
 
       await expect(
-        connect(liquidityPool, liquidityOperator).onBeforeLiquidityIn(REPAYMENT_AMOUNT)
+        connect(liquidityPool, liquidityOperator).onBeforeLiquidityIn(REPAYMENT_AMOUNT),
       ).to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_ENFORCED_PAUSED);
     });
 
@@ -1296,7 +1296,7 @@ describe("Contract 'LiquidityPool'", async () => {
       await proveTx(liquidityPool.pause());
 
       await expect(
-        connect(liquidityPool, liquidityOperator).onBeforeLiquidityOut(REPAYMENT_AMOUNT)
+        connect(liquidityPool, liquidityOperator).onBeforeLiquidityOut(REPAYMENT_AMOUNT),
       ).to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_ENFORCED_PAUSED);
     });
 

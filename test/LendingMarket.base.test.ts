@@ -11,14 +11,14 @@ import {
   getNumberOfEvents,
   getTxTimestamp,
   increaseBlockTimestampTo,
-  proveTx
+  proveTx,
 } from "../test-utils/eth";
 import { checkEquality, maxUintForBits, roundMath, setUpFixture } from "../test-utils/common";
 import { EXPECTED_VERSION } from "../test-utils/specific";
 
 enum LoanType {
   Ordinary = 0,
-  Installment = 1
+  Installment = 1,
 }
 
 interface LoanTerms {
@@ -120,12 +120,12 @@ interface Fixture {
 
 enum PayerKind {
   Borrower = 0,
-  Stranger = 1
+  Stranger = 1,
 }
 
 enum LoanOperationKind {
   Repayment = 0,
-  Freezing = 1
+  Freezing = 1,
 }
 
 interface LoanOperation {
@@ -236,18 +236,18 @@ const defaultLoanState: LoanState = {
   firstInstallmentId: 0,
   installmentCount: 0,
   lateFeeAmount: 0,
-  discountAmount: 0
+  discountAmount: 0,
 };
 
 const defaultLoanConfig: LoanConfig = {
-  lateFeeRate: 0
+  lateFeeRate: 0,
 };
 
 const defaultLoan: Loan = {
   id: 0,
   startPeriod: 0,
   state: defaultLoanState,
-  config: defaultLoanConfig
+  config: defaultLoanConfig,
 };
 
 function clone(originLoan: Loan): Loan {
@@ -255,7 +255,7 @@ function clone(originLoan: Loan): Loan {
     id: originLoan.id,
     startPeriod: originLoan.startPeriod,
     state: { ...originLoan.state },
-    config: { ...originLoan.config }
+    config: { ...originLoan.config },
   };
 }
 
@@ -269,13 +269,13 @@ async function getLoanStates(contract: Contract, lonaIds: number[]): Promise<Loa
 
 function checkInstallmentLoanPreviewEquality(
   actualPreview: InstallmentLoanPreview,
-  expectedPreview: InstallmentLoanPreview
+  expectedPreview: InstallmentLoanPreview,
 ) {
   checkEquality(
     actualPreview,
     expectedPreview,
     undefined, // index
-    { ignoreObjects: true }
+    { ignoreObjects: true },
   );
   expect(actualPreview.installmentPreviews.length).to.eq(expectedPreview.installmentPreviews.length);
   for (let i = 0; i < expectedPreview.installmentPreviews.length; i++) {
@@ -351,7 +351,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       addonAmount: ADDON_AMOUNT,
       durationInPeriods: DURATION_IN_PERIODS,
       interestRatePrimary: INTEREST_RATE_PRIMARY,
-      interestRateSecondary: INTEREST_RATE_SECONDARY
+      interestRateSecondary: INTEREST_RATE_SECONDARY,
     };
   }
 
@@ -375,17 +375,17 @@ describe("Contract 'LendingMarket': base tests", async () => {
       interestRatePrimary: INTEREST_RATE_PRIMARY,
       interestRateSecondary: INTEREST_RATE_SECONDARY,
       trackedBalance: props.borrowedAmount + props.addonAmount,
-      trackedTimestamp: timestampWithOffset
+      trackedTimestamp: timestampWithOffset,
     };
     const loanConfig: LoanConfig = {
       ...defaultLoanConfig,
-      lateFeeRate: props.lateFeeRate
+      lateFeeRate: props.lateFeeRate,
     };
     return {
       id: props.id,
       startPeriod: calculatePeriodIndex(timestampWithOffset),
       state: loanState,
-      config: loanConfig
+      config: loanConfig,
     };
   }
 
@@ -415,11 +415,11 @@ describe("Contract 'LendingMarket': base tests", async () => {
         trackedBalance: props.borrowedAmounts[i] + props.addonAmounts[i],
         trackedTimestamp: timestampWithOffset,
         firstInstallmentId: props.firstInstallmentId,
-        installmentCount: props.borrowedAmounts.length
+        installmentCount: props.borrowedAmounts.length,
       };
       const loanConfig: LoanConfig = {
         ...defaultLoanConfig,
-        lateFeeRate: props.lateFeeRate
+        lateFeeRate: props.lateFeeRate,
       };
       loans.push({ id: props.firstInstallmentId + i, startPeriod, state: loanState, config: loanConfig });
     }
@@ -430,7 +430,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
     marketViaAdmin: Contract,
     borrowedAmounts: number[],
     addonAmounts: number[],
-    durations: number[]
+    durations: number[],
   ): Promise<Loan[]> {
     const firstInstallmentId = Number(await marketViaAdmin.loanCounter());
     const tx = marketViaAdmin.takeInstallmentLoanFor(
@@ -438,7 +438,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       PROGRAM_ID,
       borrowedAmounts,
       addonAmounts,
-      durations
+      durations,
     );
 
     return createInstallmentLoanParts({
@@ -447,7 +447,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       addonAmounts: addonAmounts,
       durations: durations,
       lateFeeRate: LATE_FEE_RATE,
-      timestamp: await getTxTimestamp(tx)
+      timestamp: await getTxTimestamp(tx),
     });
   }
 
@@ -487,7 +487,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       const outstandingBalance = calculateTrackedBalance(
         loan.state.trackedBalance,
         duePeriodIndex - trackedPeriodIndex,
-        loan.state.interestRatePrimary
+        loan.state.interestRatePrimary,
       );
       return Math.round(outstandingBalance * loan.config.lateFeeRate / INTEREST_RATE_FACTOR);
     } else {
@@ -516,7 +516,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       trackedBalance = calculateTrackedBalance(
         trackedBalance,
         numberOfPeriodsWithPrimaryRate,
-        loan.state.interestRatePrimary
+        loan.state.interestRatePrimary,
       );
     }
 
@@ -525,13 +525,13 @@ describe("Contract 'LendingMarket': base tests", async () => {
       trackedBalance = calculateTrackedBalance(
         trackedBalance,
         numberOfPeriodsWithSecondaryRate,
-        loan.state.interestRateSecondary
+        loan.state.interestRateSecondary,
       );
     }
     return {
       periodIndex: initialPeriodIndex,
       trackedBalance,
-      outstandingBalance: roundSpecific(trackedBalance)
+      outstandingBalance: roundSpecific(trackedBalance),
     };
   }
 
@@ -557,7 +557,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       interestRatePrimary: loan.state.interestRatePrimary,
       interestRateSecondary: loan.state.interestRateSecondary,
       firstInstallmentId: loan.state.firstInstallmentId,
-      installmentCount: loan.state.installmentCount
+      installmentCount: loan.state.installmentCount,
     };
   }
 
@@ -578,7 +578,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       totalRepaidAmount: loans.map(loan => loan.state.repaidAmount).reduce((sum, amount) => sum + amount),
       totalLateFeeAmount: loanPreviews.map(preview => preview.lateFeeAmount).reduce((sum, amount) => sum + amount),
       totalDiscountAmount: loanPreviews.map(preview => preview.discountAmount).reduce((sum, amount) => sum + amount),
-      installmentPreviews: loanPreviews
+      installmentPreviews: loanPreviews,
     };
   }
 
@@ -641,7 +641,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
     let market = await upgrades.deployProxy(
       lendingMarketFactory,
       [owner.address],
-      { kind: "uups" }
+      { kind: "uups" },
     ) as Contract;
 
     market = connect(market, owner); // Explicitly specifying the initial account
@@ -653,7 +653,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       marketViaAdmin: marketViaAdmin,
       marketAddress,
       ordinaryLoan: defaultLoan,
-      installmentLoanParts: []
+      installmentLoanParts: [],
     };
   }
 
@@ -701,14 +701,14 @@ describe("Contract 'LendingMarket': base tests", async () => {
       PROGRAM_ID,
       BORROWED_AMOUNT,
       ADDON_AMOUNT,
-      DURATION_IN_PERIODS
+      DURATION_IN_PERIODS,
     );
     fixture.ordinaryLoan = createLoan({
       id: ordinaryLoanId,
       borrowedAmount: BORROWED_AMOUNT,
       addonAmount: ADDON_AMOUNT,
       lateFeeRate: LATE_FEE_RATE,
-      timestamp: await getTxTimestamp(tx1)
+      timestamp: await getTxTimestamp(tx1),
     });
 
     // Take an installment loan
@@ -716,7 +716,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       marketViaAdmin,
       BORROWED_AMOUNTS,
       ADDON_AMOUNTS,
-      DURATIONS_IN_PERIODS
+      DURATIONS_IN_PERIODS,
     );
     return fixture;
   }
@@ -724,7 +724,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
   async function executeLoanOperations(
     marketViaAdmin: Contract,
     loans: Loan[],
-    operations: LoanOperation[]
+    operations: LoanOperation[],
   ): Promise<{ actualTimestamps: number[]; firstLoanTrackedBalanceBeforeRepayments: number[] }> {
     const actualTimestamps: number[] = [];
     const firstLoanTrackedBalanceBeforeRepayments: number[] = [];
@@ -732,7 +732,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
     const loanStartTimestamp = removeTimestampOffset(loans[0].state.startTimestamp);
     const loanOverdueTimestamp = removeTimestampOffset(
       (loans[0].startPeriod + loans[0].state.durationInPeriods) * PERIOD_IN_SECONDS +
-      PERIOD_IN_SECONDS
+      PERIOD_IN_SECONDS,
     );
     const maxTimeBeforeOverdueInSeconds = 60;
 
@@ -749,7 +749,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       } else {
         throw new Error(
           "The operation relative timestamp is too close to the overdue timestamp. " +
-          "The loan state can be different due to a blockchain delay"
+          "The loan state can be different due to a blockchain delay",
         );
       }
 
@@ -781,7 +781,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
           const tx = marketViaAdmin.repayLoanForBatch(
             loanIds,
             repaymentAmounts,
-            borrower.address
+            borrower.address,
           );
           const repaymentTimestamp = await getTxTimestamp(tx);
           actualTimestamps.push(repaymentTimestamp);
@@ -900,7 +900,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
 
     it("Is reverted if the provided implementation address is not a lending market contract", async () => {
       const { market } = await setUpFixture(deployLendingMarket);
-      const mockContractFactory = await ethers.getContractFactory("UUPSExtUpgradeableMock");
+      const mockContractFactory: ContractFactory = await ethers.getContractFactory("UUPSExtUpgradeableMock");
       const mockContract = await mockContractFactory.deploy() as Contract;
       await mockContract.waitForDeployment();
 
@@ -1127,7 +1127,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
         PROGRAM_ID,
         BORROWED_AMOUNT,
         addonAmount,
-        DURATION_IN_PERIODS
+        DURATION_IN_PERIODS,
       );
       expect(actualLoanId).to.eq(expectedLoanId);
 
@@ -1136,7 +1136,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
         PROGRAM_ID,
         BORROWED_AMOUNT,
         addonAmount,
-        DURATION_IN_PERIODS
+        DURATION_IN_PERIODS,
       );
       const timestamp = await getTxTimestamp(tx);
       const actualLoanState: LoanState = await marketViaAdmin.getLoanState(expectedLoanId);
@@ -1145,7 +1145,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
         borrowedAmount: BORROWED_AMOUNT,
         addonAmount,
         lateFeeRate: LATE_FEE_RATE,
-        timestamp
+        timestamp,
       });
 
       checkEquality(actualLoanState, expectedLoan.state);
@@ -1154,7 +1154,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       await expect(tx).to.changeTokenBalances(
         token,
         [liquidityPool, borrower, addonTreasury, marketViaAdmin],
-        [-principalAmount, +BORROWED_AMOUNT, +addonAmount, 0]
+        [-principalAmount, +BORROWED_AMOUNT, +addonAmount, 0],
       );
       if (addonAmount != 0) {
         expect(await getNumberOfEvents(tx, token, EVENT_NAME_TRANSFER)).to.eq(2);
@@ -1179,7 +1179,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
         PROGRAM_ID,
         BORROWED_AMOUNT,
         addonAmount,
-        DURATION_IN_PERIODS
+        DURATION_IN_PERIODS,
       );
       expect(nextActualLoanId).to.eq(expectedLoanId + 1);
     }
@@ -1205,8 +1205,8 @@ describe("Contract 'LendingMarket': base tests", async () => {
             PROGRAM_ID,
             BORROWED_AMOUNT,
             ADDON_AMOUNT,
-            DURATION_IN_PERIODS
-          )
+            DURATION_IN_PERIODS,
+          ),
         ).to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_ENFORCED_PAUSED);
       });
 
@@ -1219,11 +1219,11 @@ describe("Contract 'LendingMarket': base tests", async () => {
             PROGRAM_ID,
             BORROWED_AMOUNT,
             ADDON_AMOUNT,
-            DURATION_IN_PERIODS
-          )
+            DURATION_IN_PERIODS,
+          ),
         ).to.be.revertedWithCustomError(
           market,
-          ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT
+          ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT,
         ).withArgs(owner.address, ADMIN_ROLE);
 
         await expect(
@@ -1232,11 +1232,11 @@ describe("Contract 'LendingMarket': base tests", async () => {
             PROGRAM_ID,
             BORROWED_AMOUNT,
             ADDON_AMOUNT,
-            DURATION_IN_PERIODS
-          )
+            DURATION_IN_PERIODS,
+          ),
         ).to.be.revertedWithCustomError(
           market,
-          ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT
+          ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT,
         ).withArgs(borrower.address, ADMIN_ROLE);
       });
 
@@ -1250,8 +1250,8 @@ describe("Contract 'LendingMarket': base tests", async () => {
             PROGRAM_ID,
             BORROWED_AMOUNT,
             ADDON_AMOUNT,
-            DURATION_IN_PERIODS
-          )
+            DURATION_IN_PERIODS,
+          ),
         ).to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_ZERO_ADDRESS);
       });
 
@@ -1265,8 +1265,8 @@ describe("Contract 'LendingMarket': base tests", async () => {
             wrongProgramId,
             BORROWED_AMOUNT,
             ADDON_AMOUNT,
-            DURATION_IN_PERIODS
-          )
+            DURATION_IN_PERIODS,
+          ),
         ).to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_PROGRAM_NOT_EXIST);
       });
 
@@ -1280,8 +1280,8 @@ describe("Contract 'LendingMarket': base tests", async () => {
             PROGRAM_ID,
             wrongBorrowedAmount,
             ADDON_AMOUNT,
-            DURATION_IN_PERIODS
-          )
+            DURATION_IN_PERIODS,
+          ),
         ).to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_INVALID_AMOUNT);
       });
 
@@ -1296,8 +1296,8 @@ describe("Contract 'LendingMarket': base tests", async () => {
             PROGRAM_ID,
             wrongBorrowedAmount,
             ADDON_AMOUNT,
-            DURATION_IN_PERIODS
-          )
+            DURATION_IN_PERIODS,
+          ),
         ).to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_INVALID_AMOUNT);
       });
 
@@ -1312,15 +1312,15 @@ describe("Contract 'LendingMarket': base tests", async () => {
             PROGRAM_ID,
             BORROWED_AMOUNT,
             wrongAddonAmount,
-            DURATION_IN_PERIODS
-          )
+            DURATION_IN_PERIODS,
+          ),
         ).to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_INVALID_AMOUNT);
       });
 
       it("The credit line is not configured for a lending program", async () => {
         const { marketViaAdmin } = await setUpFixture(deployLendingMarketAndConfigureItForLoan);
         await proveTx(
-          marketViaAdmin.setCreditLineForProgram(PROGRAM_ID, ZERO_ADDRESS) // Call via the testable version
+          marketViaAdmin.setCreditLineForProgram(PROGRAM_ID, ZERO_ADDRESS), // Call via the testable version
         );
 
         await expect(
@@ -1329,15 +1329,15 @@ describe("Contract 'LendingMarket': base tests", async () => {
             PROGRAM_ID,
             BORROWED_AMOUNT,
             ADDON_AMOUNT,
-            DURATION_IN_PERIODS
-          )
+            DURATION_IN_PERIODS,
+          ),
         ).to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_PROGRAM_CREDIT_LINE_NOT_CONFIGURED);
       });
 
       it("The liquidity pool is not configured for a lending program", async () => {
         const { marketViaAdmin } = await setUpFixture(deployLendingMarketAndConfigureItForLoan);
         await proveTx(
-          marketViaAdmin.setLiquidityPoolForProgram(PROGRAM_ID, ZERO_ADDRESS) // Call via the testable version
+          marketViaAdmin.setLiquidityPoolForProgram(PROGRAM_ID, ZERO_ADDRESS), // Call via the testable version
         );
 
         await expect(
@@ -1346,8 +1346,8 @@ describe("Contract 'LendingMarket': base tests", async () => {
             PROGRAM_ID,
             BORROWED_AMOUNT,
             ADDON_AMOUNT,
-            DURATION_IN_PERIODS
-          )
+            DURATION_IN_PERIODS,
+          ),
         ).to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_PROGRAM_LIQUIDITY_POOL_NOT_CONFIGURED);
       });
 
@@ -1361,8 +1361,8 @@ describe("Contract 'LendingMarket': base tests", async () => {
             PROGRAM_ID,
             BORROWED_AMOUNT,
             ADDON_AMOUNT,
-            DURATION_IN_PERIODS
-          )
+            DURATION_IN_PERIODS,
+          ),
         ).to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_LOAN_ID_EXCESS);
       });
 
@@ -1376,8 +1376,8 @@ describe("Contract 'LendingMarket': base tests", async () => {
             PROGRAM_ID,
             BORROWED_AMOUNT,
             ADDON_AMOUNT,
-            DURATION_IN_PERIODS
-          )
+            DURATION_IN_PERIODS,
+          ),
         ).to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_ADDON_TREASURY_ADDRESS_ZERO);
       });
     });
@@ -1438,7 +1438,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
         PROGRAM_ID,
         borrowedAmounts,
         addonAmounts,
-        durationsInPeriods
+        durationsInPeriods,
       );
       expect(actualLoanIdRange).to.deep.eq(expectedLoanIdRange);
 
@@ -1447,7 +1447,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
         PROGRAM_ID,
         borrowedAmounts,
         addonAmounts,
-        durationsInPeriods
+        durationsInPeriods,
       );
       const timestamp = await getTxTimestamp(tx);
       const actualLoanStates: LoanState[] = await getLoanStates(marketViaAdmin, expectedLoanIds);
@@ -1457,7 +1457,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
         addonAmounts,
         durations: durationsInPeriods,
         lateFeeRate: LATE_FEE_RATE,
-        timestamp
+        timestamp,
       });
 
       // Check individual events
@@ -1476,14 +1476,14 @@ describe("Contract 'LendingMarket': base tests", async () => {
           PROGRAM_ID,
           installmentCount,
           totalBorrowedAmount,
-          totalAddonAmount
+          totalAddonAmount,
         );
       expect(await marketViaAdmin.loanCounter()).to.eq(expectedLoanIds[installmentCount - 1] + 1);
 
       await expect(tx).to.changeTokenBalances(
         token,
         [liquidityPool, borrower, addonTreasury, marketViaAdmin],
-        [-totalPrincipal, +totalBorrowedAmount, +totalAddonAmount, 0]
+        [-totalPrincipal, +totalBorrowedAmount, +totalAddonAmount, 0],
       );
 
       expect(await getNumberOfEvents(tx, creditLine, EVENT_NAME_ON_BEFORE_LOAN_TAKEN_CALLED)).to.eq(installmentCount);
@@ -1503,7 +1503,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
         PROGRAM_ID,
         BORROWED_AMOUNT,
         ADDON_AMOUNT,
-        DURATION_IN_PERIODS
+        DURATION_IN_PERIODS,
       );
       expect(nextActualLoanId).to.eq(expectedLoanIds[installmentCount - 1] + 1);
     }
@@ -1533,8 +1533,8 @@ describe("Contract 'LendingMarket': base tests", async () => {
             PROGRAM_ID,
             BORROWED_AMOUNTS,
             ADDON_AMOUNTS,
-            DURATIONS_IN_PERIODS
-          )
+            DURATIONS_IN_PERIODS,
+          ),
         ).to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_ENFORCED_PAUSED);
       });
 
@@ -1547,11 +1547,11 @@ describe("Contract 'LendingMarket': base tests", async () => {
             PROGRAM_ID,
             BORROWED_AMOUNTS,
             ADDON_AMOUNTS,
-            DURATIONS_IN_PERIODS
-          )
+            DURATIONS_IN_PERIODS,
+          ),
         ).to.be.revertedWithCustomError(
           market,
-          ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT
+          ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT,
         ).withArgs(owner.address, ADMIN_ROLE);
 
         await expect(
@@ -1560,11 +1560,11 @@ describe("Contract 'LendingMarket': base tests", async () => {
             PROGRAM_ID,
             BORROWED_AMOUNTS,
             ADDON_AMOUNTS,
-            DURATIONS_IN_PERIODS
-          )
+            DURATIONS_IN_PERIODS,
+          ),
         ).to.be.revertedWithCustomError(
           market,
-          ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT
+          ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT,
         ).withArgs(borrower.address, ADMIN_ROLE);
       });
 
@@ -1578,8 +1578,8 @@ describe("Contract 'LendingMarket': base tests", async () => {
             PROGRAM_ID,
             BORROWED_AMOUNTS,
             ADDON_AMOUNTS,
-            DURATIONS_IN_PERIODS
-          )
+            DURATIONS_IN_PERIODS,
+          ),
         ).to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_ZERO_ADDRESS);
       });
 
@@ -1593,8 +1593,8 @@ describe("Contract 'LendingMarket': base tests", async () => {
             wrongProgramId,
             BORROWED_AMOUNTS,
             ADDON_AMOUNTS,
-            DURATIONS_IN_PERIODS
-          )
+            DURATIONS_IN_PERIODS,
+          ),
         ).to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_PROGRAM_NOT_EXIST);
       });
 
@@ -1608,8 +1608,8 @@ describe("Contract 'LendingMarket': base tests", async () => {
             PROGRAM_ID,
             wrongBorrowedAmounts,
             ADDON_AMOUNTS,
-            DURATIONS_IN_PERIODS
-          )
+            DURATIONS_IN_PERIODS,
+          ),
         ).to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_INVALID_AMOUNT);
       });
 
@@ -1624,8 +1624,8 @@ describe("Contract 'LendingMarket': base tests", async () => {
             PROGRAM_ID,
             wrongBorrowedAmounts,
             ADDON_AMOUNTS,
-            DURATIONS_IN_PERIODS
-          )
+            DURATIONS_IN_PERIODS,
+          ),
         ).to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_INVALID_AMOUNT);
       });
 
@@ -1640,8 +1640,8 @@ describe("Contract 'LendingMarket': base tests", async () => {
             PROGRAM_ID,
             BORROWED_AMOUNTS,
             wrongAddonAmounts,
-            DURATIONS_IN_PERIODS
-          )
+            DURATIONS_IN_PERIODS,
+          ),
         ).to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_INVALID_AMOUNT);
       });
 
@@ -1656,8 +1656,8 @@ describe("Contract 'LendingMarket': base tests", async () => {
             PROGRAM_ID,
             BORROWED_AMOUNTS,
             ADDON_AMOUNTS,
-            wrongDurations
-          )
+            wrongDurations,
+          ),
         ).to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_DURATION_ARRAY_INVALID);
       });
 
@@ -1671,8 +1671,8 @@ describe("Contract 'LendingMarket': base tests", async () => {
             PROGRAM_ID,
             BORROWED_AMOUNTS,
             ADDON_AMOUNTS,
-            DURATIONS_IN_PERIODS
-          )
+            DURATIONS_IN_PERIODS,
+          ),
         ).to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_INSTALLMENT_COUNT_EXCESS);
       });
 
@@ -1687,8 +1687,8 @@ describe("Contract 'LendingMarket': base tests", async () => {
             PROGRAM_ID,
             BORROWED_AMOUNTS,
             wrongAddonAmounts,
-            DURATIONS_IN_PERIODS
-          )
+            DURATIONS_IN_PERIODS,
+          ),
         ).to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_ARRAY_LENGTH_MISMATCH);
 
         await expect(
@@ -1697,8 +1697,8 @@ describe("Contract 'LendingMarket': base tests", async () => {
             PROGRAM_ID,
             BORROWED_AMOUNTS,
             ADDON_AMOUNTS,
-            wrongDurations
-          )
+            wrongDurations,
+          ),
         ).to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_ARRAY_LENGTH_MISMATCH);
       });
 
@@ -1713,15 +1713,15 @@ describe("Contract 'LendingMarket': base tests", async () => {
             PROGRAM_ID,
             wrongBorrowedAmounts,
             ADDON_AMOUNTS,
-            DURATIONS_IN_PERIODS
-          )
+            DURATIONS_IN_PERIODS,
+          ),
         ).to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_INVALID_AMOUNT);
       });
 
       it("The credit line is not configured for a lending program", async () => {
         const { marketViaAdmin } = await setUpFixture(deployLendingMarketAndConfigureItForLoan);
         await proveTx(
-          marketViaAdmin.setCreditLineForProgram(PROGRAM_ID, ZERO_ADDRESS) // Call via the testable version
+          marketViaAdmin.setCreditLineForProgram(PROGRAM_ID, ZERO_ADDRESS), // Call via the testable version
         );
 
         await expect(
@@ -1730,15 +1730,15 @@ describe("Contract 'LendingMarket': base tests", async () => {
             PROGRAM_ID,
             BORROWED_AMOUNTS,
             ADDON_AMOUNTS,
-            DURATIONS_IN_PERIODS
-          )
+            DURATIONS_IN_PERIODS,
+          ),
         ).to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_PROGRAM_CREDIT_LINE_NOT_CONFIGURED);
       });
 
       it("The liquidity pool is not configured for a lending program", async () => {
         const { marketViaAdmin } = await setUpFixture(deployLendingMarketAndConfigureItForLoan);
         await proveTx(
-          marketViaAdmin.setLiquidityPoolForProgram(PROGRAM_ID, ZERO_ADDRESS) // Call via the testable version
+          marketViaAdmin.setLiquidityPoolForProgram(PROGRAM_ID, ZERO_ADDRESS), // Call via the testable version
         );
 
         await expect(
@@ -1747,8 +1747,8 @@ describe("Contract 'LendingMarket': base tests", async () => {
             PROGRAM_ID,
             BORROWED_AMOUNTS,
             ADDON_AMOUNTS,
-            DURATIONS_IN_PERIODS
-          )
+            DURATIONS_IN_PERIODS,
+          ),
         ).to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_PROGRAM_LIQUIDITY_POOL_NOT_CONFIGURED);
       });
 
@@ -1762,8 +1762,8 @@ describe("Contract 'LendingMarket': base tests", async () => {
             PROGRAM_ID,
             BORROWED_AMOUNTS,
             ADDON_AMOUNTS,
-            DURATIONS_IN_PERIODS
-          )
+            DURATIONS_IN_PERIODS,
+          ),
         ).to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_LOAN_ID_EXCESS);
       });
 
@@ -1777,8 +1777,8 @@ describe("Contract 'LendingMarket': base tests", async () => {
             PROGRAM_ID,
             BORROWED_AMOUNTS,
             ADDON_AMOUNTS,
-            DURATIONS_IN_PERIODS
-          )
+            DURATIONS_IN_PERIODS,
+          ),
         ).to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_ADDON_TREASURY_ADDRESS_ZERO);
       });
     });
@@ -1789,7 +1789,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       fixture: Fixture,
       loans: Loan,
       repaymentAmount: number | bigint,
-      payerKind: PayerKind
+      payerKind: PayerKind,
     ): Promise<Loan> {
       const expectedLoan: Loan = clone(loans);
       const { market } = fixture;
@@ -1814,7 +1814,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       await expect(tx).to.changeTokenBalances(
         token,
         [liquidityPool, payer, market],
-        [+repaymentAmount, -repaymentAmount, 0]
+        [+repaymentAmount, -repaymentAmount, 0],
       );
 
       await expect(tx).to.emit(market, EVENT_NAME_LOAN_REPAYMENT).withArgs(
@@ -1822,7 +1822,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
         payer.address,
         borrower.address,
         repaymentAmount,
-        expectedLoan.state.trackedBalance
+        expectedLoan.state.trackedBalance,
       );
 
       // Check that the appropriate market hook functions are called
@@ -1949,7 +1949,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       fixture: Fixture,
       loans: Loan[],
       repaymentAmounts: (number | bigint)[],
-      payerKind: PayerKind
+      payerKind: PayerKind,
     ): Promise<Loan[]> {
       const expectedLoans: Loan[] = loans.map(loan => clone(loan));
       const loanIds: number[] = expectedLoans.map(loan => loan.id);
@@ -1981,7 +1981,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
           payer.address,
           borrower.address,
           expectedRepaymentAmount,
-          expectedLoan.state.trackedBalance
+          expectedLoan.state.trackedBalance,
         );
 
         // Check that the appropriate market hook functions are called
@@ -2001,7 +2001,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       await expect(tx).to.changeTokenBalances(
         token,
         [liquidityPool, payer, marketViaAdmin],
-        [totalRepaymentAmount, -totalRepaymentAmount, 0]
+        [totalRepaymentAmount, -totalRepaymentAmount, 0],
       );
 
       return expectedLoans;
@@ -2012,7 +2012,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
         const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
         const loans: Loan[] = [
           fixture.ordinaryLoan,
-          fixture.installmentLoanParts[fixture.installmentLoanParts.length - 1]
+          fixture.installmentLoanParts[fixture.installmentLoanParts.length - 1],
         ];
         const repaymentAmounts = [REPAYMENT_AMOUNT, REPAYMENT_AMOUNT / 2];
         await executeAndCheck(fixture, loans, repaymentAmounts, PayerKind.Borrower);
@@ -2022,7 +2022,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
         const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
         const loans: Loan[] = [
           fixture.ordinaryLoan,
-          fixture.installmentLoanParts[fixture.installmentLoanParts.length - 1]
+          fixture.installmentLoanParts[fixture.installmentLoanParts.length - 1],
         ];
         const repaymentAmounts = [REPAYMENT_AMOUNT, REPAYMENT_AMOUNT / 2];
         const periodIndex = loans[0].startPeriod + loans[0].state.durationInPeriods / 2;
@@ -2034,7 +2034,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
         const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
         let loans: Loan[] = [
           fixture.ordinaryLoan,
-          fixture.installmentLoanParts[fixture.installmentLoanParts.length - 1]
+          fixture.installmentLoanParts[fixture.installmentLoanParts.length - 1],
         ];
         const periodIndex = loans[0].startPeriod + loans[0].state.durationInPeriods;
         await increaseBlockTimestampToPeriodIndex(periodIndex);
@@ -2048,7 +2048,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
         const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
         const loans: Loan[] = [
           fixture.ordinaryLoan,
-          fixture.installmentLoanParts[fixture.installmentLoanParts.length - 1]
+          fixture.installmentLoanParts[fixture.installmentLoanParts.length - 1],
         ];
         const futureTimestamp = await increaseBlockTimestampToPeriodIndex(loans[0].startPeriod + 1);
         const loanPreview: LoanPreview = determineLoanPreview(fixture.ordinaryLoan, futureTimestamp);
@@ -2060,7 +2060,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
         const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
         const loans: Loan[] = [
           fixture.ordinaryLoan,
-          fixture.installmentLoanParts[fixture.installmentLoanParts.length - 1]
+          fixture.installmentLoanParts[fixture.installmentLoanParts.length - 1],
         ];
         const repaymentAmounts = [REPAYMENT_AMOUNT, FULL_REPAYMENT_AMOUNT];
         await increaseBlockTimestampToPeriodIndex(loans[1].startPeriod + 3);
@@ -2071,7 +2071,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
         const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
         const loans: Loan[] = [
           fixture.ordinaryLoan,
-          clone(fixture.installmentLoanParts[fixture.installmentLoanParts.length - 1])
+          clone(fixture.installmentLoanParts[fixture.installmentLoanParts.length - 1]),
         ];
         const repaymentAmounts = [REPAYMENT_AMOUNT, REPAYMENT_AMOUNT / 2];
         let periodIndex = loans[1].startPeriod + 1;
@@ -2125,25 +2125,25 @@ describe("Contract 'LendingMarket': base tests", async () => {
         await expect(marketViaAdmin.repayLoanForBatch(
           [...loanIds, loanIds[0]],
           repaymentAmounts,
-          borrower.address
+          borrower.address,
         )).to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_ARRAY_LENGTH_MISMATCH);
 
         await expect(marketViaAdmin.repayLoanForBatch(
           loanIds,
           [...repaymentAmounts, REPAYMENT_AMOUNT],
-          borrower.address
+          borrower.address,
         )).to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_ARRAY_LENGTH_MISMATCH);
 
         await expect(marketViaAdmin.repayLoanForBatch(
           loanIds,
           [],
-          borrower.address
+          borrower.address,
         )).to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_ARRAY_LENGTH_MISMATCH);
 
         await expect(marketViaAdmin.repayLoanForBatch(
           [],
           repaymentAmounts,
-          borrower.address
+          borrower.address,
         )).to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_ARRAY_LENGTH_MISMATCH);
       });
 
@@ -2174,7 +2174,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
         await proveTx(marketViaAdmin.repayLoanForBatch(
           [loanIds[loanIds.length - 1]],
           [FULL_REPAYMENT_AMOUNT],
-          borrower.address
+          borrower.address,
         ));
 
         await expect(marketViaAdmin.repayLoanForBatch(loanIds, repaymentAmounts, borrower.address))
@@ -2219,7 +2219,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
     async function executeAndCheck(
       fixture: Fixture,
       loans: Loan[],
-      discountAmounts: (number | bigint)[]
+      discountAmounts: (number | bigint)[],
     ): Promise<Loan[]> {
       const expectedLoans: Loan[] = loans.map(loan => clone(loan));
       const loanIds: number[] = expectedLoans.map(loan => loan.id);
@@ -2240,7 +2240,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
         await expect(tx).to.emit(marketViaAdmin, EVENT_NAME_LOAN_DISCOUNTED).withArgs(
           expectedLoan.id,
           expectedDiscountAmount,
-          expectedLoan.state.trackedBalance
+          expectedLoan.state.trackedBalance,
         );
       }
 
@@ -2260,7 +2260,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
         const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
         let loans: Loan[] = [
           fixture.ordinaryLoan,
-          fixture.installmentLoanParts[fixture.installmentLoanParts.length - 1]
+          fixture.installmentLoanParts[fixture.installmentLoanParts.length - 1],
         ];
         const periodIndex = loans[0].startPeriod + loans[0].state.durationInPeriods;
         await increaseBlockTimestampToPeriodIndex(periodIndex);
@@ -2294,7 +2294,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
         const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
         const loans: Loan[] = [
           fixture.ordinaryLoan,
-          clone(fixture.installmentLoanParts[fixture.installmentLoanParts.length - 1])
+          clone(fixture.installmentLoanParts[fixture.installmentLoanParts.length - 1]),
         ];
         const discountAmounts = [DISCOUNT_AMOUNT, DISCOUNT_AMOUNT / 2];
         let periodIndex = loans[1].startPeriod + loans[1].state.durationInPeriods / 2;
@@ -2344,22 +2344,22 @@ describe("Contract 'LendingMarket': base tests", async () => {
 
         await expect(marketViaAdmin.discountLoanForBatch(
           [...loanIds, loanIds[0]],
-          discountAmounts
+          discountAmounts,
         )).to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_ARRAY_LENGTH_MISMATCH);
 
         await expect(marketViaAdmin.discountLoanForBatch(
           loanIds,
-          [...discountAmounts, DISCOUNT_AMOUNT]
+          [...discountAmounts, DISCOUNT_AMOUNT],
         )).to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_ARRAY_LENGTH_MISMATCH);
 
         await expect(marketViaAdmin.discountLoanForBatch(
           loanIds,
-          []
+          [],
         )).to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_ARRAY_LENGTH_MISMATCH);
 
         await expect(marketViaAdmin.discountLoanForBatch(
           [],
-          discountAmounts
+          discountAmounts,
         )).to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_ARRAY_LENGTH_MISMATCH);
       });
 
@@ -2427,7 +2427,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
         marketViaAdmin,
         [BORROWED_AMOUNT, BORROWED_AMOUNT],
         [ADDON_AMOUNT, ADDON_AMOUNT],
-        [DURATION_IN_PERIODS, DURATION_IN_PERIODS]
+        [DURATION_IN_PERIODS, DURATION_IN_PERIODS],
       );
       const isReceiverAddressZero = props.isReceiverAddressZero ?? false;
       const undoRepaymentsInReverseOrder = props.undoRepaymentsInReverseOrder ?? false;
@@ -2459,7 +2459,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
             : operations[operationIndex].amount;
           const repaymentTimestamp = calculateTimestampWithOffset(actualTimestamps[operationIndex]);
           await proveTx(
-            marketViaAdmin.undoRepaymentFor(loans[0].id, repaymentAmount, repaymentTimestamp, receiverAddress)
+            marketViaAdmin.undoRepaymentFor(loans[0].id, repaymentAmount, repaymentTimestamp, receiverAddress),
           );
         }
       }
@@ -2495,7 +2495,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
           await expect(tx).to.changeTokenBalances(
             token,
             [liquidityPool, borrower, receiver, marketViaAdmin],
-            [-roundedRepaymentAmount, 0, +roundedRepaymentAmount, 0]
+            [-roundedRepaymentAmount, 0, +roundedRepaymentAmount, 0],
           );
 
           await expect(tx)
@@ -2505,7 +2505,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
           await expect(tx).to.changeTokenBalances(
             token,
             [liquidityPool, borrower, receiver, marketViaAdmin],
-            [0, 0, 0, 0]
+            [0, 0, 0, 0],
           );
           await expect(tx).not.to.emit(liquidityPool, EVENT_NAME_ON_BEFORE_LIQUIDITY_OUT_CALLED);
         }
@@ -2530,7 +2530,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
             loans[1].state.trackedBalance, // newTrackedBalance
             loans[0].state.trackedBalance, // oldTrackedBalance
             loans[1].state.lateFeeAmount, // newLateFeeAmount
-            loans[0].state.lateFeeAmount // oldLateFeeAmount
+            loans[0].state.lateFeeAmount, // oldLateFeeAmount
           );
         }
       }
@@ -2545,14 +2545,14 @@ describe("Contract 'LendingMarket': base tests", async () => {
                 kind: LoanOperationKind.Repayment,
                 amount: REPAYMENT_AMOUNT,
                 relativeTimestamp: 2 * PERIOD_IN_SECONDS,
-                subjectToUndo: true
+                subjectToUndo: true,
               },
               {
                 kind: LoanOperationKind.Repayment,
                 amount: REPAYMENT_AMOUNT,
                 relativeTimestamp: 4 * PERIOD_IN_SECONDS,
-                subjectToUndo: false
-              }
+                subjectToUndo: false,
+              },
             ]);
           });
 
@@ -2562,14 +2562,14 @@ describe("Contract 'LendingMarket': base tests", async () => {
                 kind: LoanOperationKind.Repayment,
                 amount: REPAYMENT_AMOUNT,
                 relativeTimestamp: 2 * PERIOD_IN_SECONDS,
-                subjectToUndo: true
+                subjectToUndo: true,
               },
               {
                 kind: LoanOperationKind.Repayment,
                 amount: REPAYMENT_AMOUNT,
                 relativeTimestamp: -60, // A negative value is seconds before the end of the loan due date
-                subjectToUndo: false
-              }
+                subjectToUndo: false,
+              },
             ]);
           });
 
@@ -2579,20 +2579,20 @@ describe("Contract 'LendingMarket': base tests", async () => {
                 kind: LoanOperationKind.Repayment,
                 amount: REPAYMENT_AMOUNT,
                 relativeTimestamp: 2 * PERIOD_IN_SECONDS,
-                subjectToUndo: true
+                subjectToUndo: true,
               },
               {
                 kind: LoanOperationKind.Freezing,
                 amount: 0,
                 relativeTimestamp: 4 * PERIOD_IN_SECONDS,
-                subjectToUndo: false
+                subjectToUndo: false,
               },
               {
                 kind: LoanOperationKind.Repayment,
                 amount: REPAYMENT_AMOUNT,
                 relativeTimestamp: 6 * PERIOD_IN_SECONDS,
-                subjectToUndo: false
-              }
+                subjectToUndo: false,
+              },
             ]);
           });
 
@@ -2602,14 +2602,14 @@ describe("Contract 'LendingMarket': base tests", async () => {
                 kind: LoanOperationKind.Repayment,
                 amount: REPAYMENT_AMOUNT,
                 relativeTimestamp: 2 * PERIOD_IN_SECONDS,
-                subjectToUndo: true
+                subjectToUndo: true,
               },
               {
                 kind: LoanOperationKind.Repayment,
                 amount: REPAYMENT_AMOUNT,
                 relativeTimestamp: 4 * PERIOD_IN_SECONDS,
-                subjectToUndo: true
-              }
+                subjectToUndo: true,
+              },
             ]);
           });
 
@@ -2619,20 +2619,20 @@ describe("Contract 'LendingMarket': base tests", async () => {
                 kind: LoanOperationKind.Repayment,
                 amount: REPAYMENT_AMOUNT,
                 relativeTimestamp: 2 * PERIOD_IN_SECONDS,
-                subjectToUndo: true
+                subjectToUndo: true,
               },
               {
                 kind: LoanOperationKind.Freezing,
                 amount: 0,
                 relativeTimestamp: 4 * PERIOD_IN_SECONDS,
-                subjectToUndo: false
+                subjectToUndo: false,
               },
               {
                 kind: LoanOperationKind.Repayment,
                 amount: REPAYMENT_AMOUNT,
                 relativeTimestamp: 6 * PERIOD_IN_SECONDS,
-                subjectToUndo: true
-              }
+                subjectToUndo: true,
+              },
             ]);
           });
 
@@ -2642,14 +2642,14 @@ describe("Contract 'LendingMarket': base tests", async () => {
                 kind: LoanOperationKind.Repayment,
                 amount: REPAYMENT_AMOUNT,
                 relativeTimestamp: 2 * PERIOD_IN_SECONDS,
-                subjectToUndo: false
+                subjectToUndo: false,
               },
               {
                 kind: LoanOperationKind.Repayment,
                 amount: REPAYMENT_AMOUNT,
                 relativeTimestamp: 4 * PERIOD_IN_SECONDS,
-                subjectToUndo: true
-              }
+                subjectToUndo: true,
+              },
             ]);
           });
         });
@@ -2661,26 +2661,26 @@ describe("Contract 'LendingMarket': base tests", async () => {
                 kind: LoanOperationKind.Repayment,
                 amount: REPAYMENT_AMOUNT,
                 relativeTimestamp: 2 * PERIOD_IN_SECONDS,
-                subjectToUndo: true
+                subjectToUndo: true,
               },
               {
                 kind: LoanOperationKind.Repayment,
                 amount: REPAYMENT_AMOUNT,
                 relativeTimestamp: 4 * PERIOD_IN_SECONDS,
-                subjectToUndo: false
+                subjectToUndo: false,
               },
               {
                 kind: LoanOperationKind.Repayment,
                 amount: REPAYMENT_AMOUNT,
                 relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 3 * PERIOD_IN_SECONDS,
-                subjectToUndo: false
+                subjectToUndo: false,
               },
               {
                 kind: LoanOperationKind.Repayment,
                 amount: REPAYMENT_AMOUNT,
                 relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 5 * PERIOD_IN_SECONDS,
-                subjectToUndo: false
-              }
+                subjectToUndo: false,
+              },
             ]);
           });
 
@@ -2690,26 +2690,26 @@ describe("Contract 'LendingMarket': base tests", async () => {
                 kind: LoanOperationKind.Repayment,
                 amount: REPAYMENT_AMOUNT,
                 relativeTimestamp: 2 * PERIOD_IN_SECONDS,
-                subjectToUndo: false
+                subjectToUndo: false,
               },
               {
                 kind: LoanOperationKind.Repayment,
                 amount: REPAYMENT_AMOUNT,
                 relativeTimestamp: 4 * PERIOD_IN_SECONDS,
-                subjectToUndo: false
+                subjectToUndo: false,
               },
               {
                 kind: LoanOperationKind.Repayment,
                 amount: REPAYMENT_AMOUNT,
                 relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 3 * PERIOD_IN_SECONDS,
-                subjectToUndo: true
+                subjectToUndo: true,
               },
               {
                 kind: LoanOperationKind.Repayment,
                 amount: REPAYMENT_AMOUNT,
                 relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 5 * PERIOD_IN_SECONDS,
-                subjectToUndo: false
-              }
+                subjectToUndo: false,
+              },
             ]);
           });
 
@@ -2719,26 +2719,26 @@ describe("Contract 'LendingMarket': base tests", async () => {
                 kind: LoanOperationKind.Repayment,
                 amount: REPAYMENT_AMOUNT,
                 relativeTimestamp: 2 * PERIOD_IN_SECONDS,
-                subjectToUndo: false
+                subjectToUndo: false,
               },
               {
                 kind: LoanOperationKind.Repayment,
                 amount: REPAYMENT_AMOUNT,
                 relativeTimestamp: 4 * PERIOD_IN_SECONDS,
-                subjectToUndo: false
+                subjectToUndo: false,
               },
               {
                 kind: LoanOperationKind.Repayment,
                 amount: REPAYMENT_AMOUNT,
                 relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 3 * PERIOD_IN_SECONDS,
-                subjectToUndo: false
+                subjectToUndo: false,
               },
               {
                 kind: LoanOperationKind.Repayment,
                 amount: REPAYMENT_AMOUNT,
                 relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 5 * PERIOD_IN_SECONDS,
-                subjectToUndo: true
-              }
+                subjectToUndo: true,
+              },
             ]);
           });
 
@@ -2748,32 +2748,32 @@ describe("Contract 'LendingMarket': base tests", async () => {
                 kind: LoanOperationKind.Repayment,
                 amount: REPAYMENT_AMOUNT,
                 relativeTimestamp: 2 * PERIOD_IN_SECONDS,
-                subjectToUndo: false
+                subjectToUndo: false,
               },
               {
                 kind: LoanOperationKind.Repayment,
                 amount: REPAYMENT_AMOUNT,
                 relativeTimestamp: 4 * PERIOD_IN_SECONDS,
-                subjectToUndo: false
+                subjectToUndo: false,
               },
               {
                 kind: LoanOperationKind.Freezing,
                 amount: REPAYMENT_AMOUNT,
                 relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 3 * PERIOD_IN_SECONDS,
-                subjectToUndo: false
+                subjectToUndo: false,
               },
               {
                 kind: LoanOperationKind.Repayment,
                 amount: REPAYMENT_AMOUNT,
                 relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 5 * PERIOD_IN_SECONDS,
-                subjectToUndo: true
+                subjectToUndo: true,
               },
               {
                 kind: LoanOperationKind.Repayment,
                 amount: REPAYMENT_AMOUNT,
                 relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 7 * PERIOD_IN_SECONDS,
-                subjectToUndo: false
-              }
+                subjectToUndo: false,
+              },
             ]);
           });
 
@@ -2783,26 +2783,26 @@ describe("Contract 'LendingMarket': base tests", async () => {
                 kind: LoanOperationKind.Repayment,
                 amount: REPAYMENT_AMOUNT,
                 relativeTimestamp: 2 * PERIOD_IN_SECONDS,
-                subjectToUndo: true
+                subjectToUndo: true,
               },
               {
                 kind: LoanOperationKind.Repayment,
                 amount: REPAYMENT_AMOUNT,
                 relativeTimestamp: 4 * PERIOD_IN_SECONDS,
-                subjectToUndo: true
+                subjectToUndo: true,
               },
               {
                 kind: LoanOperationKind.Repayment,
                 amount: REPAYMENT_AMOUNT,
                 relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 5 * PERIOD_IN_SECONDS,
-                subjectToUndo: true
+                subjectToUndo: true,
               },
               {
                 kind: LoanOperationKind.Repayment,
                 amount: REPAYMENT_AMOUNT,
                 relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 7 * PERIOD_IN_SECONDS,
-                subjectToUndo: false
-              }
+                subjectToUndo: false,
+              },
             ]);
           });
 
@@ -2812,32 +2812,32 @@ describe("Contract 'LendingMarket': base tests", async () => {
                 kind: LoanOperationKind.Repayment,
                 amount: REPAYMENT_AMOUNT,
                 relativeTimestamp: 2 * PERIOD_IN_SECONDS,
-                subjectToUndo: true
+                subjectToUndo: true,
               },
               {
                 kind: LoanOperationKind.Repayment,
                 amount: REPAYMENT_AMOUNT,
                 relativeTimestamp: 4 * PERIOD_IN_SECONDS,
-                subjectToUndo: true
+                subjectToUndo: true,
               },
               {
                 kind: LoanOperationKind.Freezing,
                 amount: REPAYMENT_AMOUNT,
                 relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 3 * PERIOD_IN_SECONDS,
-                subjectToUndo: false
+                subjectToUndo: false,
               },
               {
                 kind: LoanOperationKind.Repayment,
                 amount: REPAYMENT_AMOUNT,
                 relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 5 * PERIOD_IN_SECONDS,
-                subjectToUndo: true
+                subjectToUndo: true,
               },
               {
                 kind: LoanOperationKind.Repayment,
                 amount: REPAYMENT_AMOUNT,
                 relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 7 * PERIOD_IN_SECONDS,
-                subjectToUndo: true
-              }
+                subjectToUndo: true,
+              },
             ]);
           });
         });
@@ -2850,14 +2850,14 @@ describe("Contract 'LendingMarket': base tests", async () => {
                 kind: LoanOperationKind.Repayment,
                 amount: REPAYMENT_AMOUNT,
                 relativeTimestamp: 2 * PERIOD_IN_SECONDS,
-                subjectToUndo: true
+                subjectToUndo: true,
               },
               {
                 kind: LoanOperationKind.Repayment,
                 amount: FULL_REPAYMENT_AMOUNT,
                 relativeTimestamp: 4 * PERIOD_IN_SECONDS,
-                subjectToUndo: false
-              }
+                subjectToUndo: false,
+              },
             ]);
           });
 
@@ -2867,14 +2867,14 @@ describe("Contract 'LendingMarket': base tests", async () => {
                 kind: LoanOperationKind.Repayment,
                 amount: REPAYMENT_AMOUNT,
                 relativeTimestamp: 2 * PERIOD_IN_SECONDS,
-                subjectToUndo: false
+                subjectToUndo: false,
               },
               {
                 kind: LoanOperationKind.Repayment,
                 amount: FULL_REPAYMENT_AMOUNT,
                 relativeTimestamp: 4 * PERIOD_IN_SECONDS,
-                subjectToUndo: true
-              }
+                subjectToUndo: true,
+              },
             ]);
           });
 
@@ -2884,14 +2884,14 @@ describe("Contract 'LendingMarket': base tests", async () => {
                 kind: LoanOperationKind.Repayment,
                 amount: REPAYMENT_AMOUNT,
                 relativeTimestamp: 2 * PERIOD_IN_SECONDS,
-                subjectToUndo: true
+                subjectToUndo: true,
               },
               {
                 kind: LoanOperationKind.Repayment,
                 amount: FULL_REPAYMENT_AMOUNT,
                 relativeTimestamp: 4 * PERIOD_IN_SECONDS,
-                subjectToUndo: true
-              }
+                subjectToUndo: true,
+              },
             ]);
           });
 
@@ -2901,14 +2901,14 @@ describe("Contract 'LendingMarket': base tests", async () => {
                 kind: LoanOperationKind.Repayment,
                 amount: REPAYMENT_AMOUNT,
                 relativeTimestamp: 2 * PERIOD_IN_SECONDS,
-                subjectToUndo: true
+                subjectToUndo: true,
               },
               {
                 kind: LoanOperationKind.Repayment,
                 amount: FULL_REPAYMENT_AMOUNT,
                 relativeTimestamp: 4 * PERIOD_IN_SECONDS,
-                subjectToUndo: true
-              }
+                subjectToUndo: true,
+              },
             ], { undoRepaymentsInReverseOrder: true });
           });
         });
@@ -2919,26 +2919,26 @@ describe("Contract 'LendingMarket': base tests", async () => {
                 kind: LoanOperationKind.Repayment,
                 amount: REPAYMENT_AMOUNT,
                 relativeTimestamp: 2 * PERIOD_IN_SECONDS,
-                subjectToUndo: true
+                subjectToUndo: true,
               },
               {
                 kind: LoanOperationKind.Repayment,
                 amount: REPAYMENT_AMOUNT,
                 relativeTimestamp: 4 * PERIOD_IN_SECONDS,
-                subjectToUndo: false
+                subjectToUndo: false,
               },
               {
                 kind: LoanOperationKind.Repayment,
                 amount: REPAYMENT_AMOUNT,
                 relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 3 * PERIOD_IN_SECONDS,
-                subjectToUndo: false
+                subjectToUndo: false,
               },
               {
                 kind: LoanOperationKind.Repayment,
                 amount: FULL_REPAYMENT_AMOUNT,
                 relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 5 * PERIOD_IN_SECONDS,
-                subjectToUndo: false
-              }
+                subjectToUndo: false,
+              },
             ]);
           });
 
@@ -2948,26 +2948,26 @@ describe("Contract 'LendingMarket': base tests", async () => {
                 kind: LoanOperationKind.Repayment,
                 amount: REPAYMENT_AMOUNT,
                 relativeTimestamp: 2 * PERIOD_IN_SECONDS,
-                subjectToUndo: false
+                subjectToUndo: false,
               },
               {
                 kind: LoanOperationKind.Repayment,
                 amount: REPAYMENT_AMOUNT,
                 relativeTimestamp: 4 * PERIOD_IN_SECONDS,
-                subjectToUndo: false
+                subjectToUndo: false,
               },
               {
                 kind: LoanOperationKind.Repayment,
                 amount: REPAYMENT_AMOUNT,
                 relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 3 * PERIOD_IN_SECONDS,
-                subjectToUndo: true
+                subjectToUndo: true,
               },
               {
                 kind: LoanOperationKind.Repayment,
                 amount: FULL_REPAYMENT_AMOUNT,
                 relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 5 * PERIOD_IN_SECONDS,
-                subjectToUndo: false
-              }
+                subjectToUndo: false,
+              },
             ]);
           });
 
@@ -2977,32 +2977,32 @@ describe("Contract 'LendingMarket': base tests", async () => {
                 kind: LoanOperationKind.Repayment,
                 amount: REPAYMENT_AMOUNT,
                 relativeTimestamp: 2 * PERIOD_IN_SECONDS,
-                subjectToUndo: true
+                subjectToUndo: true,
               },
               {
                 kind: LoanOperationKind.Repayment,
                 amount: REPAYMENT_AMOUNT,
                 relativeTimestamp: 4 * PERIOD_IN_SECONDS,
-                subjectToUndo: true
+                subjectToUndo: true,
               },
               {
                 kind: LoanOperationKind.Freezing,
                 amount: 0,
                 relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 3 * PERIOD_IN_SECONDS,
-                subjectToUndo: false
+                subjectToUndo: false,
               },
               {
                 kind: LoanOperationKind.Repayment,
                 amount: REPAYMENT_AMOUNT,
                 relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 5 * PERIOD_IN_SECONDS,
-                subjectToUndo: true
+                subjectToUndo: true,
               },
               {
                 kind: LoanOperationKind.Repayment,
                 amount: FULL_REPAYMENT_AMOUNT,
                 relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 7 * PERIOD_IN_SECONDS,
-                subjectToUndo: true
-              }
+                subjectToUndo: true,
+              },
             ]);
           });
 
@@ -3012,32 +3012,32 @@ describe("Contract 'LendingMarket': base tests", async () => {
                 kind: LoanOperationKind.Repayment,
                 amount: REPAYMENT_AMOUNT,
                 relativeTimestamp: 2 * PERIOD_IN_SECONDS,
-                subjectToUndo: true
+                subjectToUndo: true,
               },
               {
                 kind: LoanOperationKind.Repayment,
                 amount: REPAYMENT_AMOUNT,
                 relativeTimestamp: 4 * PERIOD_IN_SECONDS,
-                subjectToUndo: true
+                subjectToUndo: true,
               },
               {
                 kind: LoanOperationKind.Freezing,
                 amount: 0,
                 relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 3 * PERIOD_IN_SECONDS,
-                subjectToUndo: false
+                subjectToUndo: false,
               },
               {
                 kind: LoanOperationKind.Repayment,
                 amount: REPAYMENT_AMOUNT,
                 relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 5 * PERIOD_IN_SECONDS,
-                subjectToUndo: true
+                subjectToUndo: true,
               },
               {
                 kind: LoanOperationKind.Repayment,
                 amount: FULL_REPAYMENT_AMOUNT,
                 relativeTimestamp: DURATION_IN_PERIODS * PERIOD_IN_SECONDS + 7 * PERIOD_IN_SECONDS,
-                subjectToUndo: true
-              }
+                subjectToUndo: true,
+              },
             ], { undoRepaymentsInReverseOrder: true });
           });
         });
@@ -3053,16 +3053,16 @@ describe("Contract 'LendingMarket': base tests", async () => {
                   kind: LoanOperationKind.Repayment,
                   amount: REPAYMENT_AMOUNT,
                   relativeTimestamp: 2 * PERIOD_IN_SECONDS,
-                  subjectToUndo: true
+                  subjectToUndo: true,
                 },
                 {
                   kind: LoanOperationKind.Repayment,
                   amount: REPAYMENT_AMOUNT,
                   relativeTimestamp: 4 * PERIOD_IN_SECONDS,
-                  subjectToUndo: false
-                }
+                  subjectToUndo: false,
+                },
               ],
-              { isReceiverAddressZero: true }
+              { isReceiverAddressZero: true },
             );
           });
         });
@@ -3095,7 +3095,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
         const repaymentTxTimestamp = await getTxTimestamp(repaymentTx);
         const trackedBalanceBeforeRepayment = processRepayment(loan, {
           repaymentAmount: FULL_REPAYMENT_AMOUNT,
-          repaymentTimestamp: repaymentTxTimestamp
+          repaymentTimestamp: repaymentTxTimestamp,
         });
         const repaymentAmount = (trackedBalanceBeforeRepayment);
         const roundedRepaymentAmount = roundSpecific(repaymentAmount);
@@ -3119,7 +3119,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
         await expect(tx).to.changeTokenBalances(
           token,
           [liquidityPool, borrower, receiver, marketViaAdmin],
-          [-roundedRepaymentAmount, 0, roundedRepaymentAmount, 0]
+          [-roundedRepaymentAmount, 0, roundedRepaymentAmount, 0],
         );
       }
 
@@ -3154,7 +3154,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
         const repaymentTimestamp = (0);
 
         await expect(
-          marketViaAdmin.undoRepaymentFor(wrongLoanId, repaymentAmount, repaymentTimestamp, receiver.address)
+          marketViaAdmin.undoRepaymentFor(wrongLoanId, repaymentAmount, repaymentTimestamp, receiver.address),
         ).to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_LOAN_NOT_EXIST);
       });
 
@@ -3164,24 +3164,24 @@ describe("Contract 'LendingMarket': base tests", async () => {
         const repaymentTimestamp = (0);
 
         await expect(
-          connect(market, owner).undoRepaymentFor(loan.id, repaymentAmount, repaymentTimestamp, receiver.address)
+          connect(market, owner).undoRepaymentFor(loan.id, repaymentAmount, repaymentTimestamp, receiver.address),
         ).to.be.revertedWithCustomError(
           market,
-          ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT
+          ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT,
         ).withArgs(owner.address, ADMIN_ROLE);
 
         await expect(
-          connect(market, borrower).undoRepaymentFor(loan.id, repaymentAmount, repaymentTimestamp, receiver.address)
+          connect(market, borrower).undoRepaymentFor(loan.id, repaymentAmount, repaymentTimestamp, receiver.address),
         ).to.be.revertedWithCustomError(
           market,
-          ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT
+          ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT,
         ).withArgs(borrower.address, ADMIN_ROLE);
 
         await expect(
-          connect(market, stranger).undoRepaymentFor(loan.id, repaymentAmount, repaymentTimestamp, receiver.address)
+          connect(market, stranger).undoRepaymentFor(loan.id, repaymentAmount, repaymentTimestamp, receiver.address),
         ).to.be.revertedWithCustomError(
           market,
-          ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT
+          ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT,
         ).withArgs(stranger.address, ADMIN_ROLE);
       });
 
@@ -3191,7 +3191,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
         const repaymentTimestamp = loan.state.startTimestamp + 1;
 
         await expect(
-          marketViaAdmin.undoRepaymentFor(loan.id, wrongRepaymentAmount, repaymentTimestamp, receiver.address)
+          marketViaAdmin.undoRepaymentFor(loan.id, wrongRepaymentAmount, repaymentTimestamp, receiver.address),
         ).to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_INVALID_AMOUNT);
       });
 
@@ -3202,7 +3202,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
         const repaymentTimestamp = loan.state.startTimestamp + 1;
 
         await expect(
-          marketViaAdmin.undoRepaymentFor(loan.id, wrongRepaymentAmount, repaymentTimestamp, receiver.address)
+          marketViaAdmin.undoRepaymentFor(loan.id, wrongRepaymentAmount, repaymentTimestamp, receiver.address),
         ).to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_INVALID_AMOUNT);
       });
 
@@ -3213,7 +3213,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
         const wrongRepaymentTimestamp = loan.state.startTimestamp - 1;
 
         await expect(
-          marketViaAdmin.undoRepaymentFor(loan.id, repaymentAmount, wrongRepaymentTimestamp, receiver.address)
+          marketViaAdmin.undoRepaymentFor(loan.id, repaymentAmount, wrongRepaymentTimestamp, receiver.address),
         ).to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_REPAYMENT_TIMESTAMP_INVALID);
       });
     });
@@ -3301,7 +3301,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
         tx = connect(marketViaAdmin, borrower).repayLoan(expectedLoan.id, repaymentAmountWhileFreezing);
         processRepayment(expectedLoan, {
           repaymentAmount: repaymentAmountWhileFreezing,
-          repaymentTimestamp: await getTxTimestamp(tx)
+          repaymentTimestamp: await getTxTimestamp(tx),
         });
       }
 
@@ -3328,7 +3328,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
         await freezeUnfreezeAndCheck(fixture, {
           freezingTimestamp: startTimestamp,
           unfreezingTimestamp: startTimestamp + PERIOD_IN_SECONDS / 2,
-          repaymentAmountWhileFreezing: 0
+          repaymentAmountWhileFreezing: 0,
         });
       });
 
@@ -3341,7 +3341,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
         await freezeUnfreezeAndCheck(fixture, {
           freezingTimestamp,
           unfreezingTimestamp,
-          repaymentAmountWhileFreezing: 0
+          repaymentAmountWhileFreezing: 0,
         });
       });
 
@@ -3354,7 +3354,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
         await freezeUnfreezeAndCheck(fixture, {
           freezingTimestamp,
           unfreezingTimestamp,
-          repaymentAmountWhileFreezing: REPAYMENT_AMOUNT
+          repaymentAmountWhileFreezing: REPAYMENT_AMOUNT,
         });
       });
 
@@ -3367,7 +3367,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
         await freezeUnfreezeAndCheck(fixture, {
           freezingTimestamp,
           unfreezingTimestamp,
-          repaymentAmountWhileFreezing: REPAYMENT_AMOUNT
+          repaymentAmountWhileFreezing: REPAYMENT_AMOUNT,
         });
       });
 
@@ -3380,7 +3380,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
         await freezeUnfreezeAndCheck(fixture, {
           freezingTimestamp,
           unfreezingTimestamp,
-          repaymentAmountWhileFreezing: 0
+          repaymentAmountWhileFreezing: 0,
         });
       });
     });
@@ -3665,7 +3665,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       await expect(tx).to.changeTokenBalances(
         token,
         [borrower, liquidityPool, addonTreasury, market],
-        [borrowerBalanceChange, -borrowerBalanceChange + addonAmount, -addonAmount, 0]
+        [borrowerBalanceChange, -borrowerBalanceChange + addonAmount, -addonAmount, 0],
       );
       if (addonAmount != 0 && borrowerBalanceChange != 0) {
         expect(await getNumberOfEvents(tx, token, EVENT_NAME_TRANSFER)).to.eq(2);
@@ -3836,7 +3836,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
           .to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_LOAN_TYPE_UNEXPECTED)
           .withArgs(
             LoanType.Installment, // actual
-            LoanType.Ordinary // expected
+            LoanType.Ordinary, // expected
           );
       });
 
@@ -3873,7 +3873,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
 
       const revocationTimestamp = calculateTimestampWithOffset(await getTxTimestamp(tx));
       const actualLoanStates = await getLoanStates(market, loanIds);
-      expectedLoans.forEach(loan => {
+      expectedLoans.forEach((loan) => {
         loan.state.trackedBalance = 0;
         loan.state.trackedTimestamp = revocationTimestamp;
       });
@@ -3893,7 +3893,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       await expect(tx).to.changeTokenBalances(
         token,
         [borrower, liquidityPool, addonTreasury, market],
-        [borrowerBalanceChange, -borrowerBalanceChange + totalAddonAmount, -totalAddonAmount, 0]
+        [borrowerBalanceChange, -borrowerBalanceChange + totalAddonAmount, -totalAddonAmount, 0],
       );
       if (totalAddonAmount != 0 && borrowerBalanceChange != 0) {
         expect(await getNumberOfEvents(tx, token, EVENT_NAME_TRANSFER)).to.eq(2);
@@ -3975,7 +3975,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
         describe("All installments are repaid except the last one", async () => {
           async function repayInstalmentsExceptLastOne(
             market: Contract,
-            loans: Loan[]
+            loans: Loan[],
           ): Promise<{ totalRepaymentAmount: number; totalBorrowedAmount: number }> {
             let totalRepaymentAmount = 0;
             let totalBorrowedAmount = 0;
@@ -3991,7 +3991,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
 
             return {
               totalRepaymentAmount,
-              totalBorrowedAmount
+              totalBorrowedAmount,
             };
           }
 
@@ -4029,7 +4029,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
             processRepayment(lastLoan, { repaymentAmount, repaymentTimestamp: await getTxTimestamp(tx) });
 
             await increaseBlockTimestampToPeriodIndex(
-              loans[0].startPeriod + loans[loans.length - 1].state.durationInPeriods + 1
+              loans[0].startPeriod + loans[loans.length - 1].state.durationInPeriods + 1,
             );
 
             await revokeAndCheck(fixture, { areAddonAmountsZero: false, loans });
@@ -4062,7 +4062,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
             const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
             const loans = fixture.installmentLoanParts;
             await increaseBlockTimestampToPeriodIndex(
-              loans[0].startPeriod + loans[loans.length - 1].state.durationInPeriods + 1
+              loans[0].startPeriod + loans[loans.length - 1].state.durationInPeriods + 1,
             );
             await revokeAndCheck(fixture, { areAddonAmountsZero: true, loans });
           });
@@ -4132,7 +4132,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
           .to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_LOAN_TYPE_UNEXPECTED)
           .withArgs(
             LoanType.Ordinary, // actual
-            LoanType.Installment // expected
+            LoanType.Installment, // expected
           );
       });
 
@@ -4154,7 +4154,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
 
       const loans = [
         clone(fixture.ordinaryLoan),
-        clone(fixture.installmentLoanParts[fixture.installmentLoanParts.length - 1])
+        clone(fixture.installmentLoanParts[fixture.installmentLoanParts.length - 1]),
       ];
       const minDuration = Math.min(...loans.map(loan => loan.state.durationInPeriods));
       const maxDuration = Math.max(...loans.map(loan => loan.state.durationInPeriods));
@@ -4175,12 +4175,12 @@ describe("Contract 'LendingMarket': base tests", async () => {
       const tx = connect(market, admin).repayLoanForBatch(
         [loans[0].id],
         [expectedLoanPreviews[0].outstandingBalance],
-        borrower.address
+        borrower.address,
       );
       timestamp = await getTxTimestamp(tx);
       processRepayment(
         loans[0],
-        { repaymentTimestamp: timestamp, repaymentAmount: expectedLoanPreviews[0].outstandingBalance }
+        { repaymentTimestamp: timestamp, repaymentAmount: expectedLoanPreviews[0].outstandingBalance },
       );
 
       // The loan at the middle of its duration
@@ -4212,7 +4212,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
 
       const loans = [
         clone(fixture.ordinaryLoan),
-        clone(fixture.installmentLoanParts[fixture.installmentLoanParts.length - 1])
+        clone(fixture.installmentLoanParts[fixture.installmentLoanParts.length - 1]),
       ];
       const loanIds = loans.map(loan => loan.id);
       const minDuration = Math.min(...loans.map(loan => loan.state.durationInPeriods));
@@ -4334,13 +4334,13 @@ describe("Contract 'LendingMarket': base tests", async () => {
         BORROWED_AMOUNT,
         DURATION_IN_PERIODS,
         INTEREST_RATE_PRIMARY,
-        INTEREST_RATE_FACTOR
+        INTEREST_RATE_FACTOR,
       );
 
       const expectedBalance = calculateTrackedBalance(
         BORROWED_AMOUNT,
         DURATION_IN_PERIODS,
-        INTEREST_RATE_PRIMARY
+        INTEREST_RATE_PRIMARY,
       );
       expect(actualBalance).to.eq(expectedBalance);
     });
