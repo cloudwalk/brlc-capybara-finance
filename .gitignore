@@ -25,4 +25,5 @@ node_modules
 # Other files
 /tmp
 /flatten
+/flattened
 .DS_Store
