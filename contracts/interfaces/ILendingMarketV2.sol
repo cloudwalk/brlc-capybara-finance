@@ -717,6 +717,9 @@ interface ILendingMarketErrorsV2 {
 
     /// @dev TODO
     error OperationRepaymentOrDiscountProhibitedInFuture(); //TODO: add parameters
+
+    /// @dev TODO
+    error UnauthorizedCallContext();
 }
 
 /**

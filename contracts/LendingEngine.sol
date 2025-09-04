@@ -39,6 +39,18 @@ contract LendingEngine is
         _disableInitializers();
     }
 
+    // ------------------ Modifiers--- ---------------------------- //
+
+    /**
+     * @dev The modifier that allows to call a function only through a delegatecall from the proxy contract.
+     */
+    modifier onlySelfDelegatecall() {
+        if (msg.sender != address(this)) {
+            revert UnauthorizedCallContext();
+        }
+        _;
+    }
+
     // ------------------ Initializers ---------------------------- //
 
     /**
@@ -62,7 +74,7 @@ contract LendingEngine is
         uint256 interestRateMoratory,
         uint256 lateFeeRate,
         SubLoanTakingRequest[] calldata subLoanTakingRequests
-    ) external returns (uint256 firstSubLoanId) {
+    ) external onlySelfDelegatecall() returns  (uint256 firstSubLoanId) {
         uint256 subLoanCount = subLoanTakingRequests.length;
 
         _checkSubLoanCount(subLoanCount);
@@ -103,7 +115,7 @@ contract LendingEngine is
     }
 
     /// @inheritdoc ILendingEngine
-    function revokeLoan(uint256 subLoanId) external {
+    function revokeLoan(uint256 subLoanId) external onlySelfDelegatecall() {
         SubLoan storage subLoanStored = _getExitingSubLoanInStorage(subLoanId);
 
         uint256 firstSubLoanId = subLoanStored.firstSubLoanId;
@@ -140,41 +152,58 @@ contract LendingEngine is
         _transferTokensOnLoanRevocation(firstSubLoanId, subLoanCount);
     }
 
-    function repaySubLoanBatch(RepaymentRequest[] calldata repaymentRequests) external {
+    /// @inheritdoc ILendingEngine
+    function repaySubLoanBatch(RepaymentRequest[] calldata repaymentRequests) external onlySelfDelegatecall() {
         _executeRepaymentBatch(repaymentRequests);
     }
 
     // TODO: Ask if discount can be greater than the principal amount
 
-    function discountSubLoanBatch(SubLoanOperationRequest[] calldata operationRequests) external {
+    /// @inheritdoc ILendingEngine
+    function discountSubLoanBatch(
+        SubLoanOperationRequest[] calldata operationRequests
+    ) external onlySelfDelegatecall() {
         _executeOperationBatch(uint256(OperationKind.Discounting), operationRequests);
     }
 
-    function setSubLoanDurationBatch(SubLoanOperationRequest[] calldata operationRequests) external {
+    /// @inheritdoc ILendingEngine
+    function setSubLoanDurationBatch(
+        SubLoanOperationRequest[] calldata operationRequests
+    ) external onlySelfDelegatecall() {
         _executeOperationBatch(uint256(OperationKind.SetDuration), operationRequests);
     }
 
-    function setSubLoanInterestRateRemuneratoryBatch(SubLoanOperationRequest[] calldata operationRequests) external {
+    function setSubLoanInterestRateRemuneratoryBatch(
+        SubLoanOperationRequest[] calldata operationRequests
+    ) external onlySelfDelegatecall() {
         _executeOperationBatch(uint256(OperationKind.SetInterestRateRemuneratory), operationRequests);
     }
 
-    function setSubLoanInterestRateMoratoryBatch(SubLoanOperationRequest[] calldata operationRequests) external {
+    function setSubLoanInterestRateMoratoryBatch(
+        SubLoanOperationRequest[] calldata operationRequests
+    ) external onlySelfDelegatecall() {
         _executeOperationBatch(uint256(OperationKind.SetInterestRateMoratory), operationRequests);
     }
 
-    function setSubLoanLateFeeRateBatch(SubLoanOperationRequest[] calldata operationRequests) external {
+    function setSubLoanLateFeeRateBatch(
+        SubLoanOperationRequest[] calldata operationRequests
+    ) external onlySelfDelegatecall() {
         _executeOperationBatch(uint256(OperationKind.SetLateFeeRate), operationRequests);
     }
 
-    function freezeSubLoanBatch(SubLoanOperationRequest[] calldata operationRequests) external {
+    function freezeSubLoanBatch(SubLoanOperationRequest[] calldata operationRequests) external onlySelfDelegatecall() {
         _executeOperationBatch(uint256(OperationKind.Freezing), operationRequests);
     }
 
-    function unfreezeSubLoanBatch(SubLoanOperationRequest[] calldata operationRequests) external {
+    function unfreezeSubLoanBatch(
+        SubLoanOperationRequest[] calldata operationRequests
+    ) external onlySelfDelegatecall() {
         _executeOperationBatch(uint256(OperationKind.Unfreezing), operationRequests);
     }
 
-    function voidOperationBatch(OperationVoidingRequest[] calldata voidOperationRequests) external {
+    function voidOperationBatch(
+        OperationVoidingRequest[] calldata voidOperationRequests
+    ) external onlySelfDelegatecall() {
         _modifyOperationBatch(voidOperationRequests, new OperationAdditionRequest[](0));
     }
 
