@@ -642,7 +642,7 @@ contract LendingMarket is
         loan.repaidAmount += repaymentAmount.toUint64();
 
         _transferToPool(
-            loan.token,
+            loan.token, // Tools: prevent Prettier one-liner
             _programLiquidityPools[loan.programId],
             repayer,
             repaymentAmount
@@ -1229,14 +1229,14 @@ contract LendingMarket is
 
         if (repaidAmount < borrowedAmount) {
             _transferToPool(
-                token,
+                token, // Tools: prevent Prettier one-liner
                 liquidityPool,
                 loan.borrower,
                 borrowedAmount - repaidAmount
             );
         } else if (repaidAmount != borrowedAmount) {
             _transferFromPool(
-                token,
+                token, // Tools: prevent Prettier one-liner
                 liquidityPool,
                 loan.borrower,
                 repaidAmount - borrowedAmount
@@ -1244,7 +1244,7 @@ contract LendingMarket is
         }
         if (addonAmount != 0) {
             _transferToPool(
-                token,
+                token, // Tools: prevent Prettier one-liner
                 liquidityPool,
                 addonTreasury,
                 addonAmount
