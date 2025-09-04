@@ -2,7 +2,7 @@
 
 pragma solidity 0.8.24;
 
-import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
 import { UUPSExtUpgradeable } from "./base/UUPSExtUpgradeable.sol";
 import { Versionable } from "./base/Versionable.sol";
@@ -19,12 +19,17 @@ import { LendingMarketCore } from "./core/LendingMarketCore.sol";
  * See additional notes in the comments of the interface `ILendingMarket.sol`.
  */
 contract LendingEngine is
-    OwnableUpgradeable,
+    AccessControlUpgradeable,
     LendingMarketCore,
     Versionable,
     UUPSExtUpgradeable,
     ILendingEngine
 {
+    // ------------------ Constants ------------------------------- //
+
+    /// @dev The role of this contract owner.
+    bytes32 public constant OWNER_ROLE = keccak256("OWNER_ROLE");
+
     // ------------------ Constructor ----------------------------- //
 
     /**
@@ -58,8 +63,11 @@ contract LendingEngine is
      * See details https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable.
      */
     function initialize() external initializer {
-        __Ownable_init(_msgSender());
+        __AccessControl_init();
         __UUPSExt_init_unchained();
+
+        _setRoleAdmin(OWNER_ROLE, OWNER_ROLE);
+        _grantRole(OWNER_ROLE, msg.sender);
     }
 
     // ------------------ Transactional functions ------------------ //
@@ -218,7 +226,7 @@ contract LendingEngine is
      * @dev The upgrade validation function for the UUPSExtUpgradeable contract.
      * @param newImplementation The address of the new implementation.
      */
-    function _validateUpgrade(address newImplementation) internal view override onlyOwner() {
+    function _validateUpgrade(address newImplementation) internal view override onlyRole(OWNER_ROLE) {
         try ILendingEngine(newImplementation).proveLendingEngine() {} catch {
             revert ImplementationAddressInvalid();
         }
