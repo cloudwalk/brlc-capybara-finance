@@ -75,15 +75,7 @@ contract LiquidityPool is
             revert LiquidityPool_OwnerAddressZero();
         }
 
-        if (token_ == address(0)) {
-            revert LiquidityPool_TokenAddressZero();
-        }
-        if (token_.code.length == 0) {
-            revert LiquidityPool_ContractAddressInvalid();
-        }
-        try IERC20(token_).balanceOf(address(0)) {} catch {
-            revert LiquidityPool_ContractAddressInvalid();
-        }
+        _checkToken(token_);
 
         __AccessControlExt_init_unchained();
         __PausableExt_init_unchained();
@@ -298,6 +290,22 @@ contract LiquidityPool is
     function proveLiquidityPool() external pure {}
 
     // ------------------ Internal functions ---------------------- //
+
+    /**
+     * @dev Checks if the token is valid.
+     * @param token_ The address of the token to check.
+     */
+    function _checkToken(address token_) internal view {
+        if (token_ == address(0)) {
+            revert LiquidityPool_TokenAddressZero();
+        }
+        if (token_.code.length == 0) {
+            revert LiquidityPool_ContractAddressInvalid();
+        }
+        try IERC20(token_).balanceOf(address(0)) {} catch {
+            revert LiquidityPool_ContractAddressInvalid();
+        }
+    }
 
     /**
      * @dev Deposits the tokens into the liquidity pool internally.

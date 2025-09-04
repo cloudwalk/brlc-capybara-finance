@@ -84,25 +84,8 @@ contract CreditLine is
             revert Error.ZeroAddress();
         }
 
-        if (market_ == address(0)) {
-            revert Error.ZeroAddress();
-        }
-        if (market_.code.length == 0) {
-            revert Error.ContractAddressInvalid();
-        }
-        try ILendingMarket(market_).proveLendingMarket() {} catch {
-            revert Error.ContractAddressInvalid();
-        }
-
-        if (token_ == address(0)) {
-            revert Error.ZeroAddress();
-        }
-        if (token_.code.length == 0) {
-            revert Error.ContractAddressInvalid();
-        }
-        try IERC20(token_).balanceOf(address(0)) {} catch {
-            revert Error.ContractAddressInvalid();
-        }
+        _checkMarket(market_);
+        _checkToken(token_);
 
         __AccessControlExt_init_unchained();
         __PausableExt_init_unchained();
@@ -316,6 +299,38 @@ contract CreditLine is
     function proveCreditLine() external pure {}
 
     // ------------------ Internal functions ---------------------- //
+
+    /**
+     * @dev Checks if the market is valid.
+     * @param market_ The address of the lending market to check.
+     */
+    function _checkMarket(address market_) private view {
+        if (market_ == address(0)) {
+            revert Error.ZeroAddress();
+        }
+        if (market_.code.length == 0) {
+            revert Error.ContractAddressInvalid();
+        }
+        try ILendingMarket(market_).proveLendingMarket() {} catch {
+            revert Error.ContractAddressInvalid();
+        }
+    }
+
+    /**
+     * @dev Checks if the token is valid.
+     * @param token_ The address of the token to check.
+     */
+    function _checkToken(address token_) private view {
+        if (token_ == address(0)) {
+            revert Error.ZeroAddress();
+        }
+        if (token_.code.length == 0) {
+            revert Error.ContractAddressInvalid();
+        }
+        try IERC20(token_).balanceOf(address(0)) {} catch {
+            revert Error.ContractAddressInvalid();
+        }
+    }
 
     /**
      * @dev Updates the configuration of a borrower.

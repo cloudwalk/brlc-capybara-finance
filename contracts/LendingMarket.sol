@@ -1145,11 +1145,20 @@ contract LendingMarket is
     }
 
     /**
-     * @dev Checks if the credit line and liquidity pool are valid.
+     * @dev Checks if a credit line and a liquidity pool are valid.
      * @param creditLine The address of the credit line.
      * @param liquidityPool The address of the liquidity pool.
      */
     function _checkCreditLineAndLiquidityPool(address creditLine, address liquidityPool) internal view {
+        _checkCreditLine(creditLine);
+        _checkLiquidityPool(liquidityPool);
+    }
+
+    /**
+     * @dev Checks if the credit line is valid.
+     * @param creditLine The address of the credit line to check.
+     */
+    function _checkCreditLine(address creditLine) internal view {
         if (creditLine == address(0)) {
             revert Error.ZeroAddress();
         }
@@ -1159,7 +1168,13 @@ contract LendingMarket is
         try ICreditLine(creditLine).proveCreditLine() {} catch {
             revert Error.ContractAddressInvalid();
         }
+    }
 
+    /**
+     * @dev Checks if a liquidity pool is valid.
+     * @param liquidityPool The address of the liquidity pool to check.
+     */
+    function _checkLiquidityPool(address liquidityPool) internal view {
         if (liquidityPool == address(0)) {
             revert Error.ZeroAddress();
         }
