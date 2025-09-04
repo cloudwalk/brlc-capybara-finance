@@ -637,7 +637,7 @@ describe("Contract 'CreditLine'", async () => {
     it("Is reverted if the provided implementation address is not a credit line contract", async () => {
       const { creditLine } = await setUpFixture(deployContracts);
 
-      const mockContractFactory = await ethers.getContractFactory("UUPSExtUpgradeableMock");
+      const mockContractFactory: ContractFactory = await ethers.getContractFactory("UUPSExtUpgradeableMock");
       const mockContract = await mockContractFactory.deploy() as Contract;
       await mockContract.waitForDeployment();
 

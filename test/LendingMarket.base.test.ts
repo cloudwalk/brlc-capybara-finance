@@ -900,7 +900,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
 
     it("Is reverted if the provided implementation address is not a lending market contract", async () => {
       const { market } = await setUpFixture(deployLendingMarket);
-      const mockContractFactory = await ethers.getContractFactory("UUPSExtUpgradeableMock");
+      const mockContractFactory: ContractFactory = await ethers.getContractFactory("UUPSExtUpgradeableMock");
       const mockContract = await mockContractFactory.deploy() as Contract;
       await mockContract.waitForDeployment();
 

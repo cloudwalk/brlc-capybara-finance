@@ -298,7 +298,7 @@ describe("Contract 'LiquidityPool'", async () => {
 
     it("Is reverted if the provided implementation address is not a liquidity pool contract", async () => {
       const { liquidityPool } = await setUpFixture(deployLiquidityPool);
-      const mockContractFactory = await ethers.getContractFactory("UUPSExtUpgradeableMock");
+      const mockContractFactory: ContractFactory = await ethers.getContractFactory("UUPSExtUpgradeableMock");
       const mockContract = await mockContractFactory.deploy() as Contract;
       await mockContract.waitForDeployment();
 
@@ -910,14 +910,14 @@ describe("Contract 'LiquidityPool'", async () => {
 
     it("Is reverted if the caller does not have the admin role", async () => {
       const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
-      const workintTreasury = workingTreasuries[0];
+      const workingTreasury = workingTreasuries[0];
 
-      await expect(connect(liquidityPool, owner).withdrawToWorkingTreasury(workintTreasury.address, WITHDRAWAL_AMOUNT))
+      await expect(connect(liquidityPool, owner).withdrawToWorkingTreasury(workingTreasury.address, WITHDRAWAL_AMOUNT))
         .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
         .withArgs(owner.address, ADMIN_ROLE);
 
       await expect(connect(liquidityPool, liquidityOperator).withdrawToWorkingTreasury(
-        workintTreasury.address,
+        workingTreasury.address,
         WITHDRAWAL_AMOUNT,
       )).to.be.revertedWithCustomError(
         liquidityPool,
@@ -925,7 +925,7 @@ describe("Contract 'LiquidityPool'", async () => {
       ).withArgs(liquidityOperator.address, ADMIN_ROLE);
 
       await expect(connect(liquidityPool, attacker).withdrawToWorkingTreasury(
-        workintTreasury.address,
+        workingTreasury.address,
         WITHDRAWAL_AMOUNT,
       )).to.be.revertedWithCustomError(
         liquidityPool,
