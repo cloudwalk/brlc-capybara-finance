@@ -19,10 +19,10 @@
   },
   "lint-staged": {
     "*.{js,ts}": [
-      "npm run eslint:fix"
+      "npm run eslint:check"
     ],
     "*.sol": [
-      "npm run prettier:fix"
+      "npm run prettier:check"
     ]
   },
   "engines": {
