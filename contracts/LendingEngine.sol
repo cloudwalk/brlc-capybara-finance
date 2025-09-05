@@ -44,18 +44,6 @@ contract LendingEngine is
         _disableInitializers();
     }
 
-    // ------------------ Modifiers--- ---------------------------- //
-
-    /**
-     * @dev The modifier that allows to call a function only through a delegatecall from the expected proxy contract.
-     */
-    modifier onlyExpectedCallContext() {
-        if (_getLendingMarketStorage().engineAccessMarker != ENGINE_ACCESS_MARKER_AUTHORIZED) {
-            revert UnauthorizedCallContext();
-        }
-        _;
-    }
-
     // ------------------ Initializers ---------------------------- //
 
     /**
@@ -82,7 +70,8 @@ contract LendingEngine is
         uint256 interestRateMoratory,
         uint256 lateFeeRate,
         SubLoanTakingRequest[] calldata subLoanTakingRequests
-    ) external onlyExpectedCallContext() returns  (uint256 firstSubLoanId) {
+    ) external returns  (uint256 firstSubLoanId) {
+        _checkCallContext();
         uint256 subLoanCount = subLoanTakingRequests.length;
 
         _checkSubLoanCount(subLoanCount);
@@ -123,7 +112,8 @@ contract LendingEngine is
     }
 
     /// @inheritdoc ILendingEngine
-    function revokeLoan(uint256 subLoanId) external onlyExpectedCallContext() {
+    function revokeLoan(uint256 subLoanId) external {
+        _checkCallContext();
         SubLoan storage subLoanStored = _getExitingSubLoanInStorage(subLoanId);
 
         uint256 firstSubLoanId = subLoanStored.firstSubLoanId;
@@ -160,7 +150,8 @@ contract LendingEngine is
     }
 
     /// @inheritdoc ILendingEngine
-    function repaySubLoanBatch(RepaymentRequest[] calldata repaymentRequests) external onlyExpectedCallContext() {
+    function repaySubLoanBatch(RepaymentRequest[] calldata repaymentRequests) external {
+        _checkCallContext();
         _executeRepaymentBatch(repaymentRequests);
     }
 
@@ -169,48 +160,56 @@ contract LendingEngine is
     /// @inheritdoc ILendingEngine
     function discountSubLoanBatch(
         SubLoanOperationRequest[] calldata operationRequests
-    ) external onlyExpectedCallContext() {
+    ) external {
+        _checkCallContext();
         _executeOperationBatch(uint256(OperationKind.Discounting), operationRequests);
     }
 
     /// @inheritdoc ILendingEngine
     function setSubLoanDurationBatch(
         SubLoanOperationRequest[] calldata operationRequests
-    ) external onlyExpectedCallContext() {
+    ) external {
+        _checkCallContext();
         _executeOperationBatch(uint256(OperationKind.SetDuration), operationRequests);
     }
 
     function setSubLoanInterestRateRemuneratoryBatch(
         SubLoanOperationRequest[] calldata operationRequests
-    ) external onlyExpectedCallContext() {
+    ) external {
+        _checkCallContext();
         _executeOperationBatch(uint256(OperationKind.SetInterestRateRemuneratory), operationRequests);
     }
 
     function setSubLoanInterestRateMoratoryBatch(
         SubLoanOperationRequest[] calldata operationRequests
-    ) external onlyExpectedCallContext() {
+    ) external {
+        _checkCallContext();
         _executeOperationBatch(uint256(OperationKind.SetInterestRateMoratory), operationRequests);
     }
 
     function setSubLoanLateFeeRateBatch(
         SubLoanOperationRequest[] calldata operationRequests
-    ) external onlyExpectedCallContext() {
+    ) external {
+        _checkCallContext();
         _executeOperationBatch(uint256(OperationKind.SetLateFeeRate), operationRequests);
     }
 
-    function freezeSubLoanBatch(SubLoanOperationRequest[] calldata operationRequests) external onlyExpectedCallContext() {
+    function freezeSubLoanBatch(SubLoanOperationRequest[] calldata operationRequests) external {
+        _checkCallContext();
         _executeOperationBatch(uint256(OperationKind.Freezing), operationRequests);
     }
 
     function unfreezeSubLoanBatch(
         SubLoanOperationRequest[] calldata operationRequests
-    ) external onlyExpectedCallContext() {
+    ) external {
+        _checkCallContext();
         _executeOperationBatch(uint256(OperationKind.Unfreezing), operationRequests);
     }
 
     function voidOperationBatch(
         OperationVoidingRequest[] calldata voidOperationRequests
-    ) external onlyExpectedCallContext() {
+    ) external {
+        _checkCallContext();
         _voidOperationBatch(voidOperationRequests);
     }
 
@@ -220,6 +219,13 @@ contract LendingEngine is
     function proveLendingEngine() external pure {}
 
     // ------------------ Internal functions -------------------- //
+
+    /// TODO
+    function _checkCallContext() internal view {
+        if (_getLendingMarketStorage().engineAccessMarker != ENGINE_ACCESS_MARKER_AUTHORIZED) {
+            revert UnauthorizedCallContext();
+        }
+    }
 
     /**
      * @dev The upgrade validation function for the UUPSExtUpgradeable contract.
