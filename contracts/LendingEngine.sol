@@ -222,7 +222,7 @@ contract LendingEngine is
 
     /// TODO
     function _checkCallContext() internal view {
-        if (_getLendingMarketStorage().engineAccessMarker != ENGINE_ACCESS_MARKER_AUTHORIZED) {
+        if (_getLendingMarketStorage().storageKind != STORAGE_KIND_MARKET) {
             revert UnauthorizedCallContext();
         }
     }

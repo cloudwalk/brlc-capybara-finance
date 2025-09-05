@@ -13,7 +13,7 @@ abstract contract LendingMarketStorageLayoutV2 is ILendingMarketTypesV2 {
     // ------------------ Constants ------------------------------- //
 
     /// TODO
-    uint256 internal constant ENGINE_ACCESS_MARKER_AUTHORIZED = 0xAA55;
+    uint256 internal constant STORAGE_KIND_MARKET = 0xAA55;
 
     // ------------------ Storage layout -------------------------- //
 
@@ -53,7 +53,7 @@ abstract contract LendingMarketStorageLayoutV2 is ILendingMarketTypesV2 {
 
         // Slot 2
         address engine;
-        uint16 engineAccessMarker;
+        uint16 storageKind;
 
         // Slots 2...5
         mapping(uint256 subLoanId => SubLoan) subLoans;

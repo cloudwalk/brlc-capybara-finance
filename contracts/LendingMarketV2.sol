@@ -65,7 +65,7 @@ contract LendingMarketV2 is
         _setRoleAdmin(ADMIN_ROLE, GRANTOR_ROLE);
         _grantRole(OWNER_ROLE, _msgSender());
 
-        _getLendingMarketStorage().engineAccessMarker = uint16(ENGINE_ACCESS_MARKER_AUTHORIZED);
+        _getLendingMarketStorage().storageKind = uint16(STORAGE_KIND_MARKET);
     }
 
     // ----------- Configuration transactional functions ---------- //
