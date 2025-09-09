@@ -21,22 +21,13 @@ interface ILendingEngine is ILendingMarketTypesV2 {
      *
      * Can be called only by an account with a special role.
      *
-     * @param borrower The account for whom the loan is taken.
-     * @param programId The identifier of the lending program to take the loan.
-     * @param interestRateRemuneratory The remuneratory interest rate to apply to all sub-loans.
-     * @param interestRateMoratory The moratory interest rate to apply to all sub-loans.
-     * @param lateFeeRate The late fee rate to apply to all sub-loans.
-     * @param subLoanTakingRequests The request structures to take the sub-loans.
-     * @return firstSubLoanId The unique identifier of the first sub-loan of the loan.
+     * @param loanTakingRequest TODO
+     * @return actualFirstSubLoanId The unique identifier of the first sub-loan of the loan.
      */
     function takeLoan(
-        address borrower,
-        uint256 programId,
-        uint256 interestRateRemuneratory,
-        uint256 interestRateMoratory,
-        uint256 lateFeeRate,
+        LoanTakingRequest calldata loanTakingRequest,
         SubLoanTakingRequest[] calldata subLoanTakingRequests
-    ) external returns (uint256 firstSubLoanId);
+    ) external returns (uint256 actualFirstSubLoanId);
 
     /**-
      * @dev Revokes a loan by the ID of any of its sub-loans.

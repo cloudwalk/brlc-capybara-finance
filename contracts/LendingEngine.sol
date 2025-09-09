@@ -64,42 +64,55 @@ contract LendingEngine is
     /// @inheritdoc ILendingEngine
     // TODO: Remove `For` in the name, consider the same for other fucntions
     function takeLoan(
-        address borrower,
-        uint256 programId,
-        uint256 interestRateRemuneratory,
-        uint256 interestRateMoratory,
-        uint256 lateFeeRate,
+        LoanTakingRequest calldata loanTakingRequest,
         SubLoanTakingRequest[] calldata subLoanTakingRequests
-    ) external returns  (uint256 firstSubLoanId) {
+    ) external returns  (uint256 actualFirstSubLoanId) {
         _checkCallContext();
         uint256 subLoanCount = subLoanTakingRequests.length;
 
         _checkSubLoanCount(subLoanCount);
-        _checkSubLoanParameters(subLoanTakingRequests);
-        _checkSubLoanRates(interestRateRemuneratory, interestRateMoratory, lateFeeRate);
-        uint256 packedRates = _packRates(interestRateRemuneratory, interestRateMoratory, lateFeeRate);
-        (uint256 totalBorrowedAmount, uint256 totalAddonAmount) = _calculateTotalAmounts(subLoanTakingRequests);
-        _checkMainLoanParameters(borrower, programId, totalBorrowedAmount, totalAddonAmount);
+        (uint256 totalBorrowedAmount, uint256 totalAddonAmount) = _checkSubLoanParametersAndCalculateTotals(
+            subLoanTakingRequests
+        );
+        _checkLoanParameters(
+            loanTakingRequest,
+            totalBorrowedAmount,
+            totalAddonAmount
+        );
+        uint256 packedRates = _packRates(
+            loanTakingRequest.interestRateRemuneratory,
+            loanTakingRequest.interestRateMoratory,
+            loanTakingRequest.lateFeeRate
+        );
 
         for (uint256 i = 0; i < subLoanCount; ++i) {
-            uint256 subLoanId = _takeSubLoan(
-                borrower, // Tools: prevent Prettier one-liner
-                programId,
+            uint256 firstSubLoanId = loanTakingRequest.firstSubLoanId;
+            uint256 subLoanId = firstSubLoanId;
+            if (subLoanId == 0) {
+                subLoanId = _increaseSubLoanId();
+            } else {
+                subLoanId += i;
+            }
+            _takeSubLoan(
+                subLoanId,
+                loanTakingRequest.borrower,
+                loanTakingRequest.programId,
+                loanTakingRequest.startTimestamp,
                 packedRates,
                 subLoanTakingRequests[i]
             );
             if (i == 0) {
-                firstSubLoanId = subLoanId;
+                actualFirstSubLoanId = subLoanId;
             }
             _setLoanPartsData(subLoanId, firstSubLoanId, subLoanCount);
         }
 
         {
-            (address creditLine, address liquidityPool) = _getCreditLineAndLiquidityPool(programId);
+            (address creditLine, address liquidityPool) = _getCreditLineAndLiquidityPool(loanTakingRequest.programId);
             emit LoanTaken(
-                firstSubLoanId, // Tools: prevent Prettier one-liner
-                borrower,
-                programId,
+                loanTakingRequest.firstSubLoanId, // Tools: prevent Prettier one-liner
+                loanTakingRequest.borrower,
+                loanTakingRequest.programId,
                 subLoanCount,
                 totalBorrowedAmount,
                 totalAddonAmount,
@@ -108,7 +121,7 @@ contract LendingEngine is
             );
         }
 
-        _transferTokensOnLoanTaking(firstSubLoanId, totalBorrowedAmount, totalAddonAmount);
+        _transferTokensOnLoanTaking(loanTakingRequest.firstSubLoanId, totalBorrowedAmount, totalAddonAmount);
     }
 
     /// @inheritdoc ILendingEngine

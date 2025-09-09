@@ -47,12 +47,13 @@ abstract contract LendingMarketStorageLayoutV2 is ILendingMarketTypesV2 {
     struct LendingMarketStorageV2 {
         // Slot 1
         address token;
-        uint40 subLoanIdCounter;
-        uint24 programIdCounter;
+        uint40 subLoanCounter;
+        uint24 programCounter;
         // uint32 __reserved; // Reserved until the end of the storage slot
 
         // Slot 2
         address engine;
+        uint40 lastSubLoanId;
         uint16 storageKind;
 
         // Slots 2...5

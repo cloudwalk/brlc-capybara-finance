@@ -52,29 +52,6 @@ interface ILendingMarketTypesV2 {
 
     /**
      * @dev TODO
-     *
-     * Possible values: TODO
-     */
-    enum SubLoanPartKind {
-        Principal,
-        InterestRemuneratory,
-        InterestMoratory,
-        LateFee
-    }
-
-    /**
-     * @dev A struct that defines the terms of a loan.
-     * TODO
-     */
-    struct Terms {
-        uint256 duration;
-        uint256 interestRateRemuneratory;
-        uint256 interestRateMoratory;
-        uint256 lateFeeRate;
-    }
-
-    /**
-     * @dev TODO
      */
     struct SubLoan {
         // Slot1
@@ -213,10 +190,14 @@ interface ILendingMarketTypesV2 {
     /**
      * @dev TODO
      */
-    struct SubLoanInternalTakingRequest {
-        uint256 borrowedAmount;
-        uint256 addonAmount;
-        uint256 duration;
+    struct LoanTakingRequest {
+        uint256 firstSubLoanId;
+        address borrower;
+        uint256 programId;
+        uint256 startTimestamp;
+        uint256 interestRateRemuneratory;
+        uint256 interestRateMoratory;
+        uint256 lateFeeRate;
     }
 
     /**
