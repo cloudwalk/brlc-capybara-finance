@@ -223,7 +223,11 @@ interface ILendingMarketPrimaryEventsV2 is ILendingMarketTypesV2 {
      * @param subLoanRevision The revision number of the sub-loan.
      * @param trackedTimestamp The tracked timestamp of the sub-loan when it was frozen.
      */
-    event SubLoanFrozen(uint256 indexed subLoanId, uint256 indexed subLoanRevision, uint256 trackedTimestamp);
+    event SubLoanFrozen(
+        uint256 indexed subLoanId, // Tools: prevent Prettier one-liner
+        uint256 indexed subLoanRevision,
+        uint256 trackedTimestamp
+    );
 
     /**
      * @dev Emitted when a sub-loan is frozen.
@@ -232,7 +236,11 @@ interface ILendingMarketPrimaryEventsV2 is ILendingMarketTypesV2 {
      * @param subLoanRevision The revision number of the sub-loan.
      * @param trackedTimestamp The tracked timestamp of the sub-loan when it was unfrozen.
      */
-    event SubLoanUnfrozen(uint256 indexed subLoanId, uint256 indexed subLoanRevision, uint256 trackedTimestamp);
+    event SubLoanUnfrozen(
+        uint256 indexed subLoanId, // Tools: prevent Prettier one-liner
+        uint256 indexed subLoanRevision,
+        uint256 trackedTimestamp
+    );
 
     /**
      * @dev Emitted when a sub-loan is revoked.
@@ -312,7 +320,11 @@ interface ILendingMarketPrimaryEventsV2 is ILendingMarketTypesV2 {
      * @param operationId The unique identifier of the operation within the sub-loan.
      * @param kind The kind of the operation like repayment, discount, setting a new rate, etc.
      */
-    event OperationCanceled(uint256 indexed subLoanId, uint256 indexed operationId, OperationKind indexed kind);
+    event OperationCanceled(
+        uint256 indexed subLoanId, // Tools: prevent Prettier one-liner
+        uint256 indexed operationId,
+        OperationKind indexed kind
+    );
 
     // TODO: add more events if needed
     // TODO: add more parameters to the existing events if needed
