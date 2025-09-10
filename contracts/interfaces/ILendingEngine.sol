@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-import { ILendingMarketTypesV2 } from "./ILendingMarketTypesV2.sol";
+import { ILendingMarketTypesV2 } from "./ILendingMarketV2.sol";
 
 /**
  * @title ILendingEngine interface

@@ -2,7 +2,7 @@
 
 pragma solidity 0.8.24;
 
-import { ILendingMarketTypesV2 } from "../interfaces/ILendingMarketTypesV2.sol";
+import { ILendingMarketTypesV2 } from "../interfaces/ILendingMarketV2.sol";
 
 /**
  * @title LendingMarketStorageV2 contract
