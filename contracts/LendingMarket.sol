@@ -681,6 +681,7 @@ contract LendingMarket is
         Loan.State storage loan = _loans[loanId];
         (newTrackedBalance, discountAmount) = _processTrackedBalanceChange(loan, discountAmount);
         loan.discountAmount += discountAmount.toUint64();
+        ICreditLine(_programCreditLines[loan.programId]).onAfterLoanPayment(loanId, discountAmount);
         emit LoanDiscounted(loanId, discountAmount, newTrackedBalance);
     }
 
