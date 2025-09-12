@@ -2242,6 +2242,11 @@ describe("Contract 'LendingMarket': base tests", async () => {
           expectedDiscountAmount,
           expectedLoan.state.trackedBalance,
         );
+
+        // Check that the appropriate market hook functions are called
+        await expect(tx)
+          .to.emit(creditLine, EVENT_NAME_ON_AFTER_LOAN_PAYMENT_CALLED)
+          .withArgs(expectedLoan.id, expectedDiscountAmount);
       }
 
       return expectedLoans;

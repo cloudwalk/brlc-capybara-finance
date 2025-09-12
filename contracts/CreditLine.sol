@@ -196,9 +196,7 @@ contract CreditLine is
     }
 
     /// @inheritdoc ICreditLineHooks
-    function onAfterLoanPayment(uint256 loanId, uint256 repaymentAmount) external whenNotPaused onlyMarket {
-        repaymentAmount; // To prevent compiler warning about unused variable
-
+    function onAfterLoanPayment(uint256 loanId, uint256) external whenNotPaused onlyMarket {
         Loan.State memory loan = ILendingMarket(_market).getLoanState(loanId);
         if (loan.trackedBalance == 0) {
             _closeLoan(loan);
@@ -208,6 +206,25 @@ contract CreditLine is
     /// @inheritdoc ICreditLineHooks
     function onAfterLoanRevocation(uint256 loanId) external whenNotPaused onlyMarket {
         Loan.State memory loan = ILendingMarket(_market).getLoanState(loanId);
+        _closeLoan(loan);
+    }
+
+    /**
+     * @dev Processes a closed loan.
+     *
+     * This function is needed to fix the consequences of a bug in
+     * the `LendingMarket` contract prior to v.1.18.0 when
+     * the `onAfterLoanPayment` hook was not called after discounting.
+     *
+     * This function should be removed in the next minor version of the contract.
+     *
+     * @param loanId The unique identifier of the loan to process.
+     */
+    function processClosedLoan(uint256 loanId) external whenNotPaused onlyRole(ADMIN_ROLE) {
+        Loan.State memory loan = ILendingMarket(_market).getLoanState(loanId);
+        if (loan.trackedBalance != 0) {
+            revert("Loan is ongoing");
+        }
         _closeLoan(loan);
     }
 

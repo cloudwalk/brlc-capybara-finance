@@ -1454,6 +1454,51 @@ describe("Contract 'CreditLine'", async () => {
     });
   });
 
+  describe("Function 'processClosedLoan()'", async () => {
+    it("Executes as expected", async () => {
+      const { creditLineViaAdmin } = await setUpFixture(deployAndConfigureContractsWithBorrower);
+      const expectedBorrowerState: BorrowerState = {
+        ...defaultBorrowerState,
+        activeLoanCount: 1n,
+        totalActiveLoanAmount: BORROWED_AMOUNT,
+      };
+      await prepareLoan(market, { trackedBalance: 0n });
+      await proveTx(creditLineViaAdmin.setBorrowerState(borrower.address, expectedBorrowerState));
+      await proveTx(creditLineViaAdmin.processClosedLoan(LOAN_ID));
+      processLoanClosing(expectedBorrowerState, BORROWED_AMOUNT);
+
+      const actualBorrowerState = await creditLineViaAdmin.getBorrowerState(borrower.address);
+      checkEquality(actualBorrowerState, expectedBorrowerState);
+    });
+
+    it("Is reverted if the caller is not the admin", async () => {
+      const { creditLine } = await setUpFixture(deployAndConfigureContractsWithBorrower);
+
+      await expect(connect(creditLine, owner).processClosedLoan(LOAN_ID))
+        .to.be.revertedWithCustomError(creditLine, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
+        .withArgs(owner.address, ADMIN_ROLE);
+
+      await expect(connect(creditLine, attacker).processClosedLoan(LOAN_ID))
+        .to.be.revertedWithCustomError(creditLine, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
+        .withArgs(attacker.address, ADMIN_ROLE);
+    });
+
+    it("Is reverted if the contract is paused", async () => {
+      const { creditLine, creditLineViaAdmin } = await setUpFixture(deployAndConfigureContractsWithBorrower);
+      await proveTx(creditLine.pause());
+
+      await expect(creditLineViaAdmin.processClosedLoan(LOAN_ID))
+        .to.be.revertedWithCustomError(creditLineViaAdmin, ERROR_NAME_ENFORCED_PAUSE);
+    });
+
+    it("Is reverted if the loan is ongoing", async () => {
+      const { creditLineViaAdmin } = await setUpFixture(deployAndConfigureContractsWithBorrower);
+      await prepareLoan(market, { trackedBalance: 123n });
+      await expect(creditLineViaAdmin.processClosedLoan(LOAN_ID))
+        .to.be.revertedWith("Loan is ongoing");
+    });
+  });
+
   describe("Function 'determineLoanTerms()'", async () => {
     it("Executes as expected even if the borrowing policy is violated", async () => {
       const fixture = await setUpFixture(deployAndConfigureContractsWithBorrower);
