@@ -3589,11 +3589,11 @@ describe("Contract 'LendingMarket': base tests", async () => {
       });
 
       it("The loan does not exist", async () => {
-        const { market, ordinaryLoan: loan } = await setUpFixture(deployLendingMarketAndTakeLoans);
+        const { marketViaAdmin, ordinaryLoan: loan } = await setUpFixture(deployLendingMarketAndTakeLoans);
         const wrongLoanId = loan.id + 123;
 
-        await expect(market.unfreeze(wrongLoanId))
-          .to.be.revertedWithCustomError(market, ERROR_NAME_LOAN_NOT_EXIST);
+        await expect(marketViaAdmin.unfreeze(wrongLoanId))
+          .to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_LOAN_NOT_EXIST);
       });
 
       it("The loan is already repaid", async () => {
