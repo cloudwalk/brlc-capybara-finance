@@ -3,6 +3,7 @@
 pragma solidity 0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
@@ -16,8 +17,6 @@ import { Error } from "./libraries/Error.sol";
 import { Rounding } from "./libraries/Rounding.sol";
 import { Constants } from "./libraries/Constants.sol";
 import { InterestMath } from "./libraries/InterestMath.sol";
-import { SafeCast } from "./libraries/SafeCast.sol";
-
 import { ICreditLine } from "./interfaces/ICreditLine.sol";
 import { ILendingMarket } from "./interfaces/ILendingMarket.sol";
 import { ILendingMarketConfiguration } from "./interfaces/ILendingMarket.sol";
@@ -621,6 +620,18 @@ contract LendingMarket is
         ICreditLine(creditLine).onBeforeLoanTaken(id);
 
         emit LoanTaken(id, borrower, principalAmount, terms.durationInPeriods);
+        emit LoanTakenDetailed(
+            id,
+            borrower,
+            programId,
+            creditLine,
+            liquidityPool,
+            loan.borrowedAmount, // to avoid 'stack too deep'
+            terms.addonAmount,
+            terms.durationInPeriods,
+            terms.interestRatePrimary,
+            terms.interestRateSecondary
+        );
 
         return id;
     }

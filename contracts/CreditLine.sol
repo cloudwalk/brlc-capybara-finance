@@ -12,7 +12,6 @@ import { Versionable } from "./base/Versionable.sol";
 import { Constants } from "./libraries/Constants.sol";
 import { Error } from "./libraries/Error.sol";
 import { Loan } from "./libraries/Loan.sol";
-import { SafeCast } from "./libraries/SafeCast.sol";
 
 import { ICreditLine } from "./interfaces/ICreditLine.sol";
 import { ICreditLineConfiguration } from "./interfaces/ICreditLine.sol";
@@ -35,8 +34,6 @@ contract CreditLine is
     Versionable,
     UUPSExtUpgradeable
 {
-    using SafeCast for uint256;
-
     // ------------------ Constants ------------------------------- //
 
     /// @dev The role of an admin that is allowed to configure borrowers.
@@ -206,25 +203,6 @@ contract CreditLine is
     /// @inheritdoc ICreditLineHooks
     function onAfterLoanRevocation(uint256 loanId) external whenNotPaused onlyMarket {
         Loan.State memory loan = ILendingMarket(_market).getLoanState(loanId);
-        _closeLoan(loan);
-    }
-
-    /**
-     * @dev Processes a closed loan.
-     *
-     * This function is needed to fix the consequences of a bug in
-     * the `LendingMarket` contract prior to v.1.18.0 when
-     * the `onAfterLoanPayment` hook was not called after discounting.
-     *
-     * This function should be removed in the next minor version of the contract.
-     *
-     * @param loanId The unique identifier of the loan to process.
-     */
-    function processClosedLoan(uint256 loanId) external whenNotPaused onlyRole(ADMIN_ROLE) {
-        Loan.State memory loan = ILendingMarket(_market).getLoanState(loanId);
-        if (loan.trackedBalance != 0) {
-            revert("Loan is ongoing");
-        }
         _closeLoan(loan);
     }
 

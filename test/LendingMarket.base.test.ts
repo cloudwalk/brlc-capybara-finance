@@ -148,6 +148,7 @@ const EVENT_NAME_LOAN_FROZEN = "LoanFrozen";
 const EVENT_NAME_LOAN_REPAYMENT = "LoanRepayment";
 const EVENT_NAME_LOAN_DISCOUNTED = "LoanDiscounted";
 const EVENT_NAME_LOAN_TAKEN = "LoanTaken";
+const EVENT_NAME_LOAN_TAKEN_DETAILED = "LoanTakenDetailed";
 const EVENT_NAME_PROGRAM_CREATED = "ProgramCreated";
 const EVENT_NAME_PROGRAM_UPDATED = "ProgramUpdated";
 const EVENT_NAME_INSTALLMENT_LOAN_TAKEN = "InstallmentLoanTaken";
@@ -1170,6 +1171,20 @@ describe("Contract 'LendingMarket': base tests", async () => {
       await expect(tx)
         .to.emit(marketViaAdmin, EVENT_NAME_LOAN_TAKEN)
         .withArgs(expectedLoanId, borrower.address, principalAmount, DURATION_IN_PERIODS);
+      await expect(tx)
+        .to.emit(marketViaAdmin, EVENT_NAME_LOAN_TAKEN_DETAILED)
+        .withArgs(
+          expectedLoanId,
+          borrower.address,
+          PROGRAM_ID,
+          creditLineAddress,
+          liquidityPoolAddress,
+          BORROWED_AMOUNT,
+          addonAmount,
+          DURATION_IN_PERIODS,
+          INTEREST_RATE_PRIMARY,
+          INTEREST_RATE_SECONDARY,
+        );
 
       await expect(tx).to.emit(creditLine, EVENT_NAME_ON_BEFORE_LOAN_TAKEN_CALLED).withArgs(expectedLoanId);
 
@@ -1466,6 +1481,20 @@ describe("Contract 'LendingMarket': base tests", async () => {
         await expect(tx)
           .to.emit(marketViaAdmin, EVENT_NAME_LOAN_TAKEN)
           .withArgs(expectedLoanIds[i], borrower.address, principalAmounts[i], durationsInPeriods[i]);
+        await expect(tx)
+          .to.emit(marketViaAdmin, EVENT_NAME_LOAN_TAKEN_DETAILED)
+          .withArgs(
+            expectedLoanIds[i],
+            borrower.address,
+            PROGRAM_ID,
+            creditLineAddress,
+            liquidityPoolAddress,
+            borrowedAmounts[i],
+            addonAmounts[i],
+            durationsInPeriods[i],
+            INTEREST_RATE_PRIMARY,
+            INTEREST_RATE_SECONDARY,
+          );
         await expect(tx).to.emit(creditLine, EVENT_NAME_ON_BEFORE_LOAN_TAKEN_CALLED).withArgs(expectedLoanIds[i]);
       }
       await expect(tx)

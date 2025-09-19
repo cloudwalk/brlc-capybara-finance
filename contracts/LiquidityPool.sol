@@ -3,6 +3,7 @@
 pragma solidity 0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
@@ -10,7 +11,6 @@ import { AccessControlExtUpgradeable } from "./base/AccessControlExtUpgradeable.
 import { PausableExtUpgradeable } from "./base/PausableExtUpgradeable.sol";
 import { UUPSExtUpgradeable } from "./base/UUPSExtUpgradeable.sol";
 import { Versionable } from "./base/Versionable.sol";
-import { SafeCast } from "./libraries/SafeCast.sol";
 
 import { IERC20Mintable } from "./interfaces/IERC20Mintable.sol";
 import { ILiquidityPool } from "./interfaces/ILiquidityPool.sol";
@@ -199,33 +199,6 @@ contract LiquidityPool is
      */
     function migrate() external {
         _market = address(0);
-    }
-
-    /**
-     * @dev Corrects the borrowable balance of the liquidity pool.
-     *
-     * This function is needed to fix the consequences of a bug in
-     * the `LendingMarket` contract prior to v.1.16.0.
-     *
-     * This function should be removed in the next minor version of the contract.
-     *
-     * @param amount The amount to correct the borrowable balance by.
-     */
-    function correctBorrowableBalance(int256 amount) external onlyRole(OWNER_ROLE) {
-        if (amount > int256(uint256(type(uint64).max))) {
-            revert LiquidityPool_BalanceExcess();
-        }
-        int256 balance = int256(uint256(_borrowableBalance));
-        if (amount < -balance) {
-            revert LiquidityPool_BalanceInsufficient();
-        }
-        unchecked {
-            balance += amount;
-        }
-        if (balance > int256(uint256(type(uint64).max))) {
-            revert LiquidityPool_BalanceExcess();
-        }
-        _borrowableBalance = uint64(uint256(balance));
     }
 
     // ------------------ Hook transactional functions ------------ //
