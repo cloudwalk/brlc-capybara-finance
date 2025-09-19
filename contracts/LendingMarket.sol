@@ -46,19 +46,11 @@ contract LendingMarket is
 
     // ------------------ Constants ------------------------------- //
 
-    /// @dev The role of an admin that is allowed to execute loan-related functions.
+    /// @dev The role of an admin that is allowed to execute loan-related functions except the correction one.
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
 
-    // ------------------ Modifiers ------------------------------- //
-
-    /**
-     * @dev Throws if the loan does not exist or has already been repaid.
-     * @param loanId The unique identifier of the loan to check.
-     */
-    modifier onlyOngoingLoan(uint256 loanId) {
-        _checkIfLoanOngoing(loanId);
-        _;
-    }
+    /// @dev The role of a corrector that is allowed to correct loans.
+    bytes32 public constant CORRECTOR_ROLE = keccak256("CORRECTOR_ROLE");
 
     // ------------------ Constructor ----------------------------- //
 
@@ -87,6 +79,7 @@ contract LendingMarket is
         __UUPSExt_init_unchained();
 
         _setRoleAdmin(ADMIN_ROLE, GRANTOR_ROLE);
+        _setRoleAdmin(CORRECTOR_ROLE, GRANTOR_ROLE);
         _grantRole(OWNER_ROLE, owner_);
     }
 
@@ -206,7 +199,7 @@ contract LendingMarket is
     }
 
     /// @inheritdoc ILendingMarketPrimary
-    function repayLoan(uint256 loanId, uint256 repaymentAmount) external whenNotPaused onlyOngoingLoan(loanId) {
+    function repayLoan(uint256 loanId, uint256 repaymentAmount) external whenNotPaused {
         _repayLoan(loanId, repaymentAmount, msg.sender);
     }
 
@@ -225,14 +218,14 @@ contract LendingMarket is
         }
         for (uint256 i = 0; i < len; ++i) {
             uint256 loanId = loanIds[i];
-            _checkIfLoanOngoing(loanId);
             _repayLoan(loanId, repaymentAmounts[i], repayer);
         }
     }
 
     /// @inheritdoc ILendingMarketPrimary
-    function revokeLoan(uint256 loanId) external whenNotPaused onlyOngoingLoan(loanId) onlyRole(ADMIN_ROLE) {
+    function revokeLoan(uint256 loanId) external whenNotPaused onlyRole(ADMIN_ROLE) {
         Loan.State storage loan = _loans[loanId];
+        _checkIfLoanOngoing(loan);
         _checkLoanType(loan, uint256(Loan.Type.Ordinary));
         _revokeLoan(loanId, loan);
         _transferTokensOnLoanRevocation(loan, loan.borrowedAmount, loan.addonAmount, loan.repaidAmount);
@@ -286,7 +279,6 @@ contract LendingMarket is
         }
         for (uint256 i = 0; i < len; ++i) {
             uint256 loanId = loanIds[i];
-            _checkIfLoanOngoing(loanId);
             _discountLoan(loanId, discountAmounts[i]);
         }
     }
@@ -365,8 +357,46 @@ contract LendingMarket is
     }
 
     /// @inheritdoc ILendingMarketPrimary
-    function freeze(uint256 loanId) external whenNotPaused onlyOngoingLoan(loanId) onlyRole(ADMIN_ROLE) {
+    function correctLoan(
+        uint256 loanId,
+        uint256 newTrackedTimestamp,
+        uint256 newRepaidAmount,
+        uint256 newTrackedBalance,
+        uint256 newLateFeeAmount,
+        uint256 newDiscountAmount
+    ) external whenNotPaused onlyRole(CORRECTOR_ROLE) {
         Loan.State storage loan = _loans[loanId];
+        _checkLoanExistence(loan);
+
+        if (newTrackedTimestamp < loan.startTimestamp) {
+            revert TrackedTimestampInvalid();
+        }
+
+        emit LoanCorrected(
+            loanId,
+            newTrackedTimestamp,
+            loan.trackedTimestamp,
+            newRepaidAmount,
+            loan.repaidAmount,
+            newTrackedBalance,
+            loan.trackedBalance,
+            newLateFeeAmount,
+            loan.lateFeeAmount,
+            newDiscountAmount,
+            loan.discountAmount
+        );
+
+        loan.trackedTimestamp = newTrackedTimestamp.toUint32();
+        loan.repaidAmount = newRepaidAmount.toUint64();
+        loan.trackedBalance = newTrackedBalance.toUint64();
+        loan.lateFeeAmount = newLateFeeAmount.toUint64();
+        loan.discountAmount = newDiscountAmount.toUint64();
+    }
+
+    /// @inheritdoc ILendingMarketPrimary
+    function freeze(uint256 loanId) external whenNotPaused onlyRole(ADMIN_ROLE) {
+        Loan.State storage loan = _loans[loanId];
+        _checkIfLoanOngoing(loan);
 
         if (loan.freezeTimestamp != 0) {
             revert LoanAlreadyFrozen();
@@ -378,8 +408,9 @@ contract LendingMarket is
     }
 
     /// @inheritdoc ILendingMarketPrimary
-    function unfreeze(uint256 loanId) external whenNotPaused onlyOngoingLoan(loanId) onlyRole(ADMIN_ROLE) {
+    function unfreeze(uint256 loanId) external whenNotPaused onlyRole(ADMIN_ROLE) {
         Loan.State storage loan = _loans[loanId];
+        _checkIfLoanOngoing(loan);
 
         if (loan.freezeTimestamp == 0) {
             revert LoanNotFrozen();
@@ -406,8 +437,9 @@ contract LendingMarket is
     function updateLoanDuration(
         uint256 loanId,
         uint256 newDurationInPeriods
-    ) external whenNotPaused onlyOngoingLoan(loanId) onlyRole(ADMIN_ROLE) {
+    ) external whenNotPaused onlyRole(ADMIN_ROLE) {
         Loan.State storage loan = _loans[loanId];
+        _checkIfLoanOngoing(loan);
 
         if (newDurationInPeriods <= loan.durationInPeriods) {
             revert InappropriateLoanDuration();
@@ -422,8 +454,9 @@ contract LendingMarket is
     function updateLoanInterestRatePrimary(
         uint256 loanId,
         uint256 newInterestRate
-    ) external whenNotPaused onlyOngoingLoan(loanId) onlyRole(ADMIN_ROLE) {
+    ) external whenNotPaused onlyRole(ADMIN_ROLE) {
         Loan.State storage loan = _loans[loanId];
+        _checkIfLoanOngoing(loan);
 
         if (newInterestRate >= loan.interestRatePrimary) {
             revert InappropriateInterestRate();
@@ -438,8 +471,9 @@ contract LendingMarket is
     function updateLoanInterestRateSecondary(
         uint256 loanId,
         uint256 newInterestRate
-    ) external whenNotPaused onlyOngoingLoan(loanId) onlyRole(ADMIN_ROLE) {
+    ) external whenNotPaused onlyRole(ADMIN_ROLE) {
         Loan.State storage loan = _loans[loanId];
+        _checkIfLoanOngoing(loan);
 
         if (newInterestRate >= loan.interestRateSecondary) {
             revert InappropriateInterestRate();
@@ -648,6 +682,7 @@ contract LendingMarket is
         address repayer
     ) internal {
         Loan.State storage loan = _loans[loanId];
+        _checkIfLoanOngoing(loan);
         uint256 newTrackedBalance;
         (newTrackedBalance, repaymentAmount) = _processTrackedBalanceChange(loan, repaymentAmount);
         loan.repaidAmount += repaymentAmount.toUint64();
@@ -690,6 +725,7 @@ contract LendingMarket is
     ) internal {
         uint256 newTrackedBalance;
         Loan.State storage loan = _loans[loanId];
+        _checkIfLoanOngoing(loan);
         (newTrackedBalance, discountAmount) = _processTrackedBalanceChange(loan, discountAmount);
         loan.discountAmount += discountAmount.toUint64();
         ICreditLine(_programCreditLines[loan.programId]).onAfterLoanPayment(loanId, discountAmount);
@@ -858,11 +894,10 @@ contract LendingMarket is
     }
 
     /**
-     * @dev Checks if a loan with the specified ID is ongoing.
-     * @param loanId The ID of the loan.
+     * @dev Checks if a loan is ongoing.
+     * @param loan The storage state of the loan.
      */
-    function _checkIfLoanOngoing(uint256 loanId) internal view {
-        Loan.State storage loan = _loans[loanId];
+    function _checkIfLoanOngoing(Loan.State storage loan) internal view {
         _checkLoanExistence(loan);
         if (_isRepaid(loan)) {
             revert LoanAlreadyRepaid();
