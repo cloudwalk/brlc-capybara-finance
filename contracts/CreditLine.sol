@@ -12,7 +12,6 @@ import { Versionable } from "./base/Versionable.sol";
 import { Constants } from "./libraries/Constants.sol";
 import { Error } from "./libraries/Error.sol";
 import { Loan } from "./libraries/Loan.sol";
-import { SafeCast } from "./libraries/SafeCast.sol";
 
 import { ICreditLine } from "./interfaces/ICreditLine.sol";
 import { ICreditLineConfiguration } from "./interfaces/ICreditLine.sol";
@@ -35,8 +34,6 @@ contract CreditLine is
     Versionable,
     UUPSExtUpgradeable
 {
-    using SafeCast for uint256;
-
     // ------------------ Constants ------------------------------- //
 
     /// @dev The role of an admin that is allowed to configure borrowers.
