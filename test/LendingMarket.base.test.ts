@@ -162,6 +162,7 @@ const EVENT_NAME_LOAN_REVOKED = "LoanRevoked";
 const EVENT_NAME_INSTALLMENT_LOAN_REVOKED = "InstallmentLoanRevoked";
 const EVENT_NAME_ON_AFTER_LOAN_REVOCATION_CALLED = "OnAfterLoanRevocationCalled";
 const ERROR_NAME_REPAYMENT_UNDONE = "RepaymentUndone";
+const EVENT_NAME_LOAN_CORRECTED = "LoanCorrected";
 
 // Errors of the library contracts
 const ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT = "AccessControlUnauthorizedAccount";
@@ -191,11 +192,13 @@ const ERROR_NAME_PROGRAM_ID_EXCESS = "ProgramIdExcess";
 const ERROR_NAME_PROGRAM_NOT_EXIST = "ProgramNotExist";
 const ERROR_NAME_REPAYMENT_TIMESTAMP_INVALID = "RepaymentTimestampInvalid";
 const ERROR_NAME_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST = "SafeCastOverflowedUintDowncast";
+const ERROR_NAME_TRACKED_TIMESTAMP_INVALID = "TrackedTimestampInvalid";
 const ERROR_NAME_ZERO_ADDRESS = "ZeroAddress";
 
 const OWNER_ROLE = ethers.id("OWNER_ROLE");
 const GRANTOR_ROLE = ethers.id("GRANTOR_ROLE");
 const ADMIN_ROLE = ethers.id("ADMIN_ROLE");
+const CORRECTOR_ROLE = ethers.id("CORRECTOR_ROLE");
 const PAUSER_ROLE = ethers.id("PAUSER_ROLE");
 
 const ZERO_ADDRESS = ethers.ZeroAddress;
@@ -304,6 +307,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
   let owner: HardhatEthersSigner;
   let borrower: HardhatEthersSigner;
   let admin: HardhatEthersSigner;
+  let corrector: HardhatEthersSigner;
   let stranger: HardhatEthersSigner;
   let addonTreasury: HardhatEthersSigner;
   let receiver: HardhatEthersSigner;
@@ -315,7 +319,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
   let tokenAddress: string;
 
   before(async () => {
-    [deployer, owner, borrower, admin, stranger, addonTreasury, receiver] = await ethers.getSigners();
+    [deployer, owner, borrower, admin, corrector, stranger, addonTreasury, receiver] = await ethers.getSigners();
 
     // Factories with an explicitly specified deployer account
     lendingMarketFactory = await ethers.getContractFactory("LendingMarketTestable");
@@ -669,6 +673,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
     await proveTx(market.grantRole(GRANTOR_ROLE, owner.address));
     await proveTx(market.grantRole(PAUSER_ROLE, owner.address));
     await proveTx(market.grantRole(ADMIN_ROLE, admin.address));
+    await proveTx(market.grantRole(CORRECTOR_ROLE, corrector.address));
 
     // Mock configurations
     await proveTx(creditLine.mockLoanTerms(borrower.address, BORROWED_AMOUNT, creatLoanTerms()));
@@ -820,22 +825,26 @@ describe("Contract 'LendingMarket': base tests", async () => {
       expect(await market.OWNER_ROLE()).to.equal(OWNER_ROLE);
       expect(await market.GRANTOR_ROLE()).to.equal(GRANTOR_ROLE);
       expect(await market.ADMIN_ROLE()).to.equal(ADMIN_ROLE);
+      expect(await market.CORRECTOR_ROLE()).to.equal(CORRECTOR_ROLE);
       expect(await market.PAUSER_ROLE()).to.equal(PAUSER_ROLE);
 
       // The role admins
       expect(await market.getRoleAdmin(OWNER_ROLE)).to.equal(OWNER_ROLE);
       expect(await market.getRoleAdmin(GRANTOR_ROLE)).to.equal(OWNER_ROLE);
       expect(await market.getRoleAdmin(ADMIN_ROLE)).to.equal(GRANTOR_ROLE);
+      expect(await market.getRoleAdmin(CORRECTOR_ROLE)).to.equal(GRANTOR_ROLE);
       expect(await market.getRoleAdmin(PAUSER_ROLE)).to.equal(GRANTOR_ROLE);
 
       // Roles
       expect(await market.hasRole(OWNER_ROLE, deployer.address)).to.equal(false);
       expect(await market.hasRole(GRANTOR_ROLE, deployer.address)).to.equal(false);
       expect(await market.hasRole(ADMIN_ROLE, deployer.address)).to.equal(false);
+      expect(await market.hasRole(CORRECTOR_ROLE, deployer.address)).to.equal(false);
       expect(await market.hasRole(PAUSER_ROLE, deployer.address)).to.equal(false);
       expect(await market.hasRole(OWNER_ROLE, owner.address)).to.equal(true); // !!!
       expect(await market.hasRole(GRANTOR_ROLE, owner.address)).to.equal(false);
       expect(await market.hasRole(ADMIN_ROLE, owner.address)).to.equal(false);
+      expect(await market.hasRole(CORRECTOR_ROLE, owner.address)).to.equal(false);
       expect(await market.hasRole(PAUSER_ROLE, owner.address)).to.equal(false);
 
       // The initial contract state is unpaused
@@ -3250,6 +3259,158 @@ describe("Contract 'LendingMarket': base tests", async () => {
           marketViaAdmin.undoRepaymentFor(loan.id, repaymentAmount, wrongRepaymentTimestamp, receiver.address),
         ).to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_REPAYMENT_TIMESTAMP_INVALID);
       });
+    });
+  });
+
+  describe("Function 'correctLoan()'", async () => {
+    async function correctLoanAndCheck(market: Contract, oldLoan: Loan, newLoan: Loan) {
+      const tx = connect(market, corrector).correctLoan(
+        oldLoan.id,
+        newLoan.state.trackedTimestamp,
+        newLoan.state.repaidAmount,
+        newLoan.state.trackedBalance,
+        newLoan.state.lateFeeAmount,
+        newLoan.state.discountAmount,
+      );
+
+      await expect(tx).to.emit(market, EVENT_NAME_LOAN_CORRECTED).withArgs(
+        oldLoan.id,
+        newLoan.state.trackedTimestamp,
+        oldLoan.state.trackedTimestamp,
+        newLoan.state.repaidAmount,
+        oldLoan.state.repaidAmount,
+        newLoan.state.trackedBalance,
+        oldLoan.state.trackedBalance,
+        newLoan.state.lateFeeAmount,
+        oldLoan.state.lateFeeAmount,
+        newLoan.state.discountAmount,
+        oldLoan.state.discountAmount,
+      );
+
+      const actualLoanStateAfterCorrecting: LoanState = await market.getLoanState(oldLoan.id);
+      checkEquality(actualLoanStateAfterCorrecting, newLoan.state);
+    }
+
+    it("Executes as expected and emits the correct event", async () => {
+      const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
+      const { market } = fixture;
+      let oldLoan = clone(fixture.ordinaryLoan);
+      let newLoan = clone(fixture.ordinaryLoan);
+
+      newLoan.state.trackedTimestamp = oldLoan.state.trackedTimestamp + 1234;
+      newLoan.state.repaidAmount = oldLoan.state.repaidAmount + 2345678901;
+      newLoan.state.trackedBalance = oldLoan.state.trackedBalance + 3456789012;
+      newLoan.state.lateFeeAmount = oldLoan.state.lateFeeAmount + 4567890123;
+      newLoan.state.discountAmount = oldLoan.state.discountAmount + 5678901234;
+
+      await correctLoanAndCheck(market, oldLoan, newLoan);
+
+      oldLoan = newLoan;
+      newLoan = clone(newLoan);
+
+      newLoan.state.trackedTimestamp = newLoan.state.startTimestamp;
+      newLoan.state.repaidAmount = 0;
+      newLoan.state.trackedBalance = 0;
+      newLoan.state.lateFeeAmount = 0;
+      newLoan.state.discountAmount = 0;
+
+      await correctLoanAndCheck(market, oldLoan, newLoan);
+    });
+
+    it("Is reverted if the contract is paused", async () => {
+      const { market, ordinaryLoan: loan } = await setUpFixture(deployLendingMarketAndTakeLoans);
+      const trackedTimestamp = loan.state.trackedTimestamp;
+      await proveTx(market.pause());
+
+      await expect(connect(market, corrector).correctLoan(loan.id, trackedTimestamp, 0, 0, 0, 0))
+        .to.be.revertedWithCustomError(market, ERROR_NAME_ENFORCED_PAUSED);
+    });
+
+    it("Is reverted if the loan does not exist", async () => {
+      const { market, ordinaryLoan: loan } = await setUpFixture(deployLendingMarketAndTakeLoans);
+      const trackedTimestamp = loan.state.trackedTimestamp;
+      const wrongLoanId = loan.id + 123;
+
+      await expect(connect(market, corrector).correctLoan(wrongLoanId, trackedTimestamp, 0, 0, 0, 0))
+        .to.be.revertedWithCustomError(market, ERROR_NAME_LOAN_NOT_EXIST);
+    });
+
+    it("Is reverted if the caller does not have the corrector role", async () => {
+      const { market, ordinaryLoan: loan } = await setUpFixture(deployLendingMarketAndTakeLoans);
+      const trackedTimestamp = loan.state.trackedTimestamp;
+
+      await expect(connect(market, owner).correctLoan(loan.id, trackedTimestamp, 0, 0, 0, 0))
+        .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
+        .withArgs(owner.address, CORRECTOR_ROLE);
+
+      await expect(connect(market, admin).correctLoan(loan.id, trackedTimestamp, 0, 0, 0, 0))
+        .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
+        .withArgs(admin.address, CORRECTOR_ROLE);
+
+      await expect(connect(market, borrower).correctLoan(loan.id, trackedTimestamp, 0, 0, 0, 0))
+        .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
+        .withArgs(borrower.address, CORRECTOR_ROLE);
+
+      await expect(connect(market, stranger).correctLoan(loan.id, trackedTimestamp, 0, 0, 0, 0))
+        .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
+        .withArgs(stranger.address, CORRECTOR_ROLE);
+    });
+
+    it("Is reverted if the provided tracked timestamp is earlier than the loan start timestamp", async () => {
+      const { market, ordinaryLoan: loan } = await setUpFixture(deployLendingMarketAndTakeLoans);
+      const wrongTrackedTimestamp = loan.state.startTimestamp - 1;
+
+      await expect(connect(market, corrector).correctLoan(loan.id, wrongTrackedTimestamp, 0, 0, 0, 0))
+        .to.be.revertedWithCustomError(market, ERROR_NAME_TRACKED_TIMESTAMP_INVALID);
+    });
+
+    it("Is reverted if the provided tracked timestamp is greater than 32-bit unsigned integer", async () => {
+      const { market, ordinaryLoan: loan } = await setUpFixture(deployLendingMarketAndTakeLoans);
+      const wrongTrackedTimestamp = maxUintForBits(32) + 1n;
+
+      await expect(connect(market, corrector).correctLoan(loan.id, wrongTrackedTimestamp, 0, 0, 0, 0))
+        .to.be.revertedWithCustomError(market, ERROR_NAME_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST)
+        .withArgs(32, wrongTrackedTimestamp);
+    });
+
+    it("Is reverted if the provided repaid amount is greater than 64-bit unsigned integer", async () => {
+      const { market, ordinaryLoan: loan } = await setUpFixture(deployLendingMarketAndTakeLoans);
+      const trackedTimestamp = loan.state.trackedTimestamp;
+      const wrongRepaidAmount = maxUintForBits(64) + 1n;
+
+      await expect(connect(market, corrector).correctLoan(loan.id, trackedTimestamp, wrongRepaidAmount, 0, 0, 0))
+        .to.be.revertedWithCustomError(market, ERROR_NAME_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST)
+        .withArgs(64, wrongRepaidAmount);
+    });
+
+    it("Is reverted if the provided tracked balance is greater than 64-bit unsigned integer", async () => {
+      const { market, ordinaryLoan: loan } = await setUpFixture(deployLendingMarketAndTakeLoans);
+      const trackedTimestamp = loan.state.trackedTimestamp;
+      const wrongTrackedBalance = maxUintForBits(64) + 1n;
+
+      await expect(connect(market, corrector).correctLoan(loan.id, trackedTimestamp, 0, wrongTrackedBalance, 0, 0))
+        .to.be.revertedWithCustomError(market, ERROR_NAME_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST)
+        .withArgs(64, wrongTrackedBalance);
+    });
+
+    it("Is reverted if the provided late fee amount is greater than 64-bit unsigned integer", async () => {
+      const { market, ordinaryLoan: loan } = await setUpFixture(deployLendingMarketAndTakeLoans);
+      const trackedTimestamp = loan.state.trackedTimestamp;
+      const wrongLateFeeAmount = maxUintForBits(64) + 1n;
+
+      await expect(connect(market, corrector).correctLoan(loan.id, trackedTimestamp, 0, 0, wrongLateFeeAmount, 0))
+        .to.be.revertedWithCustomError(market, ERROR_NAME_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST)
+        .withArgs(64, wrongLateFeeAmount);
+    });
+
+    it("Is reverted if the provided discount amount is greater than 64-bit unsigned integer", async () => {
+      const { market, ordinaryLoan: loan } = await setUpFixture(deployLendingMarketAndTakeLoans);
+      const trackedTimestamp = loan.state.trackedTimestamp;
+      const wrongDiscountAmount = maxUintForBits(64) + 1n;
+
+      await expect(connect(market, corrector).correctLoan(loan.id, trackedTimestamp, 0, 0, 0, wrongDiscountAmount))
+        .to.be.revertedWithCustomError(market, ERROR_NAME_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST)
+        .withArgs(64, wrongDiscountAmount);
     });
   });
 

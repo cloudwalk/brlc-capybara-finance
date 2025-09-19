@@ -162,6 +162,34 @@ interface ILendingMarketPrimary {
     );
 
     /**
+     * @dev Emitted when a loan is corrected.
+     * @param loanId The unique identifier of the loan.
+     * @param newTrackedTimestamp The new tracked timestamp of the loan.
+     * @param oldTrackedTimestamp The old tracked timestamp of the loan.
+     * @param newRepaidAmount The new repaid amount of the loan.
+     * @param oldRepaidAmount The old repaid amount of the loan.
+     * @param newTrackedBalance The new tracked balance of the loan.
+     * @param oldTrackedBalance The old tracked balance of the loan.
+     * @param newLateFeeAmount The new late fee amount of the loan.
+     * @param oldLateFeeAmount The old late fee amount of the loan.
+     * @param newDiscountAmount The new discount amount of the loan.
+     * @param oldDiscountAmount The old discount amount of the loan.
+     */
+    event LoanCorrected(
+        uint256 indexed loanId,
+        uint256 newTrackedTimestamp,
+        uint256 oldTrackedTimestamp,
+        uint256 newRepaidAmount,
+        uint256 oldRepaidAmount,
+        uint256 newTrackedBalance,
+        uint256 oldTrackedBalance,
+        uint256 newLateFeeAmount,
+        uint256 oldLateFeeAmount,
+        uint256 newDiscountAmount,
+        uint256 oldDiscountAmount
+    );
+
+    /**
      * @dev Emitted when a loan is frozen.
      * @param loanId The unique identifier of the loan.
      */
@@ -362,6 +390,24 @@ interface ILendingMarketPrimary {
         uint256 repaymentAmount,
         uint256 repaymentTimestamp,
         address receiver
+    ) external;
+
+    /**
+     * @dev Corrects a loan.
+     * @param loanId The unique identifier of the loan to correct.
+     * @param newTrackedTimestamp The new tracked timestamp of the loan.
+     * @param newRepaidAmount The new repaid amount of the loan.
+     * @param newTrackedBalance The new tracked balance of the loan.
+     * @param newLateFeeAmount The new late fee amount of the loan.
+     * @param newDiscountAmount The new discount amount of the loan.
+     */
+    function correctLoan(
+        uint256 loanId,
+        uint256 newTrackedTimestamp,
+        uint256 newRepaidAmount,
+        uint256 newTrackedBalance,
+        uint256 newLateFeeAmount,
+        uint256 newDiscountAmount
     ) external;
 
     /**
@@ -631,6 +677,9 @@ interface ILendingMarketErrors {
 
     /// @dev Thrown when the provided repayment timestamp is invalid.
     error RepaymentTimestampInvalid();
+
+    /// @dev Thrown when the provided tracked timestamp is invalid, e.g. it is earlier than the loan start timestamp.
+    error TrackedTimestampInvalid();
 }
 
 /**

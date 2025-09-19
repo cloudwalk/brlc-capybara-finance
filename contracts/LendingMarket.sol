@@ -46,8 +46,11 @@ contract LendingMarket is
 
     // ------------------ Constants ------------------------------- //
 
-    /// @dev The role of an admin that is allowed to execute loan-related functions.
+    /// @dev The role of an admin that is allowed to execute loan-related functions except the correction one.
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
+
+    /// @dev The role of a corrector that is allowed to correct loans.
+    bytes32 public constant CORRECTOR_ROLE = keccak256("CORRECTOR_ROLE");
 
     // ------------------ Modifiers ------------------------------- //
 
@@ -87,6 +90,7 @@ contract LendingMarket is
         __UUPSExt_init_unchained();
 
         _setRoleAdmin(ADMIN_ROLE, GRANTOR_ROLE);
+        _setRoleAdmin(CORRECTOR_ROLE, GRANTOR_ROLE);
         _grantRole(OWNER_ROLE, owner_);
     }
 
@@ -362,6 +366,43 @@ contract LendingMarket is
                 oldRepaidAmount - newRepaidAmount
             );
         }
+    }
+
+    /// @inheritdoc ILendingMarketPrimary
+    function correctLoan(
+        uint256 loanId,
+        uint256 newTrackedTimestamp,
+        uint256 newRepaidAmount,
+        uint256 newTrackedBalance,
+        uint256 newLateFeeAmount,
+        uint256 newDiscountAmount
+    ) external whenNotPaused onlyRole(CORRECTOR_ROLE) {
+        Loan.State storage loan = _loans[loanId];
+        _checkLoanExistence(loan);
+
+        if (newTrackedTimestamp < loan.startTimestamp) {
+            revert TrackedTimestampInvalid();
+        }
+
+        emit LoanCorrected(
+            loanId,
+            newTrackedTimestamp,
+            loan.trackedTimestamp,
+            newRepaidAmount,
+            loan.repaidAmount,
+            newTrackedBalance,
+            loan.trackedBalance,
+            newLateFeeAmount,
+            loan.lateFeeAmount,
+            newDiscountAmount,
+            loan.discountAmount
+        );
+
+        loan.trackedTimestamp = newTrackedTimestamp.toUint32();
+        loan.repaidAmount = newRepaidAmount.toUint64();
+        loan.trackedBalance = newTrackedBalance.toUint64();
+        loan.lateFeeAmount = newLateFeeAmount.toUint64();
+        loan.discountAmount = newDiscountAmount.toUint64();
     }
 
     /// @inheritdoc ILendingMarketPrimary
