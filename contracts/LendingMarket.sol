@@ -620,6 +620,18 @@ contract LendingMarket is
         ICreditLine(creditLine).onBeforeLoanTaken(id);
 
         emit LoanTaken(id, borrower, principalAmount, terms.durationInPeriods);
+        emit LoanTakenDetailed(
+            id,
+            borrower,
+            programId,
+            creditLine,
+            liquidityPool,
+            loan.borrowedAmount, // to avoid 'stack too deep'
+            terms.addonAmount,
+            terms.durationInPeriods,
+            terms.interestRatePrimary,
+            terms.interestRateSecondary
+        );
 
         return id;
     }

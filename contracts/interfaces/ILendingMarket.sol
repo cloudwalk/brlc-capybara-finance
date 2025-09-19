@@ -46,6 +46,34 @@ interface ILendingMarketPrimary {
     );
 
     /**
+     * @dev Emitted when a loan is taken.
+     *
+     * This event is emitted along with the `LoanTaken` one, but it includes additional data.
+     *
+     * @param loanId The unique identifier of the loan.
+     * @param programId The ID of the lending program.
+     * @param creditLine The address of the credit line that was used to take the loan.
+     * @param liquidityPool The address of the liquidity pool that was used to take the loan.
+     * @param borrowedAmount The main part of the loan principal amount received by the borrower.
+     * @param addonAmount The addon part of the loan principal amount charged from the borrower.
+     * @param durationInPeriods The duration of the loan in periods.
+     * @param interestRatePrimary The primary interest rate of the loan.
+     * @param interestRateSecondary The secondary interest rate of the loan.
+     */
+    event LoanTakenDetailed(
+        uint256 indexed loanId, // Tools: prevent Prettier one-liner
+        address indexed borrower,
+        uint256 indexed programId,
+        address creditLine,
+        address liquidityPool,
+        uint256 borrowedAmount,
+        uint256 addonAmount,
+        uint256 durationInPeriods,
+        uint256 interestRatePrimary,
+        uint256 interestRateSecondary
+    );
+
+    /**
      * @dev Emitted when an installment loan is taken in the form of multiple sub-loans.
      * @param firstInstallmentId The ID of the first sub-loan of the installment loan.
      * @param borrower The address of the borrower.
