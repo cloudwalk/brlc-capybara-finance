@@ -4,37 +4,44 @@
     {
       "address": "0x66CA4827747D7065DAc910845A46a82F94851be2",
       "txHash": "0xa60ad360c314bb3482ba6eeccb05985106f96772a9d954a6fcd999109a67027d",
-      "kind": "uups"
+      "kind": "uups",
+      "cw_tag": "lending_market_brlc"
     },
     {
       "address": "0xc30b1A05cEC8C7cBb8E0476789D6Ab3A9A57aAf4",
       "txHash": "0x4d4da84a1fdc2e62eabd6b9ae5a5f3908ac6c1b3bb482a328049bb236f1ac1ee",
-      "kind": "uups"
+      "kind": "uups",
+      "cw_tag": "credit_line_brlc_1"
     },
     {
       "address": "0x9316770BcE40cBB6AFa3bEe4961023ada71cf2e0",
       "txHash": "0xe9e73461b16e560773a744a23cdd619771ccedab0cdfedb0f5b4c4e538aff218",
-      "kind": "uups"
+      "kind": "uups",
+      "cw_tag": "liquidity_pool_brlc_1"
     },
     {
       "address": "0xF510D843700b6e87628DACBFA4e028173347Dbd8",
       "txHash": "0x8b056170cd9f5c0ca6406b8391ab93ee41e52dbce54d86a7b13324fb62b5cb93",
-      "kind": "uups"
+      "kind": "uups",
+      "cw_tag": "credit_line_brlc_2"
     },
     {
       "address": "0x201f958ED561fD35845A0088CB7A5dEFf834F098",
       "txHash": "0x39ca96a2010331e7acbc092812dbc75be41225a79d201b216c4ef92691bde55d",
-      "kind": "uups"
+      "kind": "uups",
+      "cw_tag": "liquidity_pool_brlc_2"
     },
     {
       "address": "0x2EeA7710DAAAC9DA79D81DB88baa38b781810b97",
       "txHash": "0x552832744f79743d86812855bdd14854a6eb86b4b987d99e306e995cd72efa19",
-      "kind": "uups"
+      "kind": "uups",
+      "cw_tag": "credit_line_brlc_3"
     },
     {
       "address": "0x16b18353a91522b999FF5d88baC53225b3ed704d",
       "txHash": "0x562bf7447493ab39633f4ab84810ec508bd4b510ca665529943437eb327997c8",
-      "kind": "uups"
+      "kind": "uups",
+      "cw_tag": "liquidity_pool_brlc_3"
     }
   ],
   "impls": {
