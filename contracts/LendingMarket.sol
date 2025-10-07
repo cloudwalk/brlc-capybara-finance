@@ -198,6 +198,16 @@ contract LendingMarket is
         _transferTokensOnLoanTaking(firstInstallmentId, totalBorrowedAmount, totalAddonAmount);
     }
 
+    function setGracePeriodModeBatch(
+        Loan.GracePeriodMode newMode, // Tools: prevent Prettier one-liner
+        uint256[] calldata loanIds
+    ) external whenNotPaused onlyRole(ADMIN_ROLE) {
+        uint256 len = loanIds.length;
+        for (uint256 i = 0; i < len; ++i) {
+            _setGracePeriodMode(loanIds[i], newMode);
+        }
+    }
+
     /// @inheritdoc ILendingMarketPrimary
     function repayLoan(uint256 loanId, uint256 repaymentAmount) external whenNotPaused {
         _repayLoan(loanId, repaymentAmount, msg.sender);
@@ -670,6 +680,17 @@ contract LendingMarket is
         return id;
     }
 
+    function _setGracePeriodMode(uint256 loanId, Loan.GracePeriodMode newMode) internal {
+        Loan.State storage loan = _loans[loanId];
+        _checkIfLoanOngoing(loan);
+        Loan.GracePeriodMode oldMode = loan.gracePeriodMode;
+        if (oldMode == newMode) {
+            revert Error.AlreadyConfigured();
+        }
+        emit LoanGracePeriodModeUpdated(loanId, newMode, oldMode);
+        loan.gracePeriodMode = newMode;
+    }
+
     /**
      * @dev Updates the loan state and makes the necessary transfers when repaying a loan.
      * @param loanId The unique identifier of the loan to repay.
@@ -992,19 +1013,27 @@ contract LendingMarket is
             uint256 duePeriodIndex = _getDuePeriodIndex(loan);
             if (startPeriodIndex <= duePeriodIndex) {
                 if (finishPeriodIndex <= duePeriodIndex) {
+                    uint256 interestRate = 0;
+                    if (loan.gracePeriodMode != Loan.GracePeriodMode.None) {
+                        interestRate = loan.interestRatePrimary;
+                    }
                     trackedBalance = InterestMath.calculateTrackedBalance(
                         trackedBalance,
                         finishPeriodIndex - startPeriodIndex,
-                        loan.interestRatePrimary,
+                        interestRate,
                         Constants.INTEREST_RATE_FACTOR
                     );
                 } else {
-                    trackedBalance = InterestMath.calculateTrackedBalance(
-                        trackedBalance,
-                        duePeriodIndex - startPeriodIndex,
-                        loan.interestRatePrimary,
-                        Constants.INTEREST_RATE_FACTOR
-                    );
+                    if (loan.gracePeriodMode != Loan.GracePeriodMode.None) {
+                        trackedBalance = _recalculateTrackedBalanceAfterGracePeriod(loan, duePeriodIndex);
+                    } else {
+                        trackedBalance = InterestMath.calculateTrackedBalance(
+                            trackedBalance,
+                            duePeriodIndex - startPeriodIndex,
+                            loan.interestRatePrimary,
+                            Constants.INTEREST_RATE_FACTOR
+                        );
+                    }
                     lateFeeAmount = _calculateLateFee(trackedBalance, loan);
                     trackedBalance += lateFeeAmount;
                     trackedBalance = InterestMath.calculateTrackedBalance(
@@ -1178,6 +1207,33 @@ contract LendingMarket is
         address creditLine = _programCreditLines[loan.programId];
         // The `creditLine` variable is not checked because it is always non-zero according to the contract logic.
         return ICreditLine(creditLine).determineLateFeeAmount(loan.borrower, trackedBalance);
+    }
+
+    /**
+     * @dev Recalculates the tracked balance of a loan after the grace period.
+     * @param loan The storage state of the loan.
+     * @param duePeriodIndex The due period index.
+     * @return The recalculated tracked balance.
+     */
+    function _recalculateTrackedBalanceAfterGracePeriod(
+        Loan.State storage loan,
+        uint256 duePeriodIndex
+    ) internal view returns (uint256) {
+        uint256 startPeriodIndex = _periodIndex(loan.startTimestamp, Constants.PERIOD_IN_SECONDS);
+        uint256 trackedBalance = loan.borrowedAmount + loan.addonAmount;
+        if (loan.gracePeriodMode == Loan.GracePeriodMode.ActiveThenOnRemaining) {
+            trackedBalance -= (loan.repaidAmount + loan.discountAmount);
+        }
+        trackedBalance = InterestMath.calculateTrackedBalance(
+            trackedBalance,
+            duePeriodIndex - startPeriodIndex,
+            loan.interestRatePrimary,
+            Constants.INTEREST_RATE_FACTOR
+        );
+        if (loan.gracePeriodMode == Loan.GracePeriodMode.ActiveThenOnPrincipal) {
+            trackedBalance -= (loan.repaidAmount + loan.discountAmount);
+        }
+        return trackedBalance;
     }
 
     /**

@@ -92,6 +92,18 @@ interface ILendingMarketPrimary {
     );
 
     /**
+     * @dev Emitted when the grace period mode of a loan is updated.
+     * @param loanId The unique identifier of the loan.
+     * @param newGracePeriodMode The new grace period mode of the loan.
+     * @param oldGracePeriodMode The old grace period mode of the loan.
+     */
+    event LoanGracePeriodModeUpdated(
+        uint256 indexed loanId, // Tools: prevent Prettier one-liner
+        Loan.GracePeriodMode indexed newGracePeriodMode,
+        Loan.GracePeriodMode indexed oldGracePeriodMode
+    );
+
+    /**
      * @dev Emitted when a loan is repaid (fully or partially).
      * @param loanId The unique identifier of the loan.
      * @param repayer The address of the token source for the repayment (borrower or third-party).
@@ -276,6 +288,19 @@ interface ILendingMarketPrimary {
         uint256[] calldata addonAmounts,
         uint256[] calldata durationsInPeriods
     ) external returns (uint256 firstInstallmentId, uint256 installmentCount);
+
+    /**
+     * @dev Sets the grace period mode of a batch of loans.
+     *
+     * Can be called only by an account with a special role.
+     *
+     * @param newMode The new grace period mode of the loans.
+     * @param loanIds The unique identifiers of the loans to set the grace period mode for.
+     */
+    function setGracePeriodModeBatch(
+        Loan.GracePeriodMode newMode, // Tools: prevent Prettier one-liner
+        uint256[] calldata loanIds
+    ) external;
 
     /**
      * @dev Repays a loan.
