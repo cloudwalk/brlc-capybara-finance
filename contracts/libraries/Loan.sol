@@ -42,6 +42,22 @@ library Loan {
      * - installmentCount ------- The total number of installments for sub-loans or zero for ordinary loans.
      * - lateFeeAmount ---------- The late fee amount of the loan or zero if the loan is not defaulted.
      * - discountAmount --------- The discount amount of the loan or zero if the loan is not discounted.
+     * - interestRatePenalty ---- The penalty interest rate of the loan, can be zero, see notes below
+     *
+     * Notes about the penalty interest rate:
+     *
+     * - The penalty interest rate defines the rate that ....
+     * - The formula to calculate the penalty interest rate:
+     *   `interestRatePenalty = (penalizedDueAmount / principal) ^ (1 / durationInPeriods) - 1`
+     *   where `penalizedDueAmount` is the amount that expected to be repaid with penalties in the case of overdue
+     *   before application of late fee and the secondary interest rate; `principal = borrowedAmount + addonAmount`.
+     * - The zero value means that the penalty rate logic is not applied.
+     * - If the loan is overdue then the penalty interest rate is applied retroactively and
+     *   the tracked balance is recalculated accordingly with the formula:
+     *   `trackedBalance = (principal - repaidAmount - discountAmount) * (1 + interestRatePenalty) ^ durationInPeriods`
+     *   where `principal = borrowedAmount + addonAmount`.
+     * - If the loan duration is changed then the penalty interest rate must be recalculated accordingly.
+     * - The penalty interest rate is stored in the same units as the primary interest rate.
      */
     struct State {
         // Slot1
@@ -51,14 +67,17 @@ library Loan {
         uint32 startTimestamp;
         uint32 durationInPeriods;
         // uint32 __reserved;
+
         // Slot 2
         address token;
         // uint96 __reserved;
+
         // Slot 3
         address borrower;
         uint32 interestRatePrimary;
         uint32 interestRateSecondary;
         // uint32 __reserved;
+
         // Slot 4
         uint64 repaidAmount;
         uint64 trackedBalance;
@@ -67,9 +86,12 @@ library Loan {
         uint40 firstInstallmentId;
         uint8 installmentCount;
         // uint16 __reserved;
+
         // Slot 5
         uint64 lateFeeAmount;
         uint64 discountAmount;
+        uint32 interestRatePenalty;
+        // uint96 __reserved;
     }
 
     /**
@@ -138,9 +160,12 @@ library Loan {
      * - interestRateSecondary -- The secondary interest rate of the loan.
      * - firstInstallmentId ----- The ID of the first installment for sub-loans or zero for ordinary loans.
      * - installmentCount ------- The total number of installments for sub-loans or zero for ordinary loans.
+     * - interestRatePenalty----- The penalty interest rate of the loan, see notes below.
      *
-     * Note:
-     * The outstanding balance is the tracked balance rounded according to the accuracy factor with math rules.
+     * Notes:
+     *
+     * - The outstanding balance is the tracked balance rounded according to the accuracy factor with math rules.
+     * - See notes about the penalty interest rate in the comments for the {Loan} struct.
      */
     struct PreviewExtended {
         uint256 periodIndex;
@@ -162,6 +187,7 @@ library Loan {
         uint256 interestRateSecondary;
         uint256 firstInstallmentId;
         uint256 installmentCount;
+        uint256 interestRatePenalty;
     }
 
     /**

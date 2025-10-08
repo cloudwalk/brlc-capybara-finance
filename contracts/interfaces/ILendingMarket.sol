@@ -237,6 +237,21 @@ interface ILendingMarketPrimary {
         uint256 indexed oldInterestRate
     );
 
+    /**
+     * @dev Emitted when the penalty interest rate of a loan is updated.
+     *
+     * See notes about the penalty interest rate in the comments for the {Loan} struct.
+     *
+     * @param loanId The unique identifier of the loan.
+     * @param newInterestRate The new penalty interest rate of the loan.
+     * @param oldInterestRate The old penalty interest rate of the loan.
+     */
+    event LoanInterestRatePenaltyUpdated(
+        uint256 indexed loanId, // Tools: prevent Prettier one-liner
+        uint256 newInterestRate,
+        uint256 oldInterestRate
+    );
+
     // ------------------ Transactional functions ----------------- //
 
     /**
@@ -275,6 +290,29 @@ interface ILendingMarketPrimary {
         uint256[] calldata borrowedAmounts,
         uint256[] calldata addonAmounts,
         uint256[] calldata durationsInPeriods
+    ) external returns (uint256 firstInstallmentId, uint256 installmentCount);
+
+    /**
+     * @dev Takes an installment loan with multiple sub-loans for a provided account with additional parameters.
+     *
+     * See notes about the penalty interest rate in the comments for the {Loan} struct.
+     *
+     * @param borrower The account for whom the loan is taken.
+     * @param programId The identifier of the program to take the loan from.
+     * @param borrowedAmounts The desired amounts of tokens to borrow for each installment.
+     * @param addonAmounts The off-chain calculated addon amounts for each installment.
+     * @param durationsInPeriods The desired duration of each installment in periods.
+     * @param penaltyInterestRates The penalty interest rates for each installment.
+     * @return firstInstallmentId The unique identifier of the first sub-loan of the installment loan.
+     * @return installmentCount The total number of installments.
+     */
+    function takeInstallmentLoan(
+        address borrower,
+        uint32 programId,
+        uint256[] calldata borrowedAmounts,
+        uint256[] calldata addonAmounts,
+        uint256[] calldata durationsInPeriods,
+        uint256[] calldata penaltyInterestRates
     ) external returns (uint256 firstInstallmentId, uint256 installmentCount);
 
     /**
@@ -418,12 +456,22 @@ interface ILendingMarketPrimary {
 
     /**
      * @dev Unfreezes an ordinary loan or a sub-loan.
+     *
+     * IMPORTANT! When unfeezing a non-overdue loan with configured (non-zero) penalty interest rate,
+     * you should update the penalty interest rate accordingly to the new duration of the loan.
+     * See the formula of the penalty interest rate in the comments for the {Loan} struct.
+     *
      * @param loanId The unique identifier of the loan to unfreeze.
      */
     function unfreeze(uint256 loanId) external;
 
     /**
      * @dev Updates the duration of an ordinary loan or a sub-loan.
+     *
+     * IMPORTANT! When updating a non-overdue loan with configured (non-zero) penalty interest rate,
+     * you should update the penalty interest rate accordingly to the new duration of the loan.
+     * See the formula of the penalty interest rate in the comments for the {Loan} struct.
+     *
      * @param loanId The unique identifier of the loan whose duration is to update.
      * @param newDurationInPeriods The new duration of the loan, specified in periods.
      */
@@ -442,6 +490,16 @@ interface ILendingMarketPrimary {
      * @param newInterestRate The new secondary interest rate of the loan.
      */
     function updateLoanInterestRateSecondary(uint256 loanId, uint256 newInterestRate) external;
+
+    /**
+     * @dev Updates the penalty interest rate of an ordinary loan or a sub-loan.
+     *
+     * See notes about the penalty interest rate in the comments for the {Loan} struct.
+     *
+     * @param loanId The unique identifier of the loan whose penalty interest rate is to update.
+     * @param newInterestRate The new penalty interest rate of the loan.
+     */
+    function updateInterestRatePenalty(uint256 loanId, uint256 newInterestRate) external;
 
     // ------------------ View functions -------------------------- //
 

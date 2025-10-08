@@ -157,45 +157,39 @@ contract LendingMarket is
         uint256[] calldata addonAmounts,
         uint256[] calldata durationsInPeriods
     ) external whenNotPaused onlyRole(ADMIN_ROLE) returns (uint256 firstInstallmentId, uint256 installmentCount) {
-        uint256 totalBorrowedAmount = _sumArray(borrowedAmounts);
-        uint256 totalAddonAmount = _sumArray(addonAmounts);
-        installmentCount = borrowedAmounts.length;
-
-        _checkMainLoanParameters(borrower, programId, totalBorrowedAmount, totalAddonAmount);
-        _checkDurationArray(durationsInPeriods);
-        _checkInstallmentCount(installmentCount);
-        if (addonAmounts.length != installmentCount || durationsInPeriods.length != installmentCount) {
-            revert Error.ArrayLengthMismatch();
-        }
-        // Arrays are not checked for emptiness because if the loan amount is zero, the transaction is reverted earlier
-
-        for (uint256 i = 0; i < installmentCount; ++i) {
-            if (borrowedAmounts[i] == 0) {
-                revert Error.InvalidAmount();
-            }
-            uint256 loanId = _takeLoan(
-                borrower, // Tools: prevent Prettier one-liner
-                programId,
-                borrowedAmounts[i],
-                addonAmounts[i],
-                durationsInPeriods[i]
-            );
-            if (i == 0) {
-                firstInstallmentId = loanId;
-            }
-            _updateLoanInstallmentData(loanId, firstInstallmentId, installmentCount);
-        }
-
-        emit InstallmentLoanTaken(
-            firstInstallmentId,
+        (firstInstallmentId, installmentCount) = _takeInstallmentLoan(
             borrower,
             programId,
-            installmentCount,
-            totalBorrowedAmount,
-            totalAddonAmount
+            borrowedAmounts,
+            addonAmounts,
+            durationsInPeriods
         );
+    }
 
-        _transferTokensOnLoanTaking(firstInstallmentId, totalBorrowedAmount, totalAddonAmount);
+    /// @inheritdoc ILendingMarketPrimary
+    function takeInstallmentLoan(
+        address borrower,
+        uint32 programId,
+        uint256[] calldata borrowedAmounts,
+        uint256[] calldata addonAmounts,
+        uint256[] calldata durationsInPeriods,
+        uint256[] calldata penaltyInterestRates
+    ) external whenNotPaused onlyRole(ADMIN_ROLE) returns (uint256 firstInstallmentId, uint256 installmentCount) {
+        if (penaltyInterestRates.length != borrowedAmounts.length) {
+            revert Error.ArrayLengthMismatch();
+        }
+        (firstInstallmentId, installmentCount) = _takeInstallmentLoan(
+            borrower,
+            programId,
+            borrowedAmounts,
+            addonAmounts,
+            durationsInPeriods
+        );
+        for (uint256 i = 0; i < installmentCount; ++i) {
+            uint256 loanId = firstInstallmentId + i;
+            Loan.State storage loan = _loans[loanId];
+            _updateInterestRatePenalty(loanId, loan, penaltyInterestRates[i]);
+        }
     }
 
     /// @inheritdoc ILendingMarketPrimary
@@ -484,6 +478,16 @@ contract LendingMarket is
         loan.interestRateSecondary = newInterestRate.toUint32();
     }
 
+    /// @inheritdoc ILendingMarketPrimary
+    function updateInterestRatePenalty(
+        uint256 loanId, // Tools: prevent Prettier one-liner
+        uint256 newInterestRate
+    ) external whenNotPaused onlyRole(ADMIN_ROLE) {
+        Loan.State storage loan = _loans[loanId];
+        _checkIfLoanOngoing(loan);
+        _updateInterestRatePenalty(loanId, loan, newInterestRate);
+    }
+
     // ------------------ View functions -------------------------- //
 
     /// @inheritdoc ILendingMarketPrimary
@@ -598,6 +602,55 @@ contract LendingMarket is
     function proveLendingMarket() external pure {}
 
     // ------------------ Internal functions ---------------------- //
+
+    /// @dev Takes an installment loan for a provided account internally.
+    function _takeInstallmentLoan(
+        address borrower,
+        uint32 programId,
+        uint256[] calldata borrowedAmounts,
+        uint256[] calldata addonAmounts,
+        uint256[] calldata durationsInPeriods
+    ) internal returns (uint256 firstInstallmentId, uint256 installmentCount) {
+        uint256 totalBorrowedAmount = _sumArray(borrowedAmounts);
+        uint256 totalAddonAmount = _sumArray(addonAmounts);
+        installmentCount = borrowedAmounts.length;
+
+        _checkMainLoanParameters(borrower, programId, totalBorrowedAmount, totalAddonAmount);
+        _checkDurationArray(durationsInPeriods);
+        _checkInstallmentCount(installmentCount);
+        if (addonAmounts.length != installmentCount || durationsInPeriods.length != installmentCount) {
+            revert Error.ArrayLengthMismatch();
+        }
+        // Arrays are not checked for emptiness because if the loan amount is zero, the transaction is reverted earlier
+
+        for (uint256 i = 0; i < installmentCount; ++i) {
+            if (borrowedAmounts[i] == 0) {
+                revert Error.InvalidAmount();
+            }
+            uint256 loanId = _takeLoan(
+                borrower, // Tools: prevent Prettier one-liner
+                programId,
+                borrowedAmounts[i],
+                addonAmounts[i],
+                durationsInPeriods[i]
+            );
+            if (i == 0) {
+                firstInstallmentId = loanId;
+            }
+            _updateLoanInstallmentData(loanId, firstInstallmentId, installmentCount);
+        }
+
+        emit InstallmentLoanTaken(
+            firstInstallmentId,
+            borrower,
+            programId,
+            installmentCount,
+            totalBorrowedAmount,
+            totalAddonAmount
+        );
+
+        _transferTokensOnLoanTaking(firstInstallmentId, totalBorrowedAmount, totalAddonAmount);
+    }
 
     /**
      * @dev Takes a loan for a provided account internally.
@@ -730,6 +783,22 @@ contract LendingMarket is
         loan.discountAmount += discountAmount.toUint64();
         ICreditLine(_programCreditLines[loan.programId]).onAfterLoanPayment(loanId, discountAmount);
         emit LoanDiscounted(loanId, discountAmount, newTrackedBalance);
+    }
+
+    /// @dev Updates the penalty interest rate of a loan internally.
+    function _updateInterestRatePenalty(
+        uint256 loanId, // Tools: prevent Prettier one-liner
+        Loan.State storage loan,
+        uint256 newInterestRate
+    ) internal {
+        uint256 oldInterestRate = loan.interestRatePenalty;
+        if (newInterestRate == oldInterestRate) {
+            revert Error.AlreadyConfigured();
+        }
+
+        emit LoanInterestRatePenaltyUpdated(loanId, newInterestRate, oldInterestRate);
+
+        loan.interestRatePenalty = newInterestRate.toUint32();
     }
 
     /**
@@ -999,12 +1068,16 @@ contract LendingMarket is
                         Constants.INTEREST_RATE_FACTOR
                     );
                 } else {
-                    trackedBalance = InterestMath.calculateTrackedBalance(
-                        trackedBalance,
-                        duePeriodIndex - startPeriodIndex,
-                        loan.interestRatePrimary,
-                        Constants.INTEREST_RATE_FACTOR
-                    );
+                    if (loan.interestRatePenalty != 0) {
+                        trackedBalance = _recalculateTrackedBalanceBeforeDueDate(loan);
+                    } else {
+                        trackedBalance = InterestMath.calculateTrackedBalance(
+                            trackedBalance,
+                            duePeriodIndex - startPeriodIndex,
+                            loan.interestRatePrimary,
+                            Constants.INTEREST_RATE_FACTOR
+                        );
+                    }
                     lateFeeAmount = _calculateLateFee(trackedBalance, loan);
                     trackedBalance += lateFeeAmount;
                     trackedBalance = InterestMath.calculateTrackedBalance(
@@ -1023,6 +1096,19 @@ contract LendingMarket is
                 );
             }
         }
+    }
+
+    /// @dev Recalculates the tracked balance of a loan before the due date using the penalty interest rate.
+    function _recalculateTrackedBalanceBeforeDueDate(Loan.State storage loan) internal view returns (uint256) {
+        uint256 remainingPrincipal = uint256(loan.borrowedAmount) + uint256(loan.addonAmount);
+        remainingPrincipal -= uint256(loan.repaidAmount) + uint256(loan.discountAmount);
+        return
+            InterestMath.calculateTrackedBalance(
+                remainingPrincipal,
+                loan.durationInPeriods,
+                loan.interestRatePenalty,
+                Constants.INTEREST_RATE_FACTOR
+            );
     }
 
     /**
@@ -1074,6 +1160,7 @@ contract LendingMarket is
         preview.interestRateSecondary = loan.interestRateSecondary;
         preview.firstInstallmentId = loan.firstInstallmentId;
         preview.installmentCount = loan.installmentCount;
+        preview.interestRatePenalty = loan.interestRatePenalty;
 
         return preview;
     }
