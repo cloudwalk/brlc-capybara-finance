@@ -157,45 +157,32 @@ contract LendingMarket is
         uint256[] calldata addonAmounts,
         uint256[] calldata durationsInPeriods
     ) external whenNotPaused onlyRole(ADMIN_ROLE) returns (uint256 firstInstallmentId, uint256 installmentCount) {
-        uint256 totalBorrowedAmount = _sumArray(borrowedAmounts);
-        uint256 totalAddonAmount = _sumArray(addonAmounts);
-        installmentCount = borrowedAmounts.length;
-
-        _checkMainLoanParameters(borrower, programId, totalBorrowedAmount, totalAddonAmount);
-        _checkDurationArray(durationsInPeriods);
-        _checkInstallmentCount(installmentCount);
-        if (addonAmounts.length != installmentCount || durationsInPeriods.length != installmentCount) {
-            revert Error.ArrayLengthMismatch();
-        }
-        // Arrays are not checked for emptiness because if the loan amount is zero, the transaction is reverted earlier
-
-        for (uint256 i = 0; i < installmentCount; ++i) {
-            if (borrowedAmounts[i] == 0) {
-                revert Error.InvalidAmount();
-            }
-            uint256 loanId = _takeLoan(
-                borrower, // Tools: prevent Prettier one-liner
-                programId,
-                borrowedAmounts[i],
-                addonAmounts[i],
-                durationsInPeriods[i]
-            );
-            if (i == 0) {
-                firstInstallmentId = loanId;
-            }
-            _updateLoanInstallmentData(loanId, firstInstallmentId, installmentCount);
-        }
-
-        emit InstallmentLoanTaken(
-            firstInstallmentId,
+        (firstInstallmentId, installmentCount) = _takeInstallmentLoan(
             borrower,
             programId,
-            installmentCount,
-            totalBorrowedAmount,
-            totalAddonAmount
+            borrowedAmounts,
+            addonAmounts,
+            durationsInPeriods
         );
+    }
 
-        _transferTokensOnLoanTaking(firstInstallmentId, totalBorrowedAmount, totalAddonAmount);
+    /// @inheritdoc ILendingMarketPrimary
+    function takeInstallmentLoan(
+        address borrower,
+        uint32 programId,
+        uint256[] calldata borrowedAmounts,
+        uint256[] calldata addonAmounts,
+        uint256[] calldata durationsInPeriods,
+        uint256[] calldata penalizedBalances
+    ) external whenNotPaused onlyRole(ADMIN_ROLE) returns (uint256 firstInstallmentId, uint256 installmentCount) {
+        (firstInstallmentId, installmentCount) = _takeInstallmentLoan(
+            borrower,
+            programId,
+            borrowedAmounts,
+            addonAmounts,
+            durationsInPeriods
+        );
+        _setPenalizedBalances(firstInstallmentId, installmentCount, penalizedBalances);
     }
 
     /// @inheritdoc ILendingMarketPrimary
@@ -484,6 +471,16 @@ contract LendingMarket is
         loan.interestRateSecondary = newInterestRate.toUint32();
     }
 
+    /// @inheritdoc ILendingMarketPrimary
+    function updateLoanPenalizedBalance(
+        uint256 loanId, // Tools: prevent Prettier one-liner
+        uint256 newInterestRate
+    ) external whenNotPaused onlyRole(ADMIN_ROLE) {
+        Loan.State storage loan = _loans[loanId];
+        _checkIfLoanOngoing(loan);
+        _updateLoanPenalizedBalance(loanId, loan, newInterestRate);
+    }
+
     // ------------------ View functions -------------------------- //
 
     /// @inheritdoc ILendingMarketPrimary
@@ -599,6 +596,55 @@ contract LendingMarket is
 
     // ------------------ Internal functions ---------------------- //
 
+    /// @dev Takes an installment loan for a provided account internally.
+    function _takeInstallmentLoan(
+        address borrower,
+        uint32 programId,
+        uint256[] calldata borrowedAmounts,
+        uint256[] calldata addonAmounts,
+        uint256[] calldata durationsInPeriods
+    ) internal returns (uint256 firstInstallmentId, uint256 installmentCount) {
+        uint256 totalBorrowedAmount = _sumArray(borrowedAmounts);
+        uint256 totalAddonAmount = _sumArray(addonAmounts);
+        installmentCount = borrowedAmounts.length;
+
+        _checkMainLoanParameters(borrower, programId, totalBorrowedAmount, totalAddonAmount);
+        _checkDurationArray(durationsInPeriods);
+        _checkInstallmentCount(installmentCount);
+        if (addonAmounts.length != installmentCount || durationsInPeriods.length != installmentCount) {
+            revert Error.ArrayLengthMismatch();
+        }
+        // Arrays are not checked for emptiness because if the loan amount is zero, the transaction is reverted earlier
+
+        for (uint256 i = 0; i < installmentCount; ++i) {
+            if (borrowedAmounts[i] == 0) {
+                revert Error.InvalidAmount();
+            }
+            uint256 loanId = _takeLoan(
+                borrower, // Tools: prevent Prettier one-liner
+                programId,
+                borrowedAmounts[i],
+                addonAmounts[i],
+                durationsInPeriods[i]
+            );
+            if (i == 0) {
+                firstInstallmentId = loanId;
+            }
+            _updateLoanInstallmentData(loanId, firstInstallmentId, installmentCount);
+        }
+
+        emit InstallmentLoanTaken(
+            firstInstallmentId,
+            borrower,
+            programId,
+            installmentCount,
+            totalBorrowedAmount,
+            totalAddonAmount
+        );
+
+        _transferTokensOnLoanTaking(firstInstallmentId, totalBorrowedAmount, totalAddonAmount);
+    }
+
     /**
      * @dev Takes a loan for a provided account internally.
      * @param borrower The account for whom the loan is taken.
@@ -670,6 +716,30 @@ contract LendingMarket is
         return id;
     }
 
+    /// @dev Sets the penalized balances of loans internally.
+    function _setPenalizedBalances(
+        uint256 startLoanId,
+        uint256 loanCount,
+        uint256[] calldata penalizedBalances
+    ) internal {
+        if (penalizedBalances.length != loanCount) {
+            revert Error.ArrayLengthMismatch();
+        }
+        uint256 totalPenalizedBalance = 0;
+        for (uint256 i = 0; i < loanCount; ++i) {
+            uint256 loanId = startLoanId + i;
+            uint256 penalizedBalance = penalizedBalances[i];
+            Loan.State storage loan = _loans[loanId];
+            if (penalizedBalance != 0) {
+                _updateLoanPenalizedBalance(loanId, loan, penalizedBalance);
+            }
+            totalPenalizedBalance += penalizedBalance;
+        }
+        if (totalPenalizedBalance != Rounding.roundMath(totalPenalizedBalance, Constants.ACCURACY_FACTOR)) {
+            revert TotalPenalizedBalanceUnrounded();
+        }
+    }
+
     /**
      * @dev Updates the loan state and makes the necessary transfers when repaying a loan.
      * @param loanId The unique identifier of the loan to repay.
@@ -730,6 +800,22 @@ contract LendingMarket is
         loan.discountAmount += discountAmount.toUint64();
         ICreditLine(_programCreditLines[loan.programId]).onAfterLoanPayment(loanId, discountAmount);
         emit LoanDiscounted(loanId, discountAmount, newTrackedBalance);
+    }
+
+    /// @dev Updates the penalized balances of a loan internally.
+    function _updateLoanPenalizedBalance(
+        uint256 loanId, // Tools: prevent Prettier one-liner
+        Loan.State storage loan,
+        uint256 newPenalizedBalance
+    ) internal {
+        uint256 oldPenalizedBalance = loan.penalizedBalance;
+        if (newPenalizedBalance == oldPenalizedBalance) {
+            revert Error.AlreadyConfigured();
+        }
+
+        emit LoanPenalizedBalanceUpdated(loanId, newPenalizedBalance, oldPenalizedBalance);
+
+        loan.penalizedBalance = newPenalizedBalance.toUint64();
     }
 
     /**
@@ -999,12 +1085,17 @@ contract LendingMarket is
                         Constants.INTEREST_RATE_FACTOR
                     );
                 } else {
-                    trackedBalance = InterestMath.calculateTrackedBalance(
-                        trackedBalance,
-                        duePeriodIndex - startPeriodIndex,
-                        loan.interestRatePrimary,
-                        Constants.INTEREST_RATE_FACTOR
-                    );
+                    uint256 penalizedBalance = loan.penalizedBalance;
+                    if (penalizedBalance != 0) {
+                        trackedBalance = penalizedBalance - loan.repaidAmount - loan.discountAmount;
+                    } else {
+                        trackedBalance = InterestMath.calculateTrackedBalance(
+                            trackedBalance,
+                            duePeriodIndex - startPeriodIndex,
+                            loan.interestRatePrimary,
+                            Constants.INTEREST_RATE_FACTOR
+                        );
+                    }
                     lateFeeAmount = _calculateLateFee(trackedBalance, loan);
                     trackedBalance += lateFeeAmount;
                     trackedBalance = InterestMath.calculateTrackedBalance(
@@ -1074,6 +1165,7 @@ contract LendingMarket is
         preview.interestRateSecondary = loan.interestRateSecondary;
         preview.firstInstallmentId = loan.firstInstallmentId;
         preview.installmentCount = loan.installmentCount;
+        preview.penalizedBalance = loan.penalizedBalance;
 
         return preview;
     }

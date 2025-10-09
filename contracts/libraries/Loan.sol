@@ -42,6 +42,15 @@ library Loan {
      * - installmentCount ------- The total number of installments for sub-loans or zero for ordinary loans.
      * - lateFeeAmount ---------- The late fee amount of the loan or zero if the loan is not defaulted.
      * - discountAmount --------- The discount amount of the loan or zero if the loan is not discounted.
+     * - penalizedBalance ------- The penalized balance of the loan, can be zero, see notes below.
+     *
+     * Notes about the penalized balance:
+     *
+     * - The penalized balance defines the balance of the loan that applies when the loan is overdue.
+     *   It is used for loans with a grace period or in similar cases.
+     * - The zero value means that the penalized balance logic is not applied.
+     * - If the penalized balance is not zero and the loan is overdue then the tracked balance is replaced by the formula:
+     *   `trackedBalance = penalizedBalance - repaidAmount - discountAmount`
      */
     struct State {
         // Slot1
@@ -51,14 +60,17 @@ library Loan {
         uint32 startTimestamp;
         uint32 durationInPeriods;
         // uint32 __reserved;
+
         // Slot 2
         address token;
         // uint96 __reserved;
+
         // Slot 3
         address borrower;
         uint32 interestRatePrimary;
         uint32 interestRateSecondary;
         // uint32 __reserved;
+
         // Slot 4
         uint64 repaidAmount;
         uint64 trackedBalance;
@@ -67,9 +79,12 @@ library Loan {
         uint40 firstInstallmentId;
         uint8 installmentCount;
         // uint16 __reserved;
+
         // Slot 5
         uint64 lateFeeAmount;
         uint64 discountAmount;
+        uint64 penalizedBalance;
+        // uint64 __reserved;
     }
 
     /**
@@ -138,9 +153,12 @@ library Loan {
      * - interestRateSecondary -- The secondary interest rate of the loan.
      * - firstInstallmentId ----- The ID of the first installment for sub-loans or zero for ordinary loans.
      * - installmentCount ------- The total number of installments for sub-loans or zero for ordinary loans.
+     * - penalizedBalance ------- The penalized balance of the loan, see notes below.
      *
-     * Note:
-     * The outstanding balance is the tracked balance rounded according to the accuracy factor with math rules.
+     * Notes:
+     *
+     * - The outstanding balance is the tracked balance rounded according to the accuracy factor with math rules.
+     * - See notes about the penalized balance in the comments for the {Loan} struct.
      */
     struct PreviewExtended {
         uint256 periodIndex;
@@ -162,6 +180,7 @@ library Loan {
         uint256 interestRateSecondary;
         uint256 firstInstallmentId;
         uint256 installmentCount;
+        uint256 penalizedBalance;
     }
 
     /**
