@@ -4,9 +4,28 @@ import "@openzeppelin/hardhat-upgrades";
 import "hardhat-contract-sizer";
 import "hardhat-gas-reporter";
 import dotenv from "dotenv";
+import chai, { expect } from "chai";
 
 dotenv.config();
 const DEFAULT_MNEMONIC = "test test test test test test test test test test test junk";
+
+// We need that because "@cloudwalk/chainshot" is an optional dependency
+// and we want to avoid errors if it's not installed
+function getMochaHooks() {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { mochaHooks: mochaHooksPlugin } = require("@cloudwalk/chainshot") as typeof import("@cloudwalk/chainshot");
+    return mochaHooksPlugin({ chai });
+  } catch {
+    console.warn("Init of chainshot plugin failed");
+    async function noop() {
+      return;
+    }
+    expect.startChainshot = noop;
+    expect.stopChainshot = noop;
+    return {};
+  }
+}
 
 function mnemonicOrDefault(mnemonic: string | undefined) {
   return {
@@ -24,7 +43,7 @@ const config: HardhatUserConfig = {
     settings: {
       optimizer: {
         enabled: true,
-        runs: Number(process.env.OPTIMIZER_RUNS ?? 800),
+        runs: Number(process.env.OPTIMIZER_RUNS ?? 1000),
       },
     },
   },
@@ -55,6 +74,9 @@ const config: HardhatUserConfig = {
   },
   contractSizer: {
     runOnCompile: process.env.CONTRACT_SIZER_ENABLED === "true",
+  },
+  mocha: {
+    rootHooks: getMochaHooks(),
   },
 };
 

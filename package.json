@@ -14,6 +14,7 @@
     "typescript": "^5.9.2"
   },
   "optionalDependencies": {
+    "@cloudwalk/chainshot": "0.5.2",
     "@cloudwalk/eslint-config-smart-contracts": "^1.0.0",
     "@cloudwalk/solidity-prettier-config": "^1.0.0"
   },
