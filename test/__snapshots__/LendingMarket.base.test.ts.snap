@@ -1,6 +1,6 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`Contract 'LendingMarket': base tests Snapshot scenarios with penalized balances Single-installment loan that is fully repaid at the due date 1`] = `
+exports[`Contract 'LendingMarket': base tests Snapshot scenarios with penalized balances Single-installment loan with non-zero primary rate that is fully repaid at the due date 1`] = `
 Array [
   Object {
     "args": Array [
@@ -371,7 +371,7 @@ Array [
 ]
 `;
 
-exports[`Contract 'LendingMarket': base tests Snapshot scenarios with penalized balances Single-installment loan that is fully repaid one day after the due date 1`] = `
+exports[`Contract 'LendingMarket': base tests Snapshot scenarios with penalized balances Single-installment loan with non-zero primary rate that is fully repaid one day after the due date 1`] = `
 Array [
   Object {
     "args": Array [
@@ -662,6 +662,748 @@ Array [
         "firstInstallmentId": 0n,
         "installmentCount": 1n,
         "interestRatePrimary": 100000000n,
+        "interestRateSecondary": 200000000n,
+        "lateFeeAmount": 14000000n,
+        "outstandingBalance": 0n,
+        "penalizedBalance": 700000000n,
+        "programId": 1n,
+        "repaidAmount": 856800000n,
+        "trackedBalance": 0n,
+      },
+    },
+    "events": Array [
+      Object {
+        "args": Array [
+          856800000n,
+        ],
+        "contract": "LP",
+        "name": "OnBeforeLiquidityInCalled",
+      },
+      Object {
+        "args": Array [
+          "stranger",
+          "LP",
+          856800000n,
+        ],
+        "contract": "BRLC",
+        "name": "Transfer",
+      },
+      Object {
+        "args": Array [
+          0n,
+          856800000n,
+        ],
+        "contract": "CL",
+        "name": "OnAfterLoanPaymentCalled",
+      },
+      Object {
+        "args": Array [
+          0n,
+          "stranger",
+          "borrower",
+          856800000n,
+          0n,
+        ],
+        "contract": "LM",
+        "name": "LoanRepayment",
+      },
+    ],
+    "methodFragment": FunctionFragment {
+      "constant": false,
+      "gas": null,
+      "inputs": Array [
+        ParamType {
+          "arrayChildren": null,
+          "arrayLength": null,
+          "baseType": "uint256",
+          "components": null,
+          "indexed": undefined,
+          "name": "loanId",
+          "type": "uint256",
+        },
+        ParamType {
+          "arrayChildren": null,
+          "arrayLength": null,
+          "baseType": "uint256",
+          "components": null,
+          "indexed": undefined,
+          "name": "repaymentAmount",
+          "type": "uint256",
+        },
+      ],
+      "name": "repayLoan",
+      "outputs": Array [],
+      "payable": false,
+      "stateMutability": "nonpayable",
+      "type": "function",
+    },
+    "type": "methodCall",
+  },
+]
+`;
+
+exports[`Contract 'LendingMarket': base tests Snapshot scenarios with penalized balances Single-installment loan with zero primary rate that is fully repaid at the due date 1`] = `
+Array [
+  Object {
+    "args": Array [
+      "borrower",
+      1n,
+      Array [
+        100000000n,
+      ],
+      Array [
+        20000n,
+      ],
+      Array [
+        10n,
+      ],
+      Array [
+        700000000n,
+      ],
+    ],
+    "balances": Object {
+      "BRLC": Object {
+        "BRLC": 0n,
+        "CL": 0n,
+        "LM": 0n,
+        "LP": 1299899280000n,
+        "addonTreasury": 2000000720000n,
+        "admin": 0n,
+        "borrower": 2700100000000n,
+        "deployer": 0n,
+        "owner": 2000000000000n,
+        "stranger": 2000000000000n,
+      },
+    },
+    "caller": "admin",
+    "contract": "LM",
+    "customState": Object {
+      "extendedLoanPreviewWithoutTimestamps": Object {
+        "addonAmount": 20000n,
+        "borrowedAmount": 100000000n,
+        "borrower": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
+        "discountAmount": 0n,
+        "durationInPeriods": 10n,
+        "firstInstallmentId": 0n,
+        "installmentCount": 1n,
+        "interestRatePrimary": 0n,
+        "interestRateSecondary": 200000000n,
+        "lateFeeAmount": 0n,
+        "outstandingBalance": 100020000n,
+        "penalizedBalance": 700000000n,
+        "programId": 1n,
+        "repaidAmount": 0n,
+        "trackedBalance": 100020000n,
+      },
+    },
+    "events": Array [
+      Object {
+        "args": Array [
+          0n,
+        ],
+        "contract": "CL",
+        "name": "OnBeforeLoanTakenCalled",
+      },
+      Object {
+        "args": Array [
+          0n,
+          "borrower",
+          100020000n,
+          10n,
+        ],
+        "contract": "LM",
+        "name": "LoanTaken",
+      },
+      Object {
+        "args": Array [
+          0n,
+          "borrower",
+          1n,
+          "CL",
+          "LP",
+          100000000n,
+          20000n,
+          10n,
+          0n,
+          200000000n,
+        ],
+        "contract": "LM",
+        "name": "LoanTakenDetailed",
+      },
+      Object {
+        "args": Array [
+          0n,
+          "borrower",
+          1n,
+          1n,
+          100000000n,
+          20000n,
+        ],
+        "contract": "LM",
+        "name": "InstallmentLoanTaken",
+      },
+      Object {
+        "args": Array [
+          100000000n,
+        ],
+        "contract": "LP",
+        "name": "OnBeforeLiquidityOutCalled",
+      },
+      Object {
+        "args": Array [
+          "LP",
+          "borrower",
+          100000000n,
+        ],
+        "contract": "BRLC",
+        "name": "Transfer",
+      },
+      Object {
+        "args": Array [
+          20000n,
+        ],
+        "contract": "LP",
+        "name": "OnBeforeLiquidityOutCalled",
+      },
+      Object {
+        "args": Array [
+          "LP",
+          "addonTreasury",
+          20000n,
+        ],
+        "contract": "BRLC",
+        "name": "Transfer",
+      },
+      Object {
+        "args": Array [
+          0n,
+          700000000n,
+          0n,
+        ],
+        "contract": "LM",
+        "name": "LoanPenalizedBalanceUpdated",
+      },
+    ],
+    "methodFragment": FunctionFragment {
+      "constant": false,
+      "gas": null,
+      "inputs": Array [
+        ParamType {
+          "arrayChildren": null,
+          "arrayLength": null,
+          "baseType": "address",
+          "components": null,
+          "indexed": undefined,
+          "name": "borrower",
+          "type": "address",
+        },
+        ParamType {
+          "arrayChildren": null,
+          "arrayLength": null,
+          "baseType": "uint32",
+          "components": null,
+          "indexed": undefined,
+          "name": "programId",
+          "type": "uint32",
+        },
+        ParamType {
+          "arrayChildren": ParamType {
+            "arrayChildren": null,
+            "arrayLength": null,
+            "baseType": "uint256",
+            "components": null,
+            "indexed": undefined,
+            "name": "",
+            "type": "uint256",
+          },
+          "arrayLength": -1,
+          "baseType": "array",
+          "components": null,
+          "indexed": undefined,
+          "name": "borrowedAmounts",
+          "type": "uint256[]",
+        },
+        ParamType {
+          "arrayChildren": ParamType {
+            "arrayChildren": null,
+            "arrayLength": null,
+            "baseType": "uint256",
+            "components": null,
+            "indexed": undefined,
+            "name": "",
+            "type": "uint256",
+          },
+          "arrayLength": -1,
+          "baseType": "array",
+          "components": null,
+          "indexed": undefined,
+          "name": "addonAmounts",
+          "type": "uint256[]",
+        },
+        ParamType {
+          "arrayChildren": ParamType {
+            "arrayChildren": null,
+            "arrayLength": null,
+            "baseType": "uint256",
+            "components": null,
+            "indexed": undefined,
+            "name": "",
+            "type": "uint256",
+          },
+          "arrayLength": -1,
+          "baseType": "array",
+          "components": null,
+          "indexed": undefined,
+          "name": "durationsInPeriods",
+          "type": "uint256[]",
+        },
+        ParamType {
+          "arrayChildren": ParamType {
+            "arrayChildren": null,
+            "arrayLength": null,
+            "baseType": "uint256",
+            "components": null,
+            "indexed": undefined,
+            "name": "",
+            "type": "uint256",
+          },
+          "arrayLength": -1,
+          "baseType": "array",
+          "components": null,
+          "indexed": undefined,
+          "name": "penalizedBalances",
+          "type": "uint256[]",
+        },
+      ],
+      "name": "takeInstallmentLoan",
+      "outputs": Array [
+        ParamType {
+          "arrayChildren": null,
+          "arrayLength": null,
+          "baseType": "uint256",
+          "components": null,
+          "indexed": undefined,
+          "name": "firstInstallmentId",
+          "type": "uint256",
+        },
+        ParamType {
+          "arrayChildren": null,
+          "arrayLength": null,
+          "baseType": "uint256",
+          "components": null,
+          "indexed": undefined,
+          "name": "installmentCount",
+          "type": "uint256",
+        },
+      ],
+      "payable": false,
+      "stateMutability": "nonpayable",
+      "type": "function",
+    },
+    "type": "methodCall",
+  },
+  Object {
+    "args": Array [
+      0n,
+      115792089237316195423570985008687907853269984665640564039457584007913129639935n,
+    ],
+    "balances": Object {
+      "BRLC": Object {
+        "BRLC": 0n,
+        "CL": 0n,
+        "LM": 0n,
+        "LP": 1299999300000n,
+        "addonTreasury": 2000000720000n,
+        "admin": 0n,
+        "borrower": 2700100000000n,
+        "deployer": 0n,
+        "owner": 2000000000000n,
+        "stranger": 1999899980000n,
+      },
+    },
+    "caller": "stranger",
+    "contract": "LM",
+    "customState": Object {
+      "extendedLoanPreviewWithoutTimestamps": Object {
+        "addonAmount": 20000n,
+        "borrowedAmount": 100000000n,
+        "borrower": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
+        "discountAmount": 0n,
+        "durationInPeriods": 10n,
+        "firstInstallmentId": 0n,
+        "installmentCount": 1n,
+        "interestRatePrimary": 0n,
+        "interestRateSecondary": 200000000n,
+        "lateFeeAmount": 0n,
+        "outstandingBalance": 0n,
+        "penalizedBalance": 700000000n,
+        "programId": 1n,
+        "repaidAmount": 100020000n,
+        "trackedBalance": 0n,
+      },
+    },
+    "events": Array [
+      Object {
+        "args": Array [
+          100020000n,
+        ],
+        "contract": "LP",
+        "name": "OnBeforeLiquidityInCalled",
+      },
+      Object {
+        "args": Array [
+          "stranger",
+          "LP",
+          100020000n,
+        ],
+        "contract": "BRLC",
+        "name": "Transfer",
+      },
+      Object {
+        "args": Array [
+          0n,
+          100020000n,
+        ],
+        "contract": "CL",
+        "name": "OnAfterLoanPaymentCalled",
+      },
+      Object {
+        "args": Array [
+          0n,
+          "stranger",
+          "borrower",
+          100020000n,
+          0n,
+        ],
+        "contract": "LM",
+        "name": "LoanRepayment",
+      },
+    ],
+    "methodFragment": FunctionFragment {
+      "constant": false,
+      "gas": null,
+      "inputs": Array [
+        ParamType {
+          "arrayChildren": null,
+          "arrayLength": null,
+          "baseType": "uint256",
+          "components": null,
+          "indexed": undefined,
+          "name": "loanId",
+          "type": "uint256",
+        },
+        ParamType {
+          "arrayChildren": null,
+          "arrayLength": null,
+          "baseType": "uint256",
+          "components": null,
+          "indexed": undefined,
+          "name": "repaymentAmount",
+          "type": "uint256",
+        },
+      ],
+      "name": "repayLoan",
+      "outputs": Array [],
+      "payable": false,
+      "stateMutability": "nonpayable",
+      "type": "function",
+    },
+    "type": "methodCall",
+  },
+]
+`;
+
+exports[`Contract 'LendingMarket': base tests Snapshot scenarios with penalized balances Single-installment loan with zero primary rate that is fully repaid one day after the due date 1`] = `
+Array [
+  Object {
+    "args": Array [
+      "borrower",
+      1n,
+      Array [
+        100000000n,
+      ],
+      Array [
+        20000n,
+      ],
+      Array [
+        10n,
+      ],
+      Array [
+        700000000n,
+      ],
+    ],
+    "balances": Object {
+      "BRLC": Object {
+        "BRLC": 0n,
+        "CL": 0n,
+        "LM": 0n,
+        "LP": 1299899280000n,
+        "addonTreasury": 2000000720000n,
+        "admin": 0n,
+        "borrower": 2700100000000n,
+        "deployer": 0n,
+        "owner": 2000000000000n,
+        "stranger": 2000000000000n,
+      },
+    },
+    "caller": "admin",
+    "contract": "LM",
+    "customState": Object {
+      "extendedLoanPreviewWithoutTimestamps": Object {
+        "addonAmount": 20000n,
+        "borrowedAmount": 100000000n,
+        "borrower": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
+        "discountAmount": 0n,
+        "durationInPeriods": 10n,
+        "firstInstallmentId": 0n,
+        "installmentCount": 1n,
+        "interestRatePrimary": 0n,
+        "interestRateSecondary": 200000000n,
+        "lateFeeAmount": 0n,
+        "outstandingBalance": 100020000n,
+        "penalizedBalance": 700000000n,
+        "programId": 1n,
+        "repaidAmount": 0n,
+        "trackedBalance": 100020000n,
+      },
+    },
+    "events": Array [
+      Object {
+        "args": Array [
+          0n,
+        ],
+        "contract": "CL",
+        "name": "OnBeforeLoanTakenCalled",
+      },
+      Object {
+        "args": Array [
+          0n,
+          "borrower",
+          100020000n,
+          10n,
+        ],
+        "contract": "LM",
+        "name": "LoanTaken",
+      },
+      Object {
+        "args": Array [
+          0n,
+          "borrower",
+          1n,
+          "CL",
+          "LP",
+          100000000n,
+          20000n,
+          10n,
+          0n,
+          200000000n,
+        ],
+        "contract": "LM",
+        "name": "LoanTakenDetailed",
+      },
+      Object {
+        "args": Array [
+          0n,
+          "borrower",
+          1n,
+          1n,
+          100000000n,
+          20000n,
+        ],
+        "contract": "LM",
+        "name": "InstallmentLoanTaken",
+      },
+      Object {
+        "args": Array [
+          100000000n,
+        ],
+        "contract": "LP",
+        "name": "OnBeforeLiquidityOutCalled",
+      },
+      Object {
+        "args": Array [
+          "LP",
+          "borrower",
+          100000000n,
+        ],
+        "contract": "BRLC",
+        "name": "Transfer",
+      },
+      Object {
+        "args": Array [
+          20000n,
+        ],
+        "contract": "LP",
+        "name": "OnBeforeLiquidityOutCalled",
+      },
+      Object {
+        "args": Array [
+          "LP",
+          "addonTreasury",
+          20000n,
+        ],
+        "contract": "BRLC",
+        "name": "Transfer",
+      },
+      Object {
+        "args": Array [
+          0n,
+          700000000n,
+          0n,
+        ],
+        "contract": "LM",
+        "name": "LoanPenalizedBalanceUpdated",
+      },
+    ],
+    "methodFragment": FunctionFragment {
+      "constant": false,
+      "gas": null,
+      "inputs": Array [
+        ParamType {
+          "arrayChildren": null,
+          "arrayLength": null,
+          "baseType": "address",
+          "components": null,
+          "indexed": undefined,
+          "name": "borrower",
+          "type": "address",
+        },
+        ParamType {
+          "arrayChildren": null,
+          "arrayLength": null,
+          "baseType": "uint32",
+          "components": null,
+          "indexed": undefined,
+          "name": "programId",
+          "type": "uint32",
+        },
+        ParamType {
+          "arrayChildren": ParamType {
+            "arrayChildren": null,
+            "arrayLength": null,
+            "baseType": "uint256",
+            "components": null,
+            "indexed": undefined,
+            "name": "",
+            "type": "uint256",
+          },
+          "arrayLength": -1,
+          "baseType": "array",
+          "components": null,
+          "indexed": undefined,
+          "name": "borrowedAmounts",
+          "type": "uint256[]",
+        },
+        ParamType {
+          "arrayChildren": ParamType {
+            "arrayChildren": null,
+            "arrayLength": null,
+            "baseType": "uint256",
+            "components": null,
+            "indexed": undefined,
+            "name": "",
+            "type": "uint256",
+          },
+          "arrayLength": -1,
+          "baseType": "array",
+          "components": null,
+          "indexed": undefined,
+          "name": "addonAmounts",
+          "type": "uint256[]",
+        },
+        ParamType {
+          "arrayChildren": ParamType {
+            "arrayChildren": null,
+            "arrayLength": null,
+            "baseType": "uint256",
+            "components": null,
+            "indexed": undefined,
+            "name": "",
+            "type": "uint256",
+          },
+          "arrayLength": -1,
+          "baseType": "array",
+          "components": null,
+          "indexed": undefined,
+          "name": "durationsInPeriods",
+          "type": "uint256[]",
+        },
+        ParamType {
+          "arrayChildren": ParamType {
+            "arrayChildren": null,
+            "arrayLength": null,
+            "baseType": "uint256",
+            "components": null,
+            "indexed": undefined,
+            "name": "",
+            "type": "uint256",
+          },
+          "arrayLength": -1,
+          "baseType": "array",
+          "components": null,
+          "indexed": undefined,
+          "name": "penalizedBalances",
+          "type": "uint256[]",
+        },
+      ],
+      "name": "takeInstallmentLoan",
+      "outputs": Array [
+        ParamType {
+          "arrayChildren": null,
+          "arrayLength": null,
+          "baseType": "uint256",
+          "components": null,
+          "indexed": undefined,
+          "name": "firstInstallmentId",
+          "type": "uint256",
+        },
+        ParamType {
+          "arrayChildren": null,
+          "arrayLength": null,
+          "baseType": "uint256",
+          "components": null,
+          "indexed": undefined,
+          "name": "installmentCount",
+          "type": "uint256",
+        },
+      ],
+      "payable": false,
+      "stateMutability": "nonpayable",
+      "type": "function",
+    },
+    "type": "methodCall",
+  },
+  Object {
+    "args": Array [
+      0n,
+      115792089237316195423570985008687907853269984665640564039457584007913129639935n,
+    ],
+    "balances": Object {
+      "BRLC": Object {
+        "BRLC": 0n,
+        "CL": 0n,
+        "LM": 0n,
+        "LP": 1300756080000n,
+        "addonTreasury": 2000000720000n,
+        "admin": 0n,
+        "borrower": 2700100000000n,
+        "deployer": 0n,
+        "owner": 2000000000000n,
+        "stranger": 1999143200000n,
+      },
+    },
+    "caller": "stranger",
+    "contract": "LM",
+    "customState": Object {
+      "extendedLoanPreviewWithoutTimestamps": Object {
+        "addonAmount": 20000n,
+        "borrowedAmount": 100000000n,
+        "borrower": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
+        "discountAmount": 0n,
+        "durationInPeriods": 10n,
+        "firstInstallmentId": 0n,
+        "installmentCount": 1n,
+        "interestRatePrimary": 0n,
         "interestRateSecondary": 200000000n,
         "lateFeeAmount": 14000000n,
         "outstandingBalance": 0n,

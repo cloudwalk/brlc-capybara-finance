@@ -5208,6 +5208,12 @@ describe("Contract 'LendingMarket': base tests", async () => {
 
     let marketViaAdmin: Contract;
 
+    async function setZeroPrimaryRate() {
+      const loanTerms = creatLoanTerms();
+      loanTerms.interestRatePrimary = 0;
+      await proveTx(creditLine.mockLoanTerms(borrower.address, BORROWED_AMOUNT, loanTerms));
+    }
+
     async function executeScenarioWithGivenPeriodsPastDueDate(
       scenarioName: string,
       periodCountAfterDueDate: number,
@@ -5260,18 +5266,36 @@ describe("Contract 'LendingMarket': base tests", async () => {
       marketViaAdmin = fixture.marketViaAdmin;
     });
 
-    it("Single-installment loan that is fully repaid at the due date", async () => {
+    it("Single-installment loan with zero primary rate that is fully repaid at the due date", async () => {
+      await setZeroPrimaryRate();
       await executeScenarioWithGivenPeriodsPastDueDate(
-        "Single-installment loan that is fully repaid at the due date",
+        "Single-installment loan with zero primary rate that is fully repaid at the due date",
         0,
       );
     });
 
-    it("Single-installment loan that is fully repaid one day after the due date", async () => {
+    it("Single-installment loan with zero primary rate that is fully repaid one day after the due date", async () => {
+      await setZeroPrimaryRate();
       await executeScenarioWithGivenPeriodsPastDueDate(
-        "Single-installment loan that is fully repaid one day after the due date",
+        "Single-installment loan with zero primary rate that is fully repaid one day after the due date",
         1,
       );
     });
+
+    it("Single-installment loan with non-zero primary rate that is fully repaid at the due date", async () => {
+      await executeScenarioWithGivenPeriodsPastDueDate(
+        "Single-installment loan with non-zero primary rate that is fully repaid at the due date",
+        0,
+      );
+    });
+
+    it(
+      "Single-installment loan with non-zero primary rate that is fully repaid one day after the due date",
+      async () => {
+        await executeScenarioWithGivenPeriodsPastDueDate(
+          "Single-installment loan with non-zero primary rate that is fully repaid one day after the due date",
+          1,
+        );
+      });
   });
 });
