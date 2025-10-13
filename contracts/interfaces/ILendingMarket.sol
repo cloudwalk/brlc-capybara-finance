@@ -237,6 +237,21 @@ interface ILendingMarketPrimary {
         uint256 indexed oldInterestRate
     );
 
+    /**
+     * @dev Emitted when the penalized balance of a loan is updated.
+     *
+     * See notes about the penalized balance in the comments for the {Loan} struct.
+     *
+     * @param loanId The unique identifier of the loan.
+     * @param newPenalizedBalance The new penalized balance of the loan.
+     * @param oldPenalizedBalance The old penalized balance of the loan.
+     */
+    event LoanPenalizedBalanceUpdated(
+        uint256 indexed loanId, // Tools: prevent Prettier one-liner
+        uint256 newPenalizedBalance,
+        uint256 oldPenalizedBalance
+    );
+
     // ------------------ Transactional functions ----------------- //
 
     /**
@@ -275,6 +290,29 @@ interface ILendingMarketPrimary {
         uint256[] calldata borrowedAmounts,
         uint256[] calldata addonAmounts,
         uint256[] calldata durationsInPeriods
+    ) external returns (uint256 firstInstallmentId, uint256 installmentCount);
+
+    /**
+     * @dev Takes an installment loan with multiple sub-loans for a provided account with additional parameters.
+     *
+     * See notes about the penalized balance in the comments for the {Loan} struct.
+     *
+     * @param borrower The account for whom the loan is taken.
+     * @param programId The identifier of the program to take the loan from.
+     * @param borrowedAmounts The desired amounts of tokens to borrow for each installment.
+     * @param addonAmounts The off-chain calculated addon amounts for each installment.
+     * @param durationsInPeriods The desired duration of each installment in periods.
+     * @param penalizedBalances The penalized balances for each installment.
+     * @return firstInstallmentId The unique identifier of the first sub-loan of the installment loan.
+     * @return installmentCount The total number of installments.
+     */
+    function takeInstallmentLoan(
+        address borrower,
+        uint32 programId,
+        uint256[] calldata borrowedAmounts,
+        uint256[] calldata addonAmounts,
+        uint256[] calldata durationsInPeriods,
+        uint256[] calldata penalizedBalances
     ) external returns (uint256 firstInstallmentId, uint256 installmentCount);
 
     /**
@@ -442,6 +480,16 @@ interface ILendingMarketPrimary {
      * @param newInterestRate The new secondary interest rate of the loan.
      */
     function updateLoanInterestRateSecondary(uint256 loanId, uint256 newInterestRate) external;
+
+    /**
+     * @dev Updates the penalized balance of an ordinary loan or a sub-loan.
+     *
+     * See notes about the penalized balance in the comments for the {Loan} struct.
+     *
+     * @param loanId The unique identifier of the loan whose penalized balance is to update.
+     * @param newPenalizedBalance The new penalized balance of the loan.
+     */
+    function updateLoanPenalizedBalance(uint256 loanId, uint256 newPenalizedBalance) external;
 
     // ------------------ View functions -------------------------- //
 
@@ -677,6 +725,9 @@ interface ILendingMarketErrors {
 
     /// @dev Thrown when the provided repayment timestamp is invalid.
     error RepaymentTimestampInvalid();
+
+    /// @dev Thrown when the total penalized balance is unrounded according to the accuracy factor.
+    error TotalPenalizedBalanceUnrounded();
 
     /// @dev Thrown when the provided tracked timestamp is invalid, e.g. it is earlier than the loan start timestamp.
     error TrackedTimestampInvalid();
