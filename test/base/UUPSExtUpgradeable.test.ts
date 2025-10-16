@@ -7,7 +7,7 @@ import { setUpFixture } from "../../test-utils/common";
 
 const ADDRESS_ZERO = ethers.ZeroAddress;
 
-describe("Contract 'UUPSExtUpgradeable'", async () => {
+describe("Contract 'UUPSExtUpgradeable'", () => {
   // Events of the contracts under test
   const EVENT_NAME_MOCK_VALIDATE_UPGRADE_CALL = "MockValidateUpgradeCall";
 
@@ -39,7 +39,7 @@ describe("Contract 'UUPSExtUpgradeable'", async () => {
     return { uupsExtension };
   }
 
-  describe("Function 'initialize()' and internal initializers", async () => {
+  describe("Function 'initialize()' and internal initializers", () => {
     it("The external initializer is reverted if it is called a second time", async () => {
       const { uupsExtension } = await setUpFixture(deployContract);
       await expect(uupsExtension.initialize())
@@ -53,7 +53,7 @@ describe("Contract 'UUPSExtUpgradeable'", async () => {
     });
   });
 
-  describe("Function 'upgradeToAndCall()'", async () => {
+  describe("Function 'upgradeToAndCall()'", () => {
     it("Executes as expected", async () => {
       const { uupsExtension } = await setUpFixture(deployContract);
 

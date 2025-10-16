@@ -311,7 +311,7 @@ function checkTestConstants() {
   }
 }
 
-describe("Contract 'LendingMarket': base tests", async () => {
+describe("Contract 'LendingMarket': base tests", () => {
   let lendingMarketFactory: ContractFactory;
   let creditLineFactory: ContractFactory;
   let liquidityPoolFactory: ContractFactory;
@@ -1027,7 +1027,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
     expect(nextActualLoanId).to.eq(expectedLoanIds[installmentCount - 1] + 1);
   }
 
-  describe("Function initialize()", async () => {
+  describe("Function initialize()", () => {
     it("Configures the contract as expected", async () => {
       const { market } = await setUpFixture(deployLendingMarket);
 
@@ -1116,7 +1116,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
     });
   });
 
-  describe("Function '$__VERSION()'", async () => {
+  describe("Function '$__VERSION()'", () => {
     it("Returns expected values", async () => {
       const { market } = await setUpFixture(deployLendingMarket);
       const marketVersion = await market.$__VERSION();
@@ -1124,7 +1124,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
     });
   });
 
-  describe("Function 'upgradeToAndCall()'", async () => {
+  describe("Function 'upgradeToAndCall()'", () => {
     it("Executes as expected", async () => {
       const { market } = await setUpFixture(deployLendingMarket);
       await checkContractUupsUpgrading(market, lendingMarketFactory);
@@ -1152,7 +1152,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
     });
   });
 
-  describe("Function 'createProgram()'", async () => {
+  describe("Function 'createProgram()'", () => {
     it("Executes as expected and emits the correct events", async () => {
       const { market } = await setUpFixture(deployLendingMarket);
 
@@ -1247,7 +1247,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
     });
   });
 
-  describe("Function 'updateProgram()'", async () => {
+  describe("Function 'updateProgram()'", () => {
     it("Executes as expected and emits correct event", async () => {
       const { market } = await setUpFixture(deployLendingMarketAndConfigureItForLoan);
 
@@ -1356,7 +1356,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
     });
   });
 
-  describe("Function 'takeLoanFor()'", async () => {
+  describe("Function 'takeLoanFor()'", () => {
     async function executeAndCheck(props: { isAddonAmountZero: boolean }) {
       const { marketViaAdmin } = await setUpFixture(deployLendingMarketAndConfigureItForLoan);
 
@@ -1441,7 +1441,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       expect(nextActualLoanId).to.eq(expectedLoanId + 1);
     }
 
-    describe("Executes as expected and emits the correct events if", async () => {
+    describe("Executes as expected and emits the correct events if", () => {
       it("The addon amount is NOT zero", async () => {
         await executeAndCheck({ isAddonAmountZero: false });
       });
@@ -1451,7 +1451,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       });
     });
 
-    describe("Is reverted if", async () => {
+    describe("Is reverted if", () => {
       it("The contract is paused", async () => {
         const { market, marketViaAdmin } = await setUpFixture(deployLendingMarketAndConfigureItForLoan);
         await proveTx(market.pause());
@@ -1640,10 +1640,10 @@ describe("Contract 'LendingMarket': base tests", async () => {
     });
   });
 
-  describe("Function 'takeInstallmentLoan()'", async () => {
+  describe("Function 'takeInstallmentLoan()'", () => {
     const functionName = "takeInstallmentLoan";
 
-    describe("Executes as expected and emits the correct events if", async () => {
+    describe("Executes as expected and emits the correct events if", () => {
       it("The loan has multiple installments", async () => {
         await executeAndCheckInstallmentLoanTakingFunction({ functionName, installmentCount: INSTALLMENT_COUNT });
       });
@@ -1691,7 +1691,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       });
     });
 
-    describe("Is reverted if", async () => {
+    describe("Is reverted if", () => {
       it("The contract is paused", async () => {
         const { market, marketViaAdmin } = await setUpFixture(deployLendingMarketAndConfigureItForLoan);
         await proveTx(market.pause());
@@ -2002,10 +2002,10 @@ describe("Contract 'LendingMarket': base tests", async () => {
     });
   });
 
-  describe("Function 'takeInstallmentLoanFor()'", async () => {
+  describe("Function 'takeInstallmentLoanFor()'", () => {
     const functionName = "takeInstallmentLoanFor";
 
-    describe("Executes as expected and emits the correct events if", async () => {
+    describe("Executes as expected and emits the correct events if", () => {
       it("The loan has multiple installments", async () => {
         await executeAndCheckInstallmentLoanTakingFunction({ functionName, installmentCount: INSTALLMENT_COUNT });
       });
@@ -2034,7 +2034,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       });
     });
 
-    describe("Is reverted if", async () => {
+    describe("Is reverted if", () => {
       it("The contract is paused", async () => {
         const { market, marketViaAdmin } = await setUpFixture(deployLendingMarketAndConfigureItForLoan);
         await proveTx(market.pause());
@@ -2296,7 +2296,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
     });
   });
 
-  describe("Function 'repayLoan()'", async () => {
+  describe("Function 'repayLoan()'", () => {
     async function repayLoanAndCheck(
       fixture: Fixture,
       loans: Loan,
@@ -2348,7 +2348,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       return expectedLoan;
     }
 
-    describe("Executes as expected if", async () => {
+    describe("Executes as expected if", () => {
       it("There is a partial repayment from the borrower on the same period the loan is taken", async () => {
         const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
         await repayLoanAndCheck(fixture, fixture.ordinaryLoan, REPAYMENT_AMOUNT, PayerKind.Borrower);
@@ -2405,7 +2405,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       });
     });
 
-    describe("Is reverted if", async () => {
+    describe("Is reverted if", () => {
       it("The contract is paused", async () => {
         const { market, ordinaryLoan: loan } = await setUpFixture(deployLendingMarketAndTakeLoans);
         await proveTx(market.pause());
@@ -2456,7 +2456,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
     });
   });
 
-  describe("Function 'repayLoanForBatch()'", async () => {
+  describe("Function 'repayLoanForBatch()'", () => {
     async function executeAndCheck(
       fixture: Fixture,
       loans: Loan[],
@@ -2519,7 +2519,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       return expectedLoans;
     }
 
-    describe("Executes as expected if", async () => {
+    describe("Executes as expected if", () => {
       it("There are partial repayments from the borrower on the same period the loan is taken", async () => {
         const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
         const loans: Loan[] = [
@@ -2604,7 +2604,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       });
     });
 
-    describe("Is reverted if", async () => {
+    describe("Is reverted if", () => {
       it("The contract is paused", async () => {
         const { market, marketViaAdmin } = await setUpFixture(deployLendingMarketAndTakeLoans);
         await proveTx(market.pause());
@@ -2764,7 +2764,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       return expectedLoans;
     }
 
-    describe("Executes as expected if", async () => {
+    describe("Executes as expected if", () => {
       it("There are partial discounts on the same period the loan is taken", async () => {
         const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
         const loans = fixture.installmentLoanParts;
@@ -2934,7 +2934,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
     });
   });
 
-  describe("Function 'undoRepaymentFor()'", async () => {
+  describe("Function 'undoRepaymentFor()'", () => {
     async function executeAndCheck(operations: LoanOperation[], props: {
       isReceiverAddressZero?: boolean;
       undoRepaymentsInReverseOrder?: boolean;
@@ -3054,9 +3054,9 @@ describe("Contract 'LendingMarket': base tests", async () => {
       }
     }
 
-    describe("Executes as expected if the provided receiver address is NOT zero and", async () => {
-      describe("The loan is NOT fully repaid and", async () => {
-        describe("There are repayments only before the loan is overdue and", async () => {
+    describe("Executes as expected if the provided receiver address is NOT zero and", () => {
+      describe("The loan is NOT fully repaid and", () => {
+        describe("There are repayments only before the loan is overdue and", () => {
           it("The first repayment is being undone", async () => {
             await executeAndCheck([
               {
@@ -3172,7 +3172,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
           });
         });
 
-        describe("There are repayments before and after the loan is overdue and", async () => {
+        describe("There are repayments before and after the loan is overdue and", () => {
           it("The first repayment is being undone", async () => {
             await executeAndCheck([
               {
@@ -3360,8 +3360,8 @@ describe("Contract 'LendingMarket': base tests", async () => {
           });
         });
       });
-      describe("The loan is fully repaid and", async () => {
-        describe("There are repayments only before the loan is overdue and", async () => {
+      describe("The loan is fully repaid and", () => {
+        describe("There are repayments only before the loan is overdue and", () => {
           it("The first repayment is being undone", async () => {
             await executeAndCheck([
               {
@@ -3430,7 +3430,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
             ], { undoRepaymentsInReverseOrder: true });
           });
         });
-        describe("There are repayments before and after the loan is overdue and", async () => {
+        describe("There are repayments before and after the loan is overdue and", () => {
           it("The first repayment is being undone", async () => {
             await executeAndCheck([
               {
@@ -3561,9 +3561,9 @@ describe("Contract 'LendingMarket': base tests", async () => {
         });
       });
     });
-    describe("Executes as expected if the provided receiver address is zero and", async () => {
-      describe("The loan is NOT fully repaid and", async () => {
-        describe("There are repayments only before the loan is overdue and", async () => {
+    describe("Executes as expected if the provided receiver address is zero and", () => {
+      describe("The loan is NOT fully repaid and", () => {
+        describe("There are repayments only before the loan is overdue and", () => {
           it("The first one is being undone", async () => {
             await executeAndCheck(
               [
@@ -3587,7 +3587,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       });
     });
 
-    describe("Executes as expected when the provided repayment amount after rounding becomes", async () => {
+    describe("Executes as expected when the provided repayment amount after rounding becomes", () => {
       async function executeAndCheck(props: { isRoundedAmountLess: boolean }) {
         const { marketViaAdmin, ordinaryLoan } = await setUpFixture(deployLendingMarketAndTakeLoans);
         const loan = clone(ordinaryLoan);
@@ -3654,7 +3654,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       });
     });
 
-    describe("Is reverted if", async () => {
+    describe("Is reverted if", () => {
       it("The contract is paused", async () => {
         const { market, marketViaAdmin, ordinaryLoan: loan } = await setUpFixture(deployLendingMarketAndTakeLoans);
         await proveTx(market.pause());
@@ -3737,7 +3737,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
     });
   });
 
-  describe("Function 'correctLoan()'", async () => {
+  describe("Function 'correctLoan()'", () => {
     async function correctLoanAndCheck(market: Contract, oldLoan: Loan, newLoan: Loan) {
       const tx = connect(market, corrector).correctLoan(
         oldLoan.id,
@@ -3889,7 +3889,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
     });
   });
 
-  describe("Function 'freeze()'", async () => {
+  describe("Function 'freeze()'", () => {
     it("Executes as expected and emits the correct event", async () => {
       const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
       const { marketViaAdmin, ordinaryLoan: loan } = fixture;
@@ -3949,7 +3949,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
     });
   });
 
-  describe("Function 'unfreeze()'", async () => {
+  describe("Function 'unfreeze()'", () => {
     async function freezeUnfreezeAndCheck(fixture: Fixture, props: {
       freezingTimestamp: number;
       unfreezingTimestamp: number;
@@ -3991,7 +3991,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       checkEquality(actualLoanState, expectedLoan.state);
     }
 
-    describe("Executes as expected if", async () => {
+    describe("Executes as expected if", () => {
       it("Unfreezing is done at the same loan period as the freezing", async () => {
         const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
         const startTimestamp = removeTimestampOffset(fixture.ordinaryLoan.state.startTimestamp);
@@ -4055,7 +4055,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       });
     });
 
-    describe("Is reverted if", async () => {
+    describe("Is reverted if", () => {
       it("The contract is paused", async () => {
         const { market, ordinaryLoan: loan } = await setUpFixture(deployLendingMarketAndTakeLoans);
         await proveTx(market.pause());
@@ -4102,7 +4102,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
     });
   });
 
-  describe("Function 'updateLoanDuration()'", async () => {
+  describe("Function 'updateLoanDuration()'", () => {
     it("Executes as expected and emits the correct event", async () => {
       const { marketViaAdmin, ordinaryLoan } = await setUpFixture(deployLendingMarketAndTakeLoans);
       const expectedLoan: Loan = clone(ordinaryLoan);
@@ -4178,7 +4178,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
     });
   });
 
-  describe("Function 'updateLoanInterestRatePrimary()'", async () => {
+  describe("Function 'updateLoanInterestRatePrimary()'", () => {
     it("Executes as expected and emits the correct event", async () => {
       const { marketViaAdmin, ordinaryLoan } = await setUpFixture(deployLendingMarketAndTakeLoans);
       const expectedLoan = clone(ordinaryLoan);
@@ -4244,7 +4244,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
     });
   });
 
-  describe("Function 'updateLoanInterestRateSecondary()'", async () => {
+  describe("Function 'updateLoanInterestRateSecondary()'", () => {
     it("Executes as expected and emits the correct event", async () => {
       const { marketViaAdmin, ordinaryLoan } = await setUpFixture(deployLendingMarketAndTakeLoans);
       const expectedLoan = clone(ordinaryLoan);
@@ -4311,7 +4311,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
     });
   });
 
-  describe("Function 'updateLoanPenalizedBalance()'", async () => {
+  describe("Function 'updateLoanPenalizedBalance()'", () => {
     async function executeAndCheck(props: {
       oldPenalizedBalance: number | bigint;
       newPenalizedBalance: number | bigint;
@@ -4434,7 +4434,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
     });
   });
 
-  describe("Function 'revokeLoan()'", async () => {
+  describe("Function 'revokeLoan()'", () => {
     async function revokeAndCheck(fixture: Fixture, props: {
       isAddonAmountZero: boolean;
       loan: Loan;
@@ -4507,8 +4507,8 @@ describe("Contract 'LendingMarket': base tests", async () => {
       }
     }
 
-    describe("Executes as expected and emits correct event if", async () => {
-      describe("The addon amount is NOT zero and", async () => {
+    describe("Executes as expected and emits correct event if", () => {
+      describe("The addon amount is NOT zero and", () => {
         it("Is called after a repayment that is less than the borrowed amount", async () => {
           const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
 
@@ -4567,7 +4567,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
         });
       });
 
-      describe("The addon amount is zero and", async () => {
+      describe("The addon amount is zero and", () => {
         it("Is called after a repayment that equals the borrowed amount", async () => {
           const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
 
@@ -4582,7 +4582,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       });
     });
 
-    describe("Is reverted if", async () => {
+    describe("Is reverted if", () => {
       it("The contract is paused", async () => {
         const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
         const { market, marketViaAdmin, ordinaryLoan: loan } = fixture;
@@ -4643,7 +4643,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
     });
   });
 
-  describe("Function 'revokeInstallmentLoan()'", async () => {
+  describe("Function 'revokeInstallmentLoan()'", () => {
     async function revokeAndCheck(fixture: Fixture, props: {
       areAddonAmountsZero: boolean;
       loans: Loan[];
@@ -4733,9 +4733,9 @@ describe("Contract 'LendingMarket': base tests", async () => {
       }
     }
 
-    describe("Executes as expected and emits correct event if", async () => {
-      describe("NOT all addon amounts are zero and", async () => {
-        describe("All installments are ongoing and", async () => {
+    describe("Executes as expected and emits correct event if", () => {
+      describe("NOT all addon amounts are zero and", () => {
+        describe("All installments are ongoing and", () => {
           it("Is called the next day after the loan started and without repayments", async () => {
             const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
             const loans = fixture.installmentLoanParts;
@@ -4765,7 +4765,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
           });
         });
 
-        describe("All installments are repaid except the last one", async () => {
+        describe("All installments are repaid except the last one", () => {
           async function repayInstalmentsExceptLastOne(
             market: Contract,
             loans: Loan[],
@@ -4849,8 +4849,8 @@ describe("Contract 'LendingMarket': base tests", async () => {
         });
       });
 
-      describe("All addon amounts are zero and", async () => {
-        describe("All installments are ongoing and", async () => {
+      describe("All addon amounts are zero and", () => {
+        describe("All installments are ongoing and", () => {
           it("Is called after the due date", async () => {
             const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
             const loans = fixture.installmentLoanParts;
@@ -4876,7 +4876,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
       });
     });
 
-    describe("Is reverted if", async () => {
+    describe("Is reverted if", () => {
       it("The contract is paused", async () => {
         const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
         const { market, marketViaAdmin, installmentLoanParts: [loan] } = fixture;
@@ -4939,7 +4939,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
     });
   });
 
-  describe("View functions", async () => {
+  describe("View functions", () => {
     // This section tests only those functions that have not been previously used in other sections.
     it("Function 'getLoanPreview()' executes as expected", async () => {
       const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
@@ -5120,7 +5120,7 @@ describe("Contract 'LendingMarket': base tests", async () => {
     });
   });
 
-  describe("Pure functions", async () => {
+  describe("Pure functions", () => {
     it("Function 'calculateTrackedBalance()' executes as expected", async () => {
       const { market } = await setUpFixture(deployLendingMarketAndTakeLoans);
       const actualBalance = await market.calculateTrackedBalance(

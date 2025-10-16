@@ -263,7 +263,7 @@ function processLoanClosing(borrowerState: BorrowerState, borrowedAmount: bigint
   borrowerState.totalClosedLoanAmount += borrowedAmount;
 }
 
-describe("Contract 'CreditLine'", async () => {
+describe("Contract 'CreditLine'", () => {
   let creditLineFactory: ContractFactory;
   let marketFactory: ContractFactory;
   let tokenFactory: ContractFactory;
@@ -494,7 +494,7 @@ describe("Contract 'CreditLine'", async () => {
     checkEquality(actualBorrowerConfig, expectedBorrowerConfig);
   }
 
-  describe("Function 'initialize()'", async () => {
+  describe("Function 'initialize()'", () => {
     it("Configures the contract as expected", async () => {
       const { creditLine } = await setUpFixture(deployContracts);
       // Role hashes
@@ -611,7 +611,7 @@ describe("Contract 'CreditLine'", async () => {
     });
   });
 
-  describe("Function '$__VERSION()'", async () => {
+  describe("Function '$__VERSION()'", () => {
     it("Returns expected values", async () => {
       const { creditLine } = await setUpFixture(deployContracts);
       const creditLineVersion = await creditLine.$__VERSION();
@@ -619,7 +619,7 @@ describe("Contract 'CreditLine'", async () => {
     });
   });
 
-  describe("Function 'upgradeToAndCall()'", async () => {
+  describe("Function 'upgradeToAndCall()'", () => {
     it("Executes as expected", async () => {
       const { creditLine } = await setUpFixture(deployContracts);
       await checkContractUupsUpgrading(creditLine, creditLineFactory);
@@ -648,7 +648,7 @@ describe("Contract 'CreditLine'", async () => {
     });
   });
 
-  describe("Function 'configureCreditLine()'", async () => {
+  describe("Function 'configureCreditLine()'", () => {
     it("Executes as expected and emits the correct event", async () => {
       const { creditLine } = await setUpFixture(deployContracts);
       const expectedConfig = createCreditLineConfiguration();
@@ -745,7 +745,7 @@ describe("Contract 'CreditLine'", async () => {
     });
   });
 
-  describe("Function 'configureBorrower()' new", async () => {
+  describe("Function 'configureBorrower()' new", () => {
     it("Executes as expected and emits the correct event if is called by an admin", async () => {
       const { creditLineViaAdmin } = await setUpFixture(deployAndConfigureContracts);
       const expectedConfig = createBorrowerConfiguration();
@@ -899,7 +899,7 @@ describe("Contract 'CreditLine'", async () => {
     });
   });
 
-  describe("Function 'configureBorrowers()' new", async () => {
+  describe("Function 'configureBorrowers()' new", () => {
     it("Executes as expected and emits correct events if is called by an admin", async () => {
       const { creditLineViaAdmin } = await setUpFixture(deployAndConfigureContracts);
       const { borrowers, configs } = await prepareDataForBatchBorrowerConfig();
@@ -950,7 +950,7 @@ describe("Contract 'CreditLine'", async () => {
     // Other test cases have been checked during tests of the 'configureBorrower()' legacy function
   });
 
-  describe("Function 'configureBorrower()' legacy", async () => {
+  describe("Function 'configureBorrower()' legacy", () => {
     it("Executes as expected and emits the correct event if is called by an admin", async () => {
       const { creditLineViaAdmin } = await setUpFixture(deployAndConfigureContracts);
       const expectedConfig = createBorrowerConfiguration();
@@ -1110,7 +1110,7 @@ describe("Contract 'CreditLine'", async () => {
     });
   });
 
-  describe("Function 'configureBorrowers()' legacy", async () => {
+  describe("Function 'configureBorrowers()' legacy", () => {
     it("Executes as expected and emits correct events if is called by an admin", async () => {
       const { creditLineViaAdmin } = await setUpFixture(deployAndConfigureContracts);
       const { borrowers, configs } = await prepareDataForBatchBorrowerConfig();
@@ -1171,7 +1171,7 @@ describe("Contract 'CreditLine'", async () => {
     // Other test cases have been checked during tests of the 'configureBorrower()' legacy function
   });
 
-  describe("Function 'onBeforeLoanTaken()'", async () => {
+  describe("Function 'onBeforeLoanTaken()'", () => {
     it("Executes as expected if the borrowing policy is 'SingleActiveLoan'", async () => {
       await executeAndCheckLoanOpeningHook(
         "callOnBeforeLoanTakenCreditLine(address,uint256)",
@@ -1270,7 +1270,7 @@ describe("Contract 'CreditLine'", async () => {
     });
   });
 
-  describe("Function 'onBeforeLoanReopened()'", async () => {
+  describe("Function 'onBeforeLoanReopened()'", () => {
     it("Executes as expected if the borrowing policy is 'SingleActiveLoan'", async () => {
       await executeAndCheckLoanOpeningHook(
         "callOnBeforeLoanReopenedCreditLine(address,uint256)",
@@ -1369,7 +1369,7 @@ describe("Contract 'CreditLine'", async () => {
     });
   });
 
-  describe("Function onAfterLoanPayment()", async () => {
+  describe("Function onAfterLoanPayment()", () => {
     it("Executes as expected if the loan tracked balance is not zero", async () => {
       const { creditLine } = await setUpFixture(deployAndConfigureContractsWithBorrower);
       await prepareLoan(market, { trackedBalance: 123n });
@@ -1419,7 +1419,7 @@ describe("Contract 'CreditLine'", async () => {
     });
   });
 
-  describe("Function 'onAfterLoanRevocation()'", async () => {
+  describe("Function 'onAfterLoanRevocation()'", () => {
     it("Executes as expected", async () => {
       const { creditLine } = await setUpFixture(deployAndConfigureContractsWithBorrower);
       const loanState: LoanState = await prepareLoan(market);
@@ -1456,7 +1456,7 @@ describe("Contract 'CreditLine'", async () => {
     });
   });
 
-  describe("Function 'determineLoanTerms()'", async () => {
+  describe("Function 'determineLoanTerms()'", () => {
     it("Executes as expected even if the borrowing policy is violated", async () => {
       const fixture = await setUpFixture(deployAndConfigureContractsWithBorrower);
       const { creditLine, creditLineViaAdmin } = fixture;
@@ -1553,7 +1553,7 @@ describe("Contract 'CreditLine'", async () => {
     });
   });
 
-  describe("Function 'determineLateFeeAmount()' new", async () => {
+  describe("Function 'determineLateFeeAmount()' new", () => {
     it("Returns the expected value if the late fee policy for the account is 'Common'", async () => {
       const fixture = await setUpFixture(deployAndConfigureContractsWithBorrower);
       const { creditLine } = fixture;
@@ -1605,7 +1605,7 @@ describe("Contract 'CreditLine'", async () => {
     });
   });
 
-  describe("Function 'determineLateFeeAmount()' legacy", async () => {
+  describe("Function 'determineLateFeeAmount()' legacy", () => {
     it("Returns the expected value despite the 'Individual' late fee policy of the borrower", async () => {
       const fixture = await setUpFixture(deployAndConfigureContractsWithBorrower);
       const { creditLine } = fixture;
