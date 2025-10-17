@@ -68,7 +68,7 @@ const WITHDRAWAL_AMOUNT = MINT_AMOUNT / 200n;
 const REPAYMENT_AMOUNT = DEPOSIT_AMOUNT / 500n;
 const ADDON_AMOUNT_ZERO = 0;
 
-describe("Contract 'LiquidityPool'", async () => {
+describe("Contract 'LiquidityPool'", () => {
   let liquidityPoolFactory: ContractFactory;
   let tokenFactory: ContractFactory;
 
@@ -187,7 +187,7 @@ describe("Contract 'LiquidityPool'", async () => {
     return tx;
   }
 
-  describe("Function 'initialize()'", async () => {
+  describe("Function 'initialize()'", () => {
     it("Configures the contract as expected", async () => {
       const { liquidityPool } = await setUpFixture(deployLiquidityPool);
       // Role hashes
@@ -274,7 +274,7 @@ describe("Contract 'LiquidityPool'", async () => {
     });
   });
 
-  describe("Function '$__VERSION()'", async () => {
+  describe("Function '$__VERSION()'", () => {
     it("Returns expected values", async () => {
       const { liquidityPool } = await setUpFixture(deployLiquidityPool);
       const liquidityPoolVersion = await liquidityPool.$__VERSION();
@@ -282,7 +282,7 @@ describe("Contract 'LiquidityPool'", async () => {
     });
   });
 
-  describe("Function 'upgradeToAndCall()'", async () => {
+  describe("Function 'upgradeToAndCall()'", () => {
     it("Executes as expected", async () => {
       const { liquidityPool } = await setUpFixture(deployLiquidityPool);
       await checkContractUupsUpgrading(liquidityPool, liquidityPoolFactory);
@@ -307,7 +307,7 @@ describe("Contract 'LiquidityPool'", async () => {
     });
   });
 
-  describe("Function 'setAddonTreasury()", async () => {
+  describe("Function 'setAddonTreasury()", () => {
     it("Executes as expected and emits the correct event", async () => {
       const { liquidityPool } = await setUpFixture(deployLiquidityPool);
 
@@ -347,7 +347,7 @@ describe("Contract 'LiquidityPool'", async () => {
     });
   });
 
-  describe("Function 'setOperationalTreasury()", async () => {
+  describe("Function 'setOperationalTreasury()", () => {
     it("Executes as expected and emits the correct event", async () => {
       const { liquidityPool } = await setUpFixture(deployLiquidityPool);
       const allowance = 1; // This allowance should be enough
@@ -396,7 +396,7 @@ describe("Contract 'LiquidityPool'", async () => {
     });
   });
 
-  describe("Function 'registerWorkingTreasury()", async () => {
+  describe("Function 'registerWorkingTreasury()", () => {
     it("Executes as expected and emits the correct event", async () => {
       const { liquidityPool } = await setUpFixture(deployLiquidityPool);
       const allowance = 1; // This allowance should be enough
@@ -466,7 +466,7 @@ describe("Contract 'LiquidityPool'", async () => {
     });
   });
 
-  describe("Function 'unregisterWorkingTreasury()", async () => {
+  describe("Function 'unregisterWorkingTreasury()", () => {
     it("Executes as expected and emits the correct event", async () => {
       const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
       const lastWorkingTreasury = workingTreasuries[workingTreasuries.length - 1];
@@ -517,7 +517,7 @@ describe("Contract 'LiquidityPool'", async () => {
     });
   });
 
-  describe("Function 'approveSpender()", async () => {
+  describe("Function 'approveSpender()", () => {
     it("Executes as expected", async () => {
       const { liquidityPool } = await setUpFixture(deployLiquidityPool);
       let expectedAllowance = 1;
@@ -557,7 +557,7 @@ describe("Contract 'LiquidityPool'", async () => {
     });
   });
 
-  describe("Function 'initAdminRole()", async () => {
+  describe("Function 'initAdminRole()", () => {
     it("Executes as expected", async () => {
       const { liquidityPool } = await setUpFixture(deployLiquidityPool);
       await proveTx(liquidityPool.setRoleAdmin(ADMIN_ROLE, DEFAULT_ADMIN_ROLE));
@@ -578,7 +578,7 @@ describe("Contract 'LiquidityPool'", async () => {
     });
   });
 
-  describe("Function 'deposit()'", async () => {
+  describe("Function 'deposit()'", () => {
     it("Executes as expected", async () => {
       const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
       const depositAmount = (DEPOSIT_AMOUNT);
@@ -619,7 +619,7 @@ describe("Contract 'LiquidityPool'", async () => {
     });
   });
 
-  describe("Function 'depositFromOperationalTreasury()'", async () => {
+  describe("Function 'depositFromOperationalTreasury()'", () => {
     it("Executes as expected", async () => {
       const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
       const depositAmount = DEPOSIT_AMOUNT;
@@ -670,7 +670,7 @@ describe("Contract 'LiquidityPool'", async () => {
     });
   });
 
-  describe("Function 'depositFromWorkingTreasury()'", async () => {
+  describe("Function 'depositFromWorkingTreasury()'", () => {
     it("Executes as expected", async () => {
       const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
       const depositAmount = DEPOSIT_AMOUNT;
@@ -734,7 +734,7 @@ describe("Contract 'LiquidityPool'", async () => {
     });
   });
 
-  describe("Function 'depositFromReserve()'", async () => {
+  describe("Function 'depositFromReserve()'", () => {
     it("Executes as expected", async () => {
       const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
       const liquidityPoolAddress = getAddress(liquidityPool);
@@ -782,7 +782,7 @@ describe("Contract 'LiquidityPool'", async () => {
     });
   });
 
-  describe("Function 'withdraw()'", async () => {
+  describe("Function 'withdraw()'", () => {
     it("Executes as expected if only the borrowable balance is withdrawn", async () => {
       const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
       const withdrawalAmount = (WITHDRAWAL_AMOUNT);
@@ -837,7 +837,7 @@ describe("Contract 'LiquidityPool'", async () => {
     });
   });
 
-  describe("Function 'withdrawToOperationalTreasury()'", async () => {
+  describe("Function 'withdrawToOperationalTreasury()'", () => {
     it("Executes as expected", async () => {
       const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
       const withdrawalAmount = (WITHDRAWAL_AMOUNT);
@@ -891,7 +891,7 @@ describe("Contract 'LiquidityPool'", async () => {
     });
   });
 
-  describe("Function 'withdrawToWorkingTreasury()'", async () => {
+  describe("Function 'withdrawToWorkingTreasury()'", () => {
     it("Executes as expected", async () => {
       const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
       const withdrawalAmount = (WITHDRAWAL_AMOUNT);
@@ -962,7 +962,7 @@ describe("Contract 'LiquidityPool'", async () => {
     });
   });
 
-  describe("Function 'withdrawToReserve()'", async () => {
+  describe("Function 'withdrawToReserve()'", () => {
     it("Executes as expected", async () => {
       const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
       const withdrawalAmount = (WITHDRAWAL_AMOUNT);
@@ -1011,7 +1011,7 @@ describe("Contract 'LiquidityPool'", async () => {
     });
   });
 
-  describe("Function 'rescue()'", async () => {
+  describe("Function 'rescue()'", () => {
     const balance = 123456789n;
     const rescuedAmount = 123456780n;
 
@@ -1055,7 +1055,7 @@ describe("Contract 'LiquidityPool'", async () => {
     });
   });
 
-  describe("Function 'migrate()'", async () => {
+  describe("Function 'migrate()'", () => {
     // In this section function `setMarket()` and `getMarket()` are called on the testable version of the contract.
 
     it("Executes as expected and clears the market address", async () => {
@@ -1099,7 +1099,7 @@ describe("Contract 'LiquidityPool'", async () => {
     });
   });
 
-  describe("Function 'onBeforeLiquidityIn()'", async () => {
+  describe("Function 'onBeforeLiquidityIn()'", () => {
     it("Executes as expected", async () => {
       const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
       await proveTx(liquidityPool.deposit(DEPOSIT_AMOUNT));
@@ -1148,7 +1148,7 @@ describe("Contract 'LiquidityPool'", async () => {
     });
   });
 
-  describe("Function 'onBeforeLiquidityOut()'", async () => {
+  describe("Function 'onBeforeLiquidityOut()'", () => {
     it("Executes as expected", async () => {
       const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
       await proveTx(liquidityPool.deposit(DEPOSIT_AMOUNT));

@@ -10,7 +10,7 @@ const int64Max = maxUintForBits(63);
 
 const CC = 2n ** 64n; // conversion coefficient from integer to the 64.64 format
 
-describe("Library 'ABDKMath64x64'", async () => {
+describe("Library 'ABDKMath64x64'", () => {
   let mathFactory: ContractFactory;
 
   before(async () => {
@@ -26,7 +26,7 @@ describe("Library 'ABDKMath64x64'", async () => {
     };
   }
 
-  describe("Function 'fromUInt()'", async () => {
+  describe("Function 'fromUInt()'", () => {
     it("Executes as expected in different cases", async () => {
       const { mathContract } = await setUpFixture(deployContract);
       expect(await mathContract.fromUInt(0)).to.eq(0);
@@ -40,7 +40,7 @@ describe("Library 'ABDKMath64x64'", async () => {
     });
   });
 
-  describe("Function 'mul()'", async () => {
+  describe("Function 'mul()'", () => {
     it("Executes as expected in different cases", async () => {
       const { mathContract } = await setUpFixture(deployContract);
       expect(await mathContract.mul(0n, 0n)).to.eq(0n);
@@ -66,7 +66,7 @@ describe("Library 'ABDKMath64x64'", async () => {
     });
   });
 
-  describe("Function 'div()'", async () => {
+  describe("Function 'div()'", () => {
     it("Executes as expected in different cases", async () => {
       const { mathContract } = await setUpFixture(deployContract);
       expect(await mathContract.div(0n, 1n)).to.eq(0n);
@@ -92,7 +92,7 @@ describe("Library 'ABDKMath64x64'", async () => {
     });
   });
 
-  describe("Function 'pow()'", async () => {
+  describe("Function 'pow()'", () => {
     it("Executes as expected in different cases", async () => {
       const { mathContract } = await setUpFixture(deployContract);
       expect(await mathContract.pow(0n, 1n)).to.eq(0n);

@@ -158,7 +158,7 @@ function calculateTimestampByLoanPeriodIndex(periodIndex: number): number {
   return Math.floor(periodIndex * PERIOD_IN_SECONDS + NEGATIVE_TIME_OFFSET);
 }
 
-describe("Contract 'LendingMarket': complex tests", async () => {
+describe("Contract 'LendingMarket': complex tests", () => {
   let fixture: Fixture;
 
   let owner: HardhatEthersSigner;
@@ -557,7 +557,7 @@ describe("Contract 'LendingMarket': complex tests", async () => {
     expect(loanPreview.outstandingBalance).to.eq(0);
   }
 
-  describe("Complex scenarios", async () => {
+  describe("Complex scenarios", () => {
     it("Scenario 1: a typical loan with short freezing after defaulting and full repayment at the end", async () => {
       const principalAmount = 1e9; // 1000 BRLC
       const addonAmount = Math.floor(principalAmount * 0.2);

@@ -3,7 +3,7 @@ import { expect } from "chai";
 import { Contract, ContractFactory } from "ethers";
 import { setUpFixture } from "../../test-utils/common";
 
-describe("Library 'Rounding'", async () => {
+describe("Library 'Rounding'", () => {
   let roundingContractFactory: ContractFactory;
 
   before(async () => {
@@ -19,7 +19,7 @@ describe("Library 'Rounding'", async () => {
     };
   }
 
-  describe("Function 'roundMath()'", async () => {
+  describe("Function 'roundMath()'", () => {
     it("Executes as expected in different cases", async () => {
       const { roundingContract } = await setUpFixture(deployContract);
       const accuracy = 10000;
