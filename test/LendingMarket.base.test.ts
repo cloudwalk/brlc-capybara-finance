@@ -51,7 +51,7 @@ interface LoanState {
   installmentCount: number;
   lateFeeAmount: number;
   discountAmount: number;
-  penalizedBalance: number | bigint;
+  penaltyInterestRate: number;
 
   [key: string]: string | number | bigint; // Index signature
 }
@@ -91,9 +91,9 @@ interface LoanPreviewExtended {
   interestRateSecondary: number;
   firstInstallmentId: number;
   installmentCount: number;
-  penalizedBalance: number | bigint;
+  penaltyInterestRate: number;
 
-  [key: string]: number | bigint | string; // Index signature
+  [key: string]: number | string; // Index signature
 }
 
 interface InstallmentLoanPreview {
@@ -165,7 +165,7 @@ const EVENT_NAME_INSTALLMENT_LOAN_REVOKED = "InstallmentLoanRevoked";
 const EVENT_NAME_ON_AFTER_LOAN_REVOCATION_CALLED = "OnAfterLoanRevocationCalled";
 const ERROR_NAME_REPAYMENT_UNDONE = "RepaymentUndone";
 const EVENT_NAME_LOAN_CORRECTED = "LoanCorrected";
-const EVENT_NAME_LOAN_PENALIZED_BALANCE_UPDATED = "LoanPenalizedBalanceUpdated";
+const EVENT_NAME_LOAN_PENALTY_INTEREST_RATE_UPDATED = "LoanPenaltyInterestRateUpdated";
 
 // Errors of the library contracts
 const ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT = "AccessControlUnauthorizedAccount";
@@ -195,7 +195,6 @@ const ERROR_NAME_PROGRAM_ID_EXCESS = "ProgramIdExcess";
 const ERROR_NAME_PROGRAM_NOT_EXIST = "ProgramNotExist";
 const ERROR_NAME_REPAYMENT_TIMESTAMP_INVALID = "RepaymentTimestampInvalid";
 const ERROR_NAME_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST = "SafeCastOverflowedUintDowncast";
-const ERROR_NAME_TOTAL_PENALIZED_BALANCE_UNROUNDED = "TotalPenalizedBalanceUnrounded";
 const ERROR_NAME_TRACKED_TIMESTAMP_INVALID = "TrackedTimestampInvalid";
 const ERROR_NAME_ZERO_ADDRESS = "ZeroAddress";
 
@@ -214,8 +213,9 @@ const REPAYMENT_AMOUNT = 50_000_000_000;
 const DISCOUNT_AMOUNT = 10_000_000_000;
 const FULL_REPAYMENT_AMOUNT = ethers.MaxUint256;
 const INTEREST_RATE_FACTOR = 10 ** 9;
-const INTEREST_RATE_PRIMARY = INTEREST_RATE_FACTOR / 10;
-const INTEREST_RATE_SECONDARY = INTEREST_RATE_FACTOR / 5;
+const INTEREST_RATE_PRIMARY = INTEREST_RATE_FACTOR / 10; // 10%
+const INTEREST_RATE_SECONDARY = INTEREST_RATE_FACTOR / 5; // 20%
+const PENALTY_INTEREST_RATE = Math.round(INTEREST_RATE_FACTOR / 3); // 33.33%
 const LATE_FEE_RATE = INTEREST_RATE_FACTOR / 50; // 2%
 const PERIOD_IN_SECONDS = 86400;
 const DURATION_IN_PERIODS = 10;
@@ -225,9 +225,13 @@ const NEGATIVE_TIME_OFFSET = 3 * 60 * 60; // 3 hours
 const INSTALLMENT_COUNT = 3;
 const BORROWED_AMOUNTS: number[] = [BORROWED_AMOUNT * 3 - 1, BORROWED_AMOUNT * 2 + 1, BORROWED_AMOUNT];
 const ADDON_AMOUNTS: number[] = [ADDON_AMOUNT * 3 - 1, ADDON_AMOUNT * 2 + 1, ADDON_AMOUNT];
-const PENALIZED_BALANCES_NON_ZERO: number[] = BORROWED_AMOUNTS.map(amount => amount + ACCURACY_FACTOR * 10);
-const PENALIZED_BALANCES_ZERO: number[] = Array.from({ length: BORROWED_AMOUNTS.length }, () => 0);
 const DURATIONS_IN_PERIODS: number[] = [0, DURATION_IN_PERIODS / 2, DURATION_IN_PERIODS];
+
+const PENALTY_INTEREST_RATE_NON_ZERO: number[] = Array.from(
+  { length: BORROWED_AMOUNTS.length },
+  (_, i) => PENALTY_INTEREST_RATE + i,
+);
+const PENALTY_INTEREST_RATES_ZERO: number[] = Array.from({ length: BORROWED_AMOUNTS.length }, () => 0);
 
 const defaultLoanState: LoanState = {
   programId: 0,
@@ -247,7 +251,7 @@ const defaultLoanState: LoanState = {
   installmentCount: 0,
   lateFeeAmount: 0,
   discountAmount: 0,
-  penalizedBalance: 0,
+  penaltyInterestRate: 0,
 };
 
 const defaultLoanConfig: LoanConfig = {
@@ -420,7 +424,7 @@ describe("Contract 'LendingMarket': base tests", () => {
     firstInstallmentId: number;
     borrowedAmounts: number[];
     addonAmounts: number[];
-    penalizedBalances: (number | bigint)[];
+    penaltyInterestRates: number[];
     durations: number[];
     lateFeeRate: number;
     timestamp: number;
@@ -444,7 +448,7 @@ describe("Contract 'LendingMarket': base tests", () => {
         trackedTimestamp: timestampWithOffset,
         firstInstallmentId: props.firstInstallmentId,
         installmentCount: props.borrowedAmounts.length,
-        penalizedBalance: props.penalizedBalances[i],
+        penaltyInterestRate: props.penaltyInterestRates[i],
       };
       const loanConfig: LoanConfig = {
         ...defaultLoanConfig,
@@ -460,7 +464,7 @@ describe("Contract 'LendingMarket': base tests", () => {
     borrowedAmounts: number[],
     addonAmounts: number[],
     durations: number[],
-    penalizedBalances: (number | bigint)[],
+    penaltyInterestRates: number[],
   ): Promise<Loan[]> {
     const firstInstallmentId = Number(await marketViaAdmin.loanCounter());
     const tx = marketViaAdmin.takeInstallmentLoan(
@@ -469,14 +473,14 @@ describe("Contract 'LendingMarket': base tests", () => {
       borrowedAmounts,
       addonAmounts,
       durations,
-      penalizedBalances,
+      penaltyInterestRates,
     );
 
     return createInstallmentLoanParts({
       firstInstallmentId,
       borrowedAmounts,
       addonAmounts,
-      penalizedBalances,
+      penaltyInterestRates: penaltyInterestRates,
       durations: durations,
       lateFeeRate: LATE_FEE_RATE,
       timestamp: await getTxTimestamp(tx),
@@ -517,8 +521,12 @@ describe("Contract 'LendingMarket': base tests", () => {
 
     if (loan.state.trackedBalance != 0 && periodIndex > duePeriodIndex && trackedPeriodIndex <= duePeriodIndex) {
       let outstandingBalance;
-      if (loan.state.penalizedBalance.toString() !== "0") {
-        outstandingBalance = Number(loan.state.penalizedBalance);
+      if (loan.state.penaltyInterestRate.toString() !== "0") {
+        outstandingBalance = calculateTrackedBalance(
+          loan.state.borrowedAmount + loan.state.addonAmount,
+          loan.state.durationInPeriods,
+          loan.state.penaltyInterestRate,
+        ) - loan.state.repaidAmount - loan.state.discountAmount;
       } else {
         outstandingBalance = calculateTrackedBalance(
           loan.state.trackedBalance,
@@ -558,8 +566,12 @@ describe("Contract 'LendingMarket': base tests", () => {
     }
 
     if (numberOfPeriodsWithSecondaryRate > 0) {
-      if (loan.state.penalizedBalance.toString() !== "0") {
-        trackedBalance = Number(loan.state.penalizedBalance);
+      if (loan.state.penaltyInterestRate.toString() !== "0") {
+        trackedBalance = calculateTrackedBalance(
+          loan.state.borrowedAmount + loan.state.addonAmount,
+          loan.state.durationInPeriods,
+          loan.state.penaltyInterestRate,
+        ) - loan.state.repaidAmount - loan.state.discountAmount;
       }
       trackedBalance += determineLateFeeAmount(loan, timestamp);
       trackedBalance = calculateTrackedBalance(
@@ -598,7 +610,7 @@ describe("Contract 'LendingMarket': base tests", () => {
       interestRateSecondary: loan.state.interestRateSecondary,
       firstInstallmentId: loan.state.firstInstallmentId,
       installmentCount: loan.state.installmentCount,
-      penalizedBalance: loan.state.penalizedBalance,
+      penaltyInterestRate: loan.state.penaltyInterestRate,
     };
   }
 
@@ -759,7 +771,7 @@ describe("Contract 'LendingMarket': base tests", () => {
       BORROWED_AMOUNTS,
       ADDON_AMOUNTS,
       DURATIONS_IN_PERIODS,
-      PENALIZED_BALANCES_ZERO,
+      PENALTY_INTEREST_RATES_ZERO,
     );
     return fixture;
   }
@@ -858,10 +870,10 @@ describe("Contract 'LendingMarket': base tests", () => {
     functionName: string;
     installmentCount: number;
     specialAddonAmounts?: number[];
-    specialPenalizedBalances?: number[];
+    specialPenaltyInterestRate?: number[];
   }) {
     const { marketViaAdmin } = await setUpFixture(deployLendingMarketAndConfigureItForLoan);
-    const { functionName, installmentCount, specialAddonAmounts, specialPenalizedBalances } = props;
+    const { functionName, installmentCount, specialAddonAmounts, specialPenaltyInterestRate } = props;
 
     expect(installmentCount).not.greaterThan(INSTALLMENT_COUNT);
 
@@ -871,14 +883,13 @@ describe("Contract 'LendingMarket': base tests", () => {
     const addonAmounts = !specialAddonAmounts
       ? ADDON_AMOUNTS.slice(0, installmentCount)
       : specialAddonAmounts;
-    const penalizedBalances = !specialPenalizedBalances
-      ? PENALIZED_BALANCES_NON_ZERO.slice(0, installmentCount)
-      : specialPenalizedBalances;
+    const penaltyInterestRates = !specialPenaltyInterestRate
+      ? PENALTY_INTEREST_RATE_NON_ZERO.slice(0, installmentCount)
+      : specialPenaltyInterestRate;
 
     if (installmentCount == 1) {
       borrowedAmounts[0] = BORROWED_AMOUNT;
       addonAmounts[0] = ADDON_AMOUNT;
-      penalizedBalances[0] = BORROWED_AMOUNT + ACCURACY_FACTOR * 10;
     }
     const expectedLoanIdRange = [BigInt(expectedLoanIds[0]), BigInt(expectedLoanIds.length)];
     const totalBorrowedAmount = borrowedAmounts.reduce((sum, amount) => sum + amount);
@@ -901,7 +912,7 @@ describe("Contract 'LendingMarket': base tests", () => {
           borrowedAmounts,
           addonAmounts,
           durationsInPeriods,
-          penalizedBalances,
+          penaltyInterestRates,
         );
         break;
       case "takeInstallmentLoanFor":
@@ -927,7 +938,7 @@ describe("Contract 'LendingMarket': base tests", () => {
           borrowedAmounts,
           addonAmounts,
           durationsInPeriods,
-          penalizedBalances,
+          penaltyInterestRates,
         );
         break;
       case "takeInstallmentLoanFor":
@@ -938,7 +949,7 @@ describe("Contract 'LendingMarket': base tests", () => {
           addonAmounts,
           durationsInPeriods,
         );
-        penalizedBalances.fill(0);
+        penaltyInterestRates.fill(0);
         break;
       default:
         throw new Error(`Invalid function name: ${functionName}`);
@@ -949,7 +960,7 @@ describe("Contract 'LendingMarket': base tests", () => {
       firstInstallmentId: expectedLoanIds[0],
       borrowedAmounts,
       addonAmounts,
-      penalizedBalances,
+      penaltyInterestRates: penaltyInterestRates,
       durations: durationsInPeriods,
       lateFeeRate: LATE_FEE_RATE,
       timestamp,
@@ -976,10 +987,10 @@ describe("Contract 'LendingMarket': base tests", () => {
           INTEREST_RATE_SECONDARY,
         );
       await expect(tx).to.emit(creditLine, EVENT_NAME_ON_BEFORE_LOAN_TAKEN_CALLED).withArgs(expectedLoanIds[i]);
-      if (penalizedBalances[i] !== 0) {
-        await expect(tx).to.emit(marketViaAdmin, EVENT_NAME_LOAN_PENALIZED_BALANCE_UPDATED).withArgs(
+      if (penaltyInterestRates[i] !== 0) {
+        await expect(tx).to.emit(marketViaAdmin, EVENT_NAME_LOAN_PENALTY_INTEREST_RATE_UPDATED).withArgs(
           expectedLoanIds[i],
-          penalizedBalances[i],
+          penaltyInterestRates[i],
           0,
         );
       }
@@ -1012,9 +1023,9 @@ describe("Contract 'LendingMarket': base tests", () => {
       expect(await getNumberOfEvents(tx, token, EVENT_NAME_TRANSFER)).to.eq(1);
       expect(await getNumberOfEvents(tx, liquidityPool, EVENT_NAME_ON_BEFORE_LIQUIDITY_OUT_CALLED)).to.eq(1);
     }
-    const expectedNumberOfPenalizedBalanceEvents = penalizedBalances.filter(balance => balance !== 0).length;
-    expect(await getNumberOfEvents(tx, marketViaAdmin, EVENT_NAME_LOAN_PENALIZED_BALANCE_UPDATED))
-      .to.eq(expectedNumberOfPenalizedBalanceEvents);
+    const expectedNumberOfPenaltyInterestRateEvents = penaltyInterestRates.filter(balance => balance !== 0).length;
+    expect(await getNumberOfEvents(tx, marketViaAdmin, EVENT_NAME_LOAN_PENALTY_INTEREST_RATE_UPDATED))
+      .to.eq(expectedNumberOfPenaltyInterestRateEvents);
 
     // Check the returned value of the function for the second loan
     const nextActualLoanId: bigint = await marketViaAdmin.takeLoanFor.staticCall(
@@ -1667,22 +1678,22 @@ describe("Contract 'LendingMarket': base tests", () => {
         });
       });
 
-      it("The loan has multiple installments and all penalized balance are zero", async () => {
+      it("The loan has multiple installments and all penalty interest rates are zero", async () => {
         await executeAndCheckInstallmentLoanTakingFunction({
           functionName,
           installmentCount: INSTALLMENT_COUNT,
-          specialPenalizedBalances: Array.from({ length: INSTALLMENT_COUNT }, () => 0),
+          specialPenaltyInterestRate: Array.from({ length: INSTALLMENT_COUNT }, () => 0),
         });
       });
 
-      it("The loan has multiple installments and some penalized balance are zero", async () => {
-        const specialPenalizedBalances = [...PENALIZED_BALANCES_NON_ZERO];
-        specialPenalizedBalances[INSTALLMENT_COUNT - 1] = 0;
+      it("The loan has multiple installments and some penalty interest rates are zero", async () => {
+        const specialPenaltyInterestRate = [...PENALTY_INTEREST_RATE_NON_ZERO];
+        specialPenaltyInterestRate[INSTALLMENT_COUNT - 1] = 0;
 
         await executeAndCheckInstallmentLoanTakingFunction({
           functionName,
           installmentCount: INSTALLMENT_COUNT,
-          specialPenalizedBalances,
+          specialPenaltyInterestRate: specialPenaltyInterestRate,
         });
       });
 
@@ -1703,7 +1714,7 @@ describe("Contract 'LendingMarket': base tests", () => {
             BORROWED_AMOUNTS,
             ADDON_AMOUNTS,
             DURATIONS_IN_PERIODS,
-            PENALIZED_BALANCES_NON_ZERO,
+            PENALTY_INTEREST_RATE_NON_ZERO,
           ),
         ).to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_ENFORCED_PAUSED);
       });
@@ -1718,7 +1729,7 @@ describe("Contract 'LendingMarket': base tests", () => {
             BORROWED_AMOUNTS,
             ADDON_AMOUNTS,
             DURATIONS_IN_PERIODS,
-            PENALIZED_BALANCES_NON_ZERO,
+            PENALTY_INTEREST_RATE_NON_ZERO,
           ),
         ).to.be.revertedWithCustomError(
           market,
@@ -1732,7 +1743,7 @@ describe("Contract 'LendingMarket': base tests", () => {
             BORROWED_AMOUNTS,
             ADDON_AMOUNTS,
             DURATIONS_IN_PERIODS,
-            PENALIZED_BALANCES_NON_ZERO,
+            PENALTY_INTEREST_RATE_NON_ZERO,
           ),
         ).to.be.revertedWithCustomError(
           market,
@@ -1751,7 +1762,7 @@ describe("Contract 'LendingMarket': base tests", () => {
             BORROWED_AMOUNTS,
             ADDON_AMOUNTS,
             DURATIONS_IN_PERIODS,
-            PENALIZED_BALANCES_NON_ZERO,
+            PENALTY_INTEREST_RATE_NON_ZERO,
           ),
         ).to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_ZERO_ADDRESS);
       });
@@ -1767,7 +1778,7 @@ describe("Contract 'LendingMarket': base tests", () => {
             BORROWED_AMOUNTS,
             ADDON_AMOUNTS,
             DURATIONS_IN_PERIODS,
-            PENALIZED_BALANCES_NON_ZERO,
+            PENALTY_INTEREST_RATE_NON_ZERO,
           ),
         ).to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_PROGRAM_NOT_EXIST);
       });
@@ -1783,7 +1794,7 @@ describe("Contract 'LendingMarket': base tests", () => {
             wrongBorrowedAmounts,
             ADDON_AMOUNTS,
             DURATIONS_IN_PERIODS,
-            PENALIZED_BALANCES_NON_ZERO,
+            PENALTY_INTEREST_RATE_NON_ZERO,
           ),
         ).to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_INVALID_AMOUNT);
       });
@@ -1800,7 +1811,7 @@ describe("Contract 'LendingMarket': base tests", () => {
             wrongBorrowedAmounts,
             ADDON_AMOUNTS,
             DURATIONS_IN_PERIODS,
-            PENALIZED_BALANCES_NON_ZERO,
+            PENALTY_INTEREST_RATE_NON_ZERO,
           ),
         ).to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_INVALID_AMOUNT);
       });
@@ -1817,7 +1828,7 @@ describe("Contract 'LendingMarket': base tests", () => {
             BORROWED_AMOUNTS,
             wrongAddonAmounts,
             DURATIONS_IN_PERIODS,
-            PENALIZED_BALANCES_NON_ZERO,
+            PENALTY_INTEREST_RATE_NON_ZERO,
           ),
         ).to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_INVALID_AMOUNT);
       });
@@ -1834,7 +1845,7 @@ describe("Contract 'LendingMarket': base tests", () => {
             BORROWED_AMOUNTS,
             ADDON_AMOUNTS,
             wrongDurations,
-            PENALIZED_BALANCES_NON_ZERO,
+            PENALTY_INTEREST_RATE_NON_ZERO,
           ),
         ).to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_DURATION_ARRAY_INVALID);
       });
@@ -1850,7 +1861,7 @@ describe("Contract 'LendingMarket': base tests", () => {
             BORROWED_AMOUNTS,
             ADDON_AMOUNTS,
             DURATIONS_IN_PERIODS,
-            PENALIZED_BALANCES_NON_ZERO,
+            PENALTY_INTEREST_RATE_NON_ZERO,
           ),
         ).to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_INSTALLMENT_COUNT_EXCESS);
       });
@@ -1859,9 +1870,9 @@ describe("Contract 'LendingMarket': base tests", () => {
         const { marketViaAdmin } = await setUpFixture(deployLendingMarketAndConfigureItForLoan);
         const wrongAddonAmounts = [...ADDON_AMOUNTS, 0];
         const wrongDurations = [...DURATIONS_IN_PERIODS, DURATIONS_IN_PERIODS[INSTALLMENT_COUNT - 1] + 1];
-        const wrongPenalizedBalances = [
-          ...PENALIZED_BALANCES_NON_ZERO,
-          PENALIZED_BALANCES_NON_ZERO[INSTALLMENT_COUNT - 1] + 1,
+        const wrongPenaltyInterestRates = [
+          ...PENALTY_INTEREST_RATE_NON_ZERO,
+          PENALTY_INTEREST_RATE_NON_ZERO[INSTALLMENT_COUNT - 1] + 1,
         ];
 
         await expect(
@@ -1871,7 +1882,7 @@ describe("Contract 'LendingMarket': base tests", () => {
             BORROWED_AMOUNTS,
             wrongAddonAmounts,
             DURATIONS_IN_PERIODS,
-            PENALIZED_BALANCES_NON_ZERO,
+            PENALTY_INTEREST_RATE_NON_ZERO,
           ),
         ).to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_ARRAY_LENGTH_MISMATCH);
 
@@ -1882,7 +1893,7 @@ describe("Contract 'LendingMarket': base tests", () => {
             BORROWED_AMOUNTS,
             ADDON_AMOUNTS,
             wrongDurations,
-            PENALIZED_BALANCES_NON_ZERO,
+            PENALTY_INTEREST_RATE_NON_ZERO,
           ),
         ).to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_ARRAY_LENGTH_MISMATCH);
 
@@ -1893,7 +1904,7 @@ describe("Contract 'LendingMarket': base tests", () => {
             BORROWED_AMOUNTS,
             ADDON_AMOUNTS,
             DURATIONS_IN_PERIODS,
-            wrongPenalizedBalances,
+            wrongPenaltyInterestRates,
           ),
         ).to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_ARRAY_LENGTH_MISMATCH);
       });
@@ -1910,7 +1921,7 @@ describe("Contract 'LendingMarket': base tests", () => {
             wrongBorrowedAmounts,
             ADDON_AMOUNTS,
             DURATIONS_IN_PERIODS,
-            PENALIZED_BALANCES_NON_ZERO,
+            PENALTY_INTEREST_RATE_NON_ZERO,
           ),
         ).to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_INVALID_AMOUNT);
       });
@@ -1928,7 +1939,7 @@ describe("Contract 'LendingMarket': base tests", () => {
             BORROWED_AMOUNTS,
             ADDON_AMOUNTS,
             DURATIONS_IN_PERIODS,
-            PENALIZED_BALANCES_NON_ZERO,
+            PENALTY_INTEREST_RATE_NON_ZERO,
           ),
         ).to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_PROGRAM_CREDIT_LINE_NOT_CONFIGURED);
       });
@@ -1946,7 +1957,7 @@ describe("Contract 'LendingMarket': base tests", () => {
             BORROWED_AMOUNTS,
             ADDON_AMOUNTS,
             DURATIONS_IN_PERIODS,
-            PENALIZED_BALANCES_NON_ZERO,
+            PENALTY_INTEREST_RATE_NON_ZERO,
           ),
         ).to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_PROGRAM_LIQUIDITY_POOL_NOT_CONFIGURED);
       });
@@ -1962,7 +1973,7 @@ describe("Contract 'LendingMarket': base tests", () => {
             BORROWED_AMOUNTS,
             ADDON_AMOUNTS,
             DURATIONS_IN_PERIODS,
-            PENALIZED_BALANCES_NON_ZERO,
+            PENALTY_INTEREST_RATE_NON_ZERO,
           ),
         ).to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_LOAN_ID_EXCESS);
       });
@@ -1978,26 +1989,9 @@ describe("Contract 'LendingMarket': base tests", () => {
             BORROWED_AMOUNTS,
             ADDON_AMOUNTS,
             DURATIONS_IN_PERIODS,
-            PENALIZED_BALANCES_NON_ZERO,
+            PENALTY_INTEREST_RATE_NON_ZERO,
           ),
         ).to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_ADDON_TREASURY_ADDRESS_ZERO);
-      });
-
-      it("The total penalized balance is not rounded according to the accuracy factor", async () => {
-        const { marketViaAdmin } = await setUpFixture(deployLendingMarketAndConfigureItForLoan);
-        const wrongPenalizedBalances = [...PENALIZED_BALANCES_NON_ZERO];
-        wrongPenalizedBalances[INSTALLMENT_COUNT - 1] += 1;
-
-        await expect(
-          marketViaAdmin.takeInstallmentLoan(
-            borrower.address,
-            PROGRAM_ID,
-            BORROWED_AMOUNTS,
-            ADDON_AMOUNTS,
-            DURATIONS_IN_PERIODS,
-            wrongPenalizedBalances,
-          ),
-        ).to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_TOTAL_PENALIZED_BALANCE_UNROUNDED);
       });
     });
   });
@@ -2945,7 +2939,7 @@ describe("Contract 'LendingMarket': base tests", () => {
         [BORROWED_AMOUNT, BORROWED_AMOUNT],
         [ADDON_AMOUNT, ADDON_AMOUNT],
         [DURATION_IN_PERIODS, DURATION_IN_PERIODS],
-        PENALIZED_BALANCES_ZERO.slice(0, 2),
+        PENALTY_INTEREST_RATES_ZERO.slice(0, 2),
       );
       const isReceiverAddressZero = props.isReceiverAddressZero ?? false;
       const undoRepaymentsInReverseOrder = props.undoRepaymentsInReverseOrder ?? false;
@@ -2969,7 +2963,7 @@ describe("Contract 'LendingMarket': base tests", () => {
       }
       const operationToUndoIndex = operationToUndoIndexes[operationToUndoIndexes.length - 1];
 
-      // Undo all the needed repayment except one
+      // Undo all the repayments except one
       for (const operationIndex of operationToUndoIndexes) {
         if (operationIndex !== operationToUndoIndex) {
           const repaymentAmount = operations[operationIndex].amount === FULL_REPAYMENT_AMOUNT
@@ -2982,7 +2976,7 @@ describe("Contract 'LendingMarket': base tests", () => {
         }
       }
 
-      // Undo the last needed repayment
+      // Undo the last repayment
       {
         const repaymentAmount = operations[operationToUndoIndex].amount === FULL_REPAYMENT_AMOUNT
           ? firstLoanTrackedBalanceBeforeRepayments[operationToUndoIndex]
@@ -4311,14 +4305,14 @@ describe("Contract 'LendingMarket': base tests", () => {
     });
   });
 
-  describe("Function 'updateLoanPenalizedBalance()'", () => {
+  describe("Function 'updateLoanPenaltyInterestRate()'", () => {
     async function executeAndCheck(props: {
-      oldPenalizedBalance: number | bigint;
-      newPenalizedBalance: number | bigint;
+      oldPenaltyInterestRate: number;
+      newPenaltyInterestRate: number;
     }) {
       const fixture = await deployLendingMarketAndConfigureItForLoan();
       const { marketViaAdmin } = fixture;
-      const { oldPenalizedBalance, newPenalizedBalance } = props;
+      const { oldPenaltyInterestRate, newPenaltyInterestRate } = props;
 
       // Take an installment loan
       const [loan] = await takeInstallmentLoan(
@@ -4326,55 +4320,55 @@ describe("Contract 'LendingMarket': base tests", () => {
         [BORROWED_AMOUNT],
         [ADDON_AMOUNT],
         [DURATION_IN_PERIODS],
-        [oldPenalizedBalance],
+        [oldPenaltyInterestRate],
       );
 
-      loan.state.penalizedBalance = newPenalizedBalance;
+      loan.state.penaltyInterestRate = newPenaltyInterestRate;
 
-      await expect(marketViaAdmin.updateLoanPenalizedBalance(loan.id, newPenalizedBalance))
-        .to.emit(marketViaAdmin, EVENT_NAME_LOAN_PENALIZED_BALANCE_UPDATED)
-        .withArgs(loan.id, newPenalizedBalance, oldPenalizedBalance);
+      await expect(marketViaAdmin.updateLoanPenaltyInterestRate(loan.id, newPenaltyInterestRate))
+        .to.emit(marketViaAdmin, EVENT_NAME_LOAN_PENALTY_INTEREST_RATE_UPDATED)
+        .withArgs(loan.id, newPenaltyInterestRate, oldPenaltyInterestRate);
       checkEquality(await marketViaAdmin.getLoanState(loan.id), loan.state);
     }
 
-    describe("Executes as expected and emits the correct event if the penalized balance", () => {
+    describe("Executes as expected and emits the correct event if the penalty interest rate", () => {
       it("Increases from zero", async () => {
         await executeAndCheck({
-          oldPenalizedBalance: 0,
-          newPenalizedBalance: maxUintForBits(64),
+          oldPenaltyInterestRate: 0,
+          newPenaltyInterestRate: Number(maxUintForBits(32)),
         });
       });
 
       it("Increases from non-zero", async () => {
         await executeAndCheck({
-          oldPenalizedBalance: BigInt(ACCURACY_FACTOR),
-          newPenalizedBalance: maxUintForBits(64),
+          oldPenaltyInterestRate: 1,
+          newPenaltyInterestRate: Number(maxUintForBits(32)),
         });
       });
 
       it("Decreases", async () => {
         await executeAndCheck({
-          oldPenalizedBalance: BigInt(ACCURACY_FACTOR),
-          newPenalizedBalance: BigInt(ACCURACY_FACTOR) - 1n,
+          oldPenaltyInterestRate: Number(maxUintForBits(32)),
+          newPenaltyInterestRate: Number(maxUintForBits(32)) - 1,
         });
       });
 
       it("Decreases to zero", async () => {
         await executeAndCheck({
-          oldPenalizedBalance: BigInt(ACCURACY_FACTOR),
-          newPenalizedBalance: 0,
+          oldPenaltyInterestRate: Number(maxUintForBits(32)),
+          newPenaltyInterestRate: 0,
         });
       });
     });
 
     describe("Is reverted if", () => {
-      const newPenalizedBalance = maxUintForBits(64);
+      const newPenaltyInterestRate = Number(maxUintForBits(32));
 
       it("The contract is paused", async () => {
         const { market, marketViaAdmin, ordinaryLoan: loan } = await setUpFixture(deployLendingMarketAndTakeLoans);
         await proveTx(market.pause());
 
-        await expect(marketViaAdmin.updateLoanPenalizedBalance(loan.id, newPenalizedBalance))
+        await expect(marketViaAdmin.updateLoanPenaltyInterestRate(loan.id, newPenaltyInterestRate))
           .to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_ENFORCED_PAUSED);
       });
 
@@ -4382,7 +4376,7 @@ describe("Contract 'LendingMarket': base tests", () => {
         const { marketViaAdmin, ordinaryLoan: loan } = await setUpFixture(deployLendingMarketAndTakeLoans);
         const wrongLoanId = loan.id + 123;
 
-        await expect(marketViaAdmin.updateLoanPenalizedBalance(wrongLoanId, newPenalizedBalance))
+        await expect(marketViaAdmin.updateLoanPenaltyInterestRate(wrongLoanId, newPenaltyInterestRate))
           .to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_LOAN_NOT_EXIST);
       });
 
@@ -4390,46 +4384,46 @@ describe("Contract 'LendingMarket': base tests", () => {
         const { marketViaAdmin, ordinaryLoan: loan } = await setUpFixture(deployLendingMarketAndTakeLoans);
         await proveTx(connect(marketViaAdmin, borrower).repayLoan(loan.id, FULL_REPAYMENT_AMOUNT));
 
-        await expect(marketViaAdmin.updateLoanPenalizedBalance(loan.id, newPenalizedBalance))
+        await expect(marketViaAdmin.updateLoanPenaltyInterestRate(loan.id, newPenaltyInterestRate))
           .to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_LOAN_ALREADY_REPAID);
       });
 
       it("The caller does not have the admin role", async () => {
         const { market, ordinaryLoan: loan } = await setUpFixture(deployLendingMarketAndTakeLoans);
 
-        await expect(connect(market, owner).updateLoanPenalizedBalance(loan.id, newPenalizedBalance))
+        await expect(connect(market, owner).updateLoanPenaltyInterestRate(loan.id, newPenaltyInterestRate))
           .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
           .withArgs(owner.address, ADMIN_ROLE);
-        await expect(connect(market, borrower).updateLoanPenalizedBalance(loan.id, newPenalizedBalance))
+        await expect(connect(market, borrower).updateLoanPenaltyInterestRate(loan.id, newPenaltyInterestRate))
           .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
           .withArgs(borrower.address, ADMIN_ROLE);
-        await expect(connect(market, stranger).updateLoanPenalizedBalance(loan.id, newPenalizedBalance))
+        await expect(connect(market, stranger).updateLoanPenaltyInterestRate(loan.id, newPenaltyInterestRate))
           .to.be.revertedWithCustomError(market, ERROR_NAME_ACCESS_CONTROL_UNAUTHORIZED_ACCOUNT)
           .withArgs(stranger.address, ADMIN_ROLE);
       });
 
-      it("The provide new penalized balance equals the previous one", async () => {
+      it("The provide new penalty interest rate balance equals the previous one", async () => {
         const { marketViaAdmin, ordinaryLoan: loan } = await setUpFixture(deployLendingMarketAndTakeLoans);
-        const zeroPenalizedBalance = 0;
-        const nonZeroPenalizedBalance = 123;
+        const zeroPenaltyInterestRate = 0;
+        const nonZeroPenaltyInterestRate = Number(maxUintForBits(32));
 
-        // The same zero penalized balance
-        await expect(marketViaAdmin.updateLoanPenalizedBalance(loan.id, zeroPenalizedBalance))
+        // The same zero penalty interest rate
+        await expect(marketViaAdmin.updateLoanPenaltyInterestRate(loan.id, zeroPenaltyInterestRate))
           .to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_ALREADY_CONFIGURED);
 
-        // The same non-zero penalized balance
-        await proveTx(marketViaAdmin.updateLoanPenalizedBalance(loan.id, nonZeroPenalizedBalance));
-        await expect(marketViaAdmin.updateLoanPenalizedBalance(loan.id, nonZeroPenalizedBalance))
+        // The same non-zero penalty interest rate
+        await proveTx(marketViaAdmin.updateLoanPenaltyInterestRate(loan.id, nonZeroPenaltyInterestRate));
+        await expect(marketViaAdmin.updateLoanPenaltyInterestRate(loan.id, nonZeroPenaltyInterestRate))
           .to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_ALREADY_CONFIGURED);
       });
 
-      it("The provide new penalized balance is greater than 64-bit unsigned integer", async () => {
+      it("The provide new penalty interest rate is greater than 32-bit unsigned integer", async () => {
         const { marketViaAdmin, ordinaryLoan: loan } = await setUpFixture(deployLendingMarketAndTakeLoans);
-        const wrongPenalizedBalance = maxUintForBits(64) + 1n;
+        const wrongPenaltyInterestRate = maxUintForBits(32) + 1n;
 
-        await expect(marketViaAdmin.updateLoanPenalizedBalance(loan.id, wrongPenalizedBalance))
+        await expect(marketViaAdmin.updateLoanPenaltyInterestRate(loan.id, wrongPenaltyInterestRate))
           .to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST)
-          .withArgs(64, wrongPenalizedBalance);
+          .withArgs(32, wrongPenaltyInterestRate);
       });
     });
   });
@@ -5149,10 +5143,10 @@ describe("Contract 'LendingMarket': base tests", () => {
     });
   });
 
-  describe("Scenarios with penalized balances", () => {
+  describe("Scenarios with penalty interest rates", () => {
     const borrowedAmount = 100_000_000;
     const addonAmount = 20_000;
-    const penalizedBalance = 700_000_000;
+    const penaltyInterestRate = INTEREST_RATE_FACTOR / 2; // 50%
 
     let marketViaAdmin: Contract;
     let loan: Loan;
@@ -5174,7 +5168,7 @@ describe("Contract 'LendingMarket': base tests", () => {
           [borrowedAmount],
           [addonAmount],
           [DURATION_IN_PERIODS],
-          [penalizedBalance],
+          [penaltyInterestRate],
         );
       });
 
@@ -5188,22 +5182,38 @@ describe("Contract 'LendingMarket': base tests", () => {
         await getAndCheckLoanPreviewAtPeriod(period);
       });
 
-      it("one day after the due date", async () => {
+      it("one day after the due date without repayments or discounts", async () => {
         const period = loan.startPeriod + loan.state.durationInPeriods + 1;
         await getAndCheckLoanPreviewAtPeriod(period);
       });
 
-      it("10 day after the due date", async () => {
+      it("10 day after the due date without repayments or discounts", async () => {
         const period = loan.startPeriod + loan.state.durationInPeriods + 10;
+        await getAndCheckLoanPreviewAtPeriod(period);
+      });
+
+      it("one day after the due date with a repayment at the beginning", async () => {
+        const repaymentAmount = (borrowedAmount + addonAmount) / 2;
+        const tx = marketViaAdmin.repayLoanForBatch([loan.id], [repaymentAmount], stranger.address);
+        processRepayment(loan, { repaymentAmount, repaymentTimestamp: await getTxTimestamp(tx) });
+        const period = loan.startPeriod + loan.state.durationInPeriods + 1;
+        await getAndCheckLoanPreviewAtPeriod(period);
+      });
+
+      it("one day after the due date with a discount at the beginning", async () => {
+        const discountAmount = borrowedAmount / 4;
+        const tx = marketViaAdmin.discountLoanForBatch([loan.id], [discountAmount]);
+        processDiscount(loan, { discountAmount, discountTimestamp: await getTxTimestamp(tx) });
+        const period = loan.startPeriod + loan.state.durationInPeriods + 1;
         await getAndCheckLoanPreviewAtPeriod(period);
       });
     });
   });
 
-  describe("Snapshot scenarios with penalized balances", () => {
+  describe("Snapshot scenarios with penalty interest rates for loans with a single installment", () => {
     const borrowedAmount = 100_000_000;
     const addonAmount = 20_000;
-    const penalizedBalance = 700_000_000;
+    const penaltyInterestRate = INTEREST_RATE_FACTOR / 2; // 50%
     const loanId = 0;
 
     let marketViaAdmin: Contract;
@@ -5214,12 +5224,14 @@ describe("Contract 'LendingMarket': base tests", () => {
       await proveTx(creditLine.mockLoanTerms(borrower.address, BORROWED_AMOUNT, loanTerms));
     }
 
-    async function executeScenarioWithGivenPeriodsPastDueDate(
-      scenarioName: string,
-      periodCountAfterDueDate: number,
-    ) {
+    async function executeScenarioWithGivenPeriodsPastDueDate(props: {
+      scenarioName: string;
+      periodCountAfterDueDate: number;
+      repaymentAmount?: number;
+      discountAmount?: number;
+    }) {
       await expect.startChainshot({
-        name: scenarioName,
+        name: props.scenarioName,
         accounts: { deployer, owner, borrower, stranger, admin, addonTreasury },
         contracts: { LM: marketViaAdmin, LP: liquidityPool, CL: creditLine },
         tokens: { BRLC: token },
@@ -5243,7 +5255,7 @@ describe("Contract 'LendingMarket': base tests", () => {
               interestRateSecondary: extendedPreview.interestRateSecondary,
               firstInstallmentId: extendedPreview.firstInstallmentId,
               installmentCount: extendedPreview.installmentCount,
-              penalizedBalance: extendedPreview.penalizedBalance,
+              penaltyInterestRate: extendedPreview.penaltyInterestRate,
             };
           },
         },
@@ -5253,9 +5265,15 @@ describe("Contract 'LendingMarket': base tests", () => {
         [borrowedAmount],
         [addonAmount],
         [DURATION_IN_PERIODS],
-        [penalizedBalance],
+        [penaltyInterestRate],
       );
-      const periodIndex = loan.startPeriod + loan.state.durationInPeriods + periodCountAfterDueDate;
+      if ((props?.repaymentAmount ?? 0) !== 0) {
+        await proveTx(marketViaAdmin.repayLoanForBatch([loan.id], [props.repaymentAmount], stranger.address));
+      }
+      if ((props?.discountAmount ?? 0) !== 0) {
+        await proveTx(marketViaAdmin.discountLoanForBatch([loan.id], [props.discountAmount]));
+      }
+      const periodIndex = loan.startPeriod + loan.state.durationInPeriods + props.periodCountAfterDueDate;
       await increaseBlockTimestampToPeriodIndex(periodIndex);
       await proveTx(connect(marketViaAdmin, stranger).repayLoan(loan.id, FULL_REPAYMENT_AMOUNT));
       await expect.stopChainshot();
@@ -5266,36 +5284,72 @@ describe("Contract 'LendingMarket': base tests", () => {
       marketViaAdmin = fixture.marketViaAdmin;
     });
 
-    it("Single-installment loan with zero primary rate that is fully repaid at the due date", async () => {
-      await setZeroPrimaryRate();
-      await executeScenarioWithGivenPeriodsPastDueDate(
-        "Single-installment loan with zero primary rate that is fully repaid at the due date",
-        0,
-      );
-    });
+    describe("With no intermediate repayments or discounts", () => {
+      describe("A loan with the zero primary rate that is fully repaid", () => {
+        it("at the due date,", async () => {
+          await setZeroPrimaryRate();
+          await executeScenarioWithGivenPeriodsPastDueDate({
+            scenarioName: "Single-installment loan with the zero primary rate and some penalty rate " +
+              "that is fully repaid at the due date",
+            periodCountAfterDueDate: 0,
+          });
+        });
 
-    it("Single-installment loan with zero primary rate that is fully repaid one day after the due date", async () => {
-      await setZeroPrimaryRate();
-      await executeScenarioWithGivenPeriodsPastDueDate(
-        "Single-installment loan with zero primary rate that is fully repaid one day after the due date",
-        1,
-      );
-    });
-
-    it("Single-installment loan with non-zero primary rate that is fully repaid at the due date", async () => {
-      await executeScenarioWithGivenPeriodsPastDueDate(
-        "Single-installment loan with non-zero primary rate that is fully repaid at the due date",
-        0,
-      );
-    });
-
-    it(
-      "Single-installment loan with non-zero primary rate that is fully repaid one day after the due date",
-      async () => {
-        await executeScenarioWithGivenPeriodsPastDueDate(
-          "Single-installment loan with non-zero primary rate that is fully repaid one day after the due date",
-          1,
-        );
+        it("one day after the due date", async () => {
+          await setZeroPrimaryRate();
+          await executeScenarioWithGivenPeriodsPastDueDate({
+            scenarioName: "Single-installment loan with the zero primary rate and some penalty rate " +
+              "that is fully repaid one day after the due date",
+            periodCountAfterDueDate: 1,
+          });
+        });
       });
+
+      describe("A loan with a non-zero primary rate that is fully repaid", () => {
+        it("at the due date", async () => {
+          await executeScenarioWithGivenPeriodsPastDueDate({
+            scenarioName: "Single-installment loan with a non-zero primary rate and some penalty rate " +
+              "that is fully repaid at the due date",
+            periodCountAfterDueDate: 0,
+          });
+        });
+
+        it("one day after the due date", async () => {
+          await executeScenarioWithGivenPeriodsPastDueDate({
+            scenarioName: "Single-installment loan with a non-zero primary rate and some penalty rate " +
+              "that is fully repaid one day after the due date",
+            periodCountAfterDueDate: 1,
+          });
+        });
+      });
+    });
+
+    describe("With intermediate repayments or discounts.", () => {
+      describe("A loan with the zero primary rate that is fully repaid", () => {
+        it("at the due date but has a partial repayment and a discount at the beginning", async () => {
+          await setZeroPrimaryRate();
+          await executeScenarioWithGivenPeriodsPastDueDate({
+            scenarioName: "Single-installment loan with the zero primary rate and some penalty rate " +
+              "that is fully repaid at the due date " +
+              "but has a partial repayment and a discount at the beginning",
+            periodCountAfterDueDate: 0,
+            repaymentAmount: borrowedAmount / 2,
+            discountAmount: borrowedAmount / 10,
+          });
+        });
+
+        it("one day after the due date but has a partial repayment and a discount at the beginning", async () => {
+          await setZeroPrimaryRate();
+          await executeScenarioWithGivenPeriodsPastDueDate({
+            scenarioName: "Single-installment loan with the zero primary rate and some penalty rate " +
+              "that is fully repaid one day after the due date " +
+              "but has a partial repayment and a discount at the beginning",
+            periodCountAfterDueDate: 1,
+            repaymentAmount: borrowedAmount / 2,
+            discountAmount: borrowedAmount / 10,
+          });
+        });
+      });
+    });
   });
 });
