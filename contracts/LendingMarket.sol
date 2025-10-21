@@ -1081,7 +1081,7 @@ contract LendingMarket is
                     );
                 } else {
                     if (loan.penaltyInterestRate != 0) {
-                        trackedBalance = _recalculateTrackedBalanceOnDueDate(loan);
+                        trackedBalance = _calculatePenaltyBalance(loan, loan.durationInPeriods);
                     } else {
                         trackedBalance = InterestMath.calculateTrackedBalance(
                             trackedBalance,
@@ -1110,12 +1110,15 @@ contract LendingMarket is
         }
     }
 
-    /// @dev Recalculates the tracked balance of a loan on the due date using the penalty interest rate.
-    function _recalculateTrackedBalanceOnDueDate(Loan.State storage loan) internal view returns (uint256) {
+    /// @dev Calculates the tracked balance of a loan at a given period using the penalty interest rate.
+    function _calculatePenaltyBalance(
+        Loan.State storage loan,
+        uint256 periodsSinceStart
+    ) internal view returns (uint256) {
         uint256 principal = uint256(loan.borrowedAmount) + uint256(loan.addonAmount);
         uint256 newTrackedBalance = InterestMath.calculateTrackedBalance(
             principal,
-            loan.durationInPeriods,
+            periodsSinceStart,
             loan.penaltyInterestRate,
             Constants.INTEREST_RATE_FACTOR
         );
@@ -1152,7 +1155,8 @@ contract LendingMarket is
         Loan.PreviewExtended memory preview;
         Loan.State storage loan = _loans[loanId];
 
-        preview.periodIndex = _periodIndex(timestamp, Constants.PERIOD_IN_SECONDS);
+        uint256 periodIndex = _periodIndex(timestamp, Constants.PERIOD_IN_SECONDS);
+        preview.periodIndex = periodIndex;
         (preview.trackedBalance, preview.lateFeeAmount) = _calculateTrackedBalance(loan, timestamp);
         preview.outstandingBalance = Rounding.roundMath(preview.trackedBalance, Constants.ACCURACY_FACTOR);
         preview.borrowedAmount = loan.borrowedAmount;
@@ -1172,6 +1176,15 @@ contract LendingMarket is
         preview.firstInstallmentId = loan.firstInstallmentId;
         preview.installmentCount = loan.installmentCount;
         preview.penaltyInterestRate = loan.penaltyInterestRate;
+        if (preview.penaltyInterestRate != 0 && preview.trackedBalance != 0) {
+            uint256 duePeriodIndex = _getDuePeriodIndex(loan);
+            if (periodIndex > duePeriodIndex) {
+                preview.penaltyBalance = preview.trackedBalance;
+            } else {
+                uint256 periodsSinceStart = loan.durationInPeriods - (duePeriodIndex - periodIndex);
+                preview.penaltyBalance = _calculatePenaltyBalance(loan, periodsSinceStart);
+            }
+        }
 
         return preview;
     }

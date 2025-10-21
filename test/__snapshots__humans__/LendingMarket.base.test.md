@@ -95,6 +95,7 @@ Object {
   "interestRateSecondary": 200000000n,
   "lateFeeAmount": 0n,
   "outstandingBalance": 100020000n,
+  "penaltyBalance": 100020000n,
   "penaltyInterestRate": 500000000n,
   "programId": 1n,
   "repaidAmount": 0n,
@@ -153,6 +154,7 @@ Object {
   "interestRateSecondary": 200000000n,
   "lateFeeAmount": 0n,
   "outstandingBalance": 0n,
+  "penaltyBalance": 0n,
   "penaltyInterestRate": 500000000n,
   "programId": 1n,
   "repaidAmount": 100020000n,
@@ -257,6 +259,7 @@ Object {
   "interestRateSecondary": 200000000n,
   "lateFeeAmount": 0n,
   "outstandingBalance": 100020000n,
+  "penaltyBalance": 100020000n,
   "penaltyInterestRate": 500000000n,
   "programId": 1n,
   "repaidAmount": 0n,
@@ -315,6 +318,7 @@ Object {
   "interestRateSecondary": 200000000n,
   "lateFeeAmount": 115353144n,
   "outstandingBalance": 0n,
+  "penaltyBalance": 0n,
   "penaltyInterestRate": 500000000n,
   "programId": 1n,
   "repaidAmount": 7059610000n,
@@ -419,6 +423,7 @@ Object {
   "interestRateSecondary": 200000000n,
   "lateFeeAmount": 0n,
   "outstandingBalance": 100020000n,
+  "penaltyBalance": 100020000n,
   "penaltyInterestRate": 500000000n,
   "programId": 1n,
   "repaidAmount": 0n,
@@ -477,6 +482,7 @@ Object {
   "interestRateSecondary": 200000000n,
   "lateFeeAmount": 0n,
   "outstandingBalance": 0n,
+  "penaltyBalance": 0n,
   "penaltyInterestRate": 500000000n,
   "programId": 1n,
   "repaidAmount": 259430000n,
@@ -581,6 +587,7 @@ Object {
   "interestRateSecondary": 200000000n,
   "lateFeeAmount": 0n,
   "outstandingBalance": 100020000n,
+  "penaltyBalance": 100020000n,
   "penaltyInterestRate": 500000000n,
   "programId": 1n,
   "repaidAmount": 0n,
@@ -639,6 +646,7 @@ Object {
   "interestRateSecondary": 200000000n,
   "lateFeeAmount": 115353144n,
   "outstandingBalance": 0n,
+  "penaltyBalance": 0n,
   "penaltyInterestRate": 500000000n,
   "programId": 1n,
   "repaidAmount": 7059610000n,
@@ -648,7 +656,7 @@ Object {
 
 </details>
 
-## Single-installment loan with the zero primary rate and some penalty rate that is fully repaid at the due date but has a partial repayment and a discount at the beginning
+## Single-installment loan with the zero primary rate and some penalty rate that is fully repaid at the due date but has a partial repayment and a discount at one day since start
 
 | Idx | Caller | Contract | Name | Args |
 | --- | ------ | -------- | ---- | ---- |
@@ -757,6 +765,7 @@ Object {
   "interestRateSecondary": 200000000n,
   "lateFeeAmount": 0n,
   "outstandingBalance": 100020000n,
+  "penaltyBalance": 100020000n,
   "penaltyInterestRate": 500000000n,
   "programId": 1n,
   "repaidAmount": 0n,
@@ -816,6 +825,7 @@ Object {
   "interestRateSecondary": 200000000n,
   "lateFeeAmount": 0n,
   "outstandingBalance": 50020000n,
+  "penaltyBalance": 100030000n,
   "penaltyInterestRate": 500000000n,
   "programId": 1n,
   "repaidAmount": 50000000n,
@@ -872,6 +882,7 @@ Object {
   "interestRateSecondary": 200000000n,
   "lateFeeAmount": 0n,
   "outstandingBalance": 40020000n,
+  "penaltyBalance": 90030000n,
   "penaltyInterestRate": 500000000n,
   "programId": 1n,
   "repaidAmount": 50000000n,
@@ -930,6 +941,7 @@ Object {
   "interestRateSecondary": 200000000n,
   "lateFeeAmount": 0n,
   "outstandingBalance": 0n,
+  "penaltyBalance": 0n,
   "penaltyInterestRate": 500000000n,
   "programId": 1n,
   "repaidAmount": 90020000n,
@@ -939,7 +951,7 @@ Object {
 
 </details>
 
-## Single-installment loan with the zero primary rate and some penalty rate that is fully repaid one day after the due date but has a partial repayment and a discount at the beginning
+## Single-installment loan with the zero primary rate and some penalty rate that is fully repaid one day after the due date but has a partial repayment and a discount at one day since start
 
 | Idx | Caller | Contract | Name | Args |
 | --- | ------ | -------- | ---- | ---- |
@@ -1048,6 +1060,7 @@ Object {
   "interestRateSecondary": 200000000n,
   "lateFeeAmount": 0n,
   "outstandingBalance": 100020000n,
+  "penaltyBalance": 100020000n,
   "penaltyInterestRate": 500000000n,
   "programId": 1n,
   "repaidAmount": 0n,
@@ -1107,6 +1120,7 @@ Object {
   "interestRateSecondary": 200000000n,
   "lateFeeAmount": 0n,
   "outstandingBalance": 50020000n,
+  "penaltyBalance": 100030000n,
   "penaltyInterestRate": 500000000n,
   "programId": 1n,
   "repaidAmount": 50000000n,
@@ -1163,6 +1177,7 @@ Object {
   "interestRateSecondary": 200000000n,
   "lateFeeAmount": 0n,
   "outstandingBalance": 40020000n,
+  "penaltyBalance": 90030000n,
   "penaltyInterestRate": 500000000n,
   "programId": 1n,
   "repaidAmount": 50000000n,
@@ -1221,6 +1236,7 @@ Object {
   "interestRateSecondary": 200000000n,
   "lateFeeAmount": 114153144n,
   "outstandingBalance": 0n,
+  "penaltyBalance": 0n,
   "penaltyInterestRate": 500000000n,
   "programId": 1n,
   "repaidAmount": 7036170000n,

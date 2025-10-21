@@ -161,11 +161,24 @@ library Loan {
      * - firstInstallmentId ----- The ID of the first installment for sub-loans or zero for ordinary loans.
      * - installmentCount ------- The total number of installments for sub-loans or zero for ordinary loans.
      * - penaltyInterestRate ---- The penalty interest rate of the loan, see notes below.
+     * - penaltyBalance --------- The tracked balance determined at the preview timestamp
+     *                            using the penalty interest rate, see notes below.
      *
      * Notes:
      *
      * - The outstanding balance is the tracked balance rounded according to the accuracy factor with math rules.
      * - See notes about the penalty interest rate in the comments for the {Loan} struct.
+     * - The `penaltyBalance` field is determined as follows:
+     *   - if the penalty interest rate is zero then the `penaltyBalance` field is zero as well;
+     *   - if the `trackedBalance` field is zero then the `penaltyBalance` field is zero as well;
+     *   - if the loan is overdue then `penaltyBalance` fields equals to the `trackedBalance` field;
+     *   - otherwise, the `penaltyBalance` field is calculated using the formula:
+     *     ```
+     *     penaltyBalance = principal * (1 + penaltyInterestRate) ^ periodsSinceStart - repaidAmount - discountAmount
+     *     ```
+     *     where `principal = borrowedAmount + addonAmount` and `periodsSinceStart` is
+     *     the integer number of periods passed from the loan start timestamp to the preview timestamp.
+     * - The `penaltyBalance` field is not rounded according to the accuracy factor.
      */
     struct PreviewExtended {
         uint256 periodIndex;
@@ -188,6 +201,7 @@ library Loan {
         uint256 firstInstallmentId;
         uint256 installmentCount;
         uint256 penaltyInterestRate;
+        uint256 penaltyBalance;
     }
 
     /**

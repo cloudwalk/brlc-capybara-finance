@@ -53,7 +53,7 @@ interface LoanState {
   discountAmount: number;
   penaltyInterestRate: number;
 
-  [key: string]: string | number | bigint; // Index signature
+  [key: string]: string | number; // Index signature
 }
 
 interface Loan {
@@ -92,6 +92,7 @@ interface LoanPreviewExtended {
   firstInstallmentId: number;
   installmentCount: number;
   penaltyInterestRate: number;
+  penaltyBalance: number;
 
   [key: string]: number | string; // Index signature
 }
@@ -491,6 +492,14 @@ describe("Contract 'LendingMarket': base tests", () => {
     return Math.round(originalBalance * Math.pow(1 + interestRate / INTEREST_RATE_FACTOR, numberOfPeriods));
   }
 
+  function calculatePenaltyBalance(loan: Loan, numberOfPeriods: number): number {
+    return calculateTrackedBalance(
+      loan.state.borrowedAmount + loan.state.addonAmount,
+      numberOfPeriods,
+      loan.state.penaltyInterestRate,
+    ) - loan.state.repaidAmount - loan.state.discountAmount;
+  }
+
   function calculatePeriodIndex(timestamp: number): number {
     return Math.floor(timestamp / PERIOD_IN_SECONDS);
   }
@@ -522,11 +531,7 @@ describe("Contract 'LendingMarket': base tests", () => {
     if (loan.state.trackedBalance != 0 && periodIndex > duePeriodIndex && trackedPeriodIndex <= duePeriodIndex) {
       let outstandingBalance;
       if (loan.state.penaltyInterestRate.toString() !== "0") {
-        outstandingBalance = calculateTrackedBalance(
-          loan.state.borrowedAmount + loan.state.addonAmount,
-          loan.state.durationInPeriods,
-          loan.state.penaltyInterestRate,
-        ) - loan.state.repaidAmount - loan.state.discountAmount;
+        outstandingBalance = calculatePenaltyBalance(loan, loan.state.durationInPeriods);
       } else {
         outstandingBalance = calculateTrackedBalance(
           loan.state.trackedBalance,
@@ -567,11 +572,7 @@ describe("Contract 'LendingMarket': base tests", () => {
 
     if (numberOfPeriodsWithSecondaryRate > 0) {
       if (loan.state.penaltyInterestRate.toString() !== "0") {
-        trackedBalance = calculateTrackedBalance(
-          loan.state.borrowedAmount + loan.state.addonAmount,
-          loan.state.durationInPeriods,
-          loan.state.penaltyInterestRate,
-        ) - loan.state.repaidAmount - loan.state.discountAmount;
+        trackedBalance = calculatePenaltyBalance(loan, loan.state.durationInPeriods);
       }
       trackedBalance += determineLateFeeAmount(loan, timestamp);
       trackedBalance = calculateTrackedBalance(
@@ -585,6 +586,21 @@ describe("Contract 'LendingMarket': base tests", () => {
       trackedBalance,
       outstandingBalance: roundSpecific(trackedBalance),
     };
+  }
+
+  function determinePenaltyBalance(loan: Loan, timestamp: number): number {
+    const loanPreview = determineLoanPreview(loan, timestamp);
+    const timestampWithOffset = calculateTimestampWithOffset(timestamp);
+    const periodIndex = calculatePeriodIndex(timestampWithOffset);
+    const startPeriodIndex = calculatePeriodIndex(loan.state.startTimestamp);
+    const duePeriodIndex = startPeriodIndex + loan.state.durationInPeriods;
+    if (loan.state.penaltyInterestRate.toString() === "0" || loanPreview.trackedBalance == 0) {
+      return 0;
+    }
+    if (periodIndex > duePeriodIndex) {
+      return loanPreview.trackedBalance;
+    }
+    return calculatePenaltyBalance(loan, periodIndex - startPeriodIndex);
   }
 
   function determineLoanPreviewExtended(loan: Loan, timestamp: number): LoanPreviewExtended {
@@ -611,6 +627,7 @@ describe("Contract 'LendingMarket': base tests", () => {
       firstInstallmentId: loan.state.firstInstallmentId,
       installmentCount: loan.state.installmentCount,
       penaltyInterestRate: loan.state.penaltyInterestRate,
+      penaltyBalance: determinePenaltyBalance(loan, timestamp),
     };
   }
 
@@ -5155,8 +5172,11 @@ describe("Contract 'LendingMarket': base tests", () => {
       async function getAndCheckLoanPreviewAtPeriod(period: number) {
         const timestamp = period * PERIOD_IN_SECONDS;
         const expectedLoanPreview = determineLoanPreview(loan, removeTimestampOffset(timestamp));
+        const expectedLoanPreviewExtended = determineLoanPreviewExtended(loan, removeTimestampOffset(timestamp));
         const actualLoanPreview = await marketViaAdmin.getLoanPreview(loan.id, timestamp);
+        const actualLoanPreviewExtended = (await marketViaAdmin.getLoanPreviewExtendedBatch([loan.id], timestamp))[0];
         checkEquality(actualLoanPreview, expectedLoanPreview);
+        checkEquality(actualLoanPreviewExtended, expectedLoanPreviewExtended);
       }
 
       before(async () => {
@@ -5256,6 +5276,7 @@ describe("Contract 'LendingMarket': base tests", () => {
               firstInstallmentId: extendedPreview.firstInstallmentId,
               installmentCount: extendedPreview.installmentCount,
               penaltyInterestRate: extendedPreview.penaltyInterestRate,
+              penaltyBalance: extendedPreview.penaltyBalance,
             };
           },
         },
@@ -5267,10 +5288,17 @@ describe("Contract 'LendingMarket': base tests", () => {
         [DURATION_IN_PERIODS],
         [penaltyInterestRate],
       );
+      let onePeriodSinceStart = 0;
       if ((props?.repaymentAmount ?? 0) !== 0) {
+        onePeriodSinceStart = loan.startPeriod + 1;
+        await increaseBlockTimestampToPeriodIndex(onePeriodSinceStart);
         await proveTx(marketViaAdmin.repayLoanForBatch([loan.id], [props.repaymentAmount], stranger.address));
       }
       if ((props?.discountAmount ?? 0) !== 0) {
+        if (onePeriodSinceStart === 0) {
+          onePeriodSinceStart = loan.startPeriod + 1;
+          await increaseBlockTimestampToPeriodIndex(onePeriodSinceStart);
+        }
         await proveTx(marketViaAdmin.discountLoanForBatch([loan.id], [props.discountAmount]));
       }
       const periodIndex = loan.startPeriod + loan.state.durationInPeriods + props.periodCountAfterDueDate;
@@ -5326,24 +5354,24 @@ describe("Contract 'LendingMarket': base tests", () => {
 
     describe("With intermediate repayments or discounts.", () => {
       describe("A loan with the zero primary rate that is fully repaid", () => {
-        it("at the due date but has a partial repayment and a discount at the beginning", async () => {
+        it("at the due date but has a partial repayment and a discount at one day since start", async () => {
           await setZeroPrimaryRate();
           await executeScenarioWithGivenPeriodsPastDueDate({
             scenarioName: "Single-installment loan with the zero primary rate and some penalty rate " +
               "that is fully repaid at the due date " +
-              "but has a partial repayment and a discount at the beginning",
+              "but has a partial repayment and a discount at one day since start",
             periodCountAfterDueDate: 0,
             repaymentAmount: borrowedAmount / 2,
             discountAmount: borrowedAmount / 10,
           });
         });
 
-        it("one day after the due date but has a partial repayment and a discount at the beginning", async () => {
+        it("one day after the due date but has a partial repayment and a discount at one day since start", async () => {
           await setZeroPrimaryRate();
           await executeScenarioWithGivenPeriodsPastDueDate({
             scenarioName: "Single-installment loan with the zero primary rate and some penalty rate " +
               "that is fully repaid one day after the due date " +
-              "but has a partial repayment and a discount at the beginning",
+              "but has a partial repayment and a discount at one day since start",
             periodCountAfterDueDate: 1,
             repaymentAmount: borrowedAmount / 2,
             discountAmount: borrowedAmount / 10,

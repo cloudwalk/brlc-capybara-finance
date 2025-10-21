@@ -1,6 +1,6 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`Contract 'LendingMarket': base tests Snapshot scenarios with penalty interest rates for loans with a single installment With intermediate repayments or discounts. A loan with the zero primary rate that is fully repaid at the due date but has a partial repayment and a discount at the beginning 1`] = `
+exports[`Contract 'LendingMarket': base tests Snapshot scenarios with penalty interest rates for loans with a single installment With intermediate repayments or discounts. A loan with the zero primary rate that is fully repaid at the due date but has a partial repayment and a discount at one day since start 1`] = `
 Array [
   Object {
     "args": Array [
@@ -48,6 +48,7 @@ Array [
         "interestRateSecondary": 200000000n,
         "lateFeeAmount": 0n,
         "outstandingBalance": 100020000n,
+        "penaltyBalance": 100020000n,
         "penaltyInterestRate": 500000000n,
         "programId": 1n,
         "repaidAmount": 0n,
@@ -299,6 +300,7 @@ Array [
         "interestRateSecondary": 200000000n,
         "lateFeeAmount": 0n,
         "outstandingBalance": 50020000n,
+        "penaltyBalance": 100030000n,
         "penaltyInterestRate": 500000000n,
         "programId": 1n,
         "repaidAmount": 50000000n,
@@ -436,6 +438,7 @@ Array [
         "interestRateSecondary": 200000000n,
         "lateFeeAmount": 0n,
         "outstandingBalance": 40020000n,
+        "penaltyBalance": 90030000n,
         "penaltyInterestRate": 500000000n,
         "programId": 1n,
         "repaidAmount": 50000000n,
@@ -542,6 +545,7 @@ Array [
         "interestRateSecondary": 200000000n,
         "lateFeeAmount": 0n,
         "outstandingBalance": 0n,
+        "penaltyBalance": 0n,
         "penaltyInterestRate": 500000000n,
         "programId": 1n,
         "repaidAmount": 90020000n,
@@ -619,7 +623,7 @@ Array [
 ]
 `;
 
-exports[`Contract 'LendingMarket': base tests Snapshot scenarios with penalty interest rates for loans with a single installment With intermediate repayments or discounts. A loan with the zero primary rate that is fully repaid one day after the due date but has a partial repayment and a discount at the beginning 1`] = `
+exports[`Contract 'LendingMarket': base tests Snapshot scenarios with penalty interest rates for loans with a single installment With intermediate repayments or discounts. A loan with the zero primary rate that is fully repaid one day after the due date but has a partial repayment and a discount at one day since start 1`] = `
 Array [
   Object {
     "args": Array [
@@ -667,6 +671,7 @@ Array [
         "interestRateSecondary": 200000000n,
         "lateFeeAmount": 0n,
         "outstandingBalance": 100020000n,
+        "penaltyBalance": 100020000n,
         "penaltyInterestRate": 500000000n,
         "programId": 1n,
         "repaidAmount": 0n,
@@ -918,6 +923,7 @@ Array [
         "interestRateSecondary": 200000000n,
         "lateFeeAmount": 0n,
         "outstandingBalance": 50020000n,
+        "penaltyBalance": 100030000n,
         "penaltyInterestRate": 500000000n,
         "programId": 1n,
         "repaidAmount": 50000000n,
@@ -1055,6 +1061,7 @@ Array [
         "interestRateSecondary": 200000000n,
         "lateFeeAmount": 0n,
         "outstandingBalance": 40020000n,
+        "penaltyBalance": 90030000n,
         "penaltyInterestRate": 500000000n,
         "programId": 1n,
         "repaidAmount": 50000000n,
@@ -1161,6 +1168,7 @@ Array [
         "interestRateSecondary": 200000000n,
         "lateFeeAmount": 114153144n,
         "outstandingBalance": 0n,
+        "penaltyBalance": 0n,
         "penaltyInterestRate": 500000000n,
         "programId": 1n,
         "repaidAmount": 7036170000n,
@@ -1286,6 +1294,7 @@ Array [
         "interestRateSecondary": 200000000n,
         "lateFeeAmount": 0n,
         "outstandingBalance": 100020000n,
+        "penaltyBalance": 100020000n,
         "penaltyInterestRate": 500000000n,
         "programId": 1n,
         "repaidAmount": 0n,
@@ -1532,6 +1541,7 @@ Array [
         "interestRateSecondary": 200000000n,
         "lateFeeAmount": 0n,
         "outstandingBalance": 0n,
+        "penaltyBalance": 0n,
         "penaltyInterestRate": 500000000n,
         "programId": 1n,
         "repaidAmount": 259430000n,
@@ -1657,6 +1667,7 @@ Array [
         "interestRateSecondary": 200000000n,
         "lateFeeAmount": 0n,
         "outstandingBalance": 100020000n,
+        "penaltyBalance": 100020000n,
         "penaltyInterestRate": 500000000n,
         "programId": 1n,
         "repaidAmount": 0n,
@@ -1903,6 +1914,7 @@ Array [
         "interestRateSecondary": 200000000n,
         "lateFeeAmount": 115353144n,
         "outstandingBalance": 0n,
+        "penaltyBalance": 0n,
         "penaltyInterestRate": 500000000n,
         "programId": 1n,
         "repaidAmount": 7059610000n,
@@ -2028,6 +2040,7 @@ Array [
         "interestRateSecondary": 200000000n,
         "lateFeeAmount": 0n,
         "outstandingBalance": 100020000n,
+        "penaltyBalance": 100020000n,
         "penaltyInterestRate": 500000000n,
         "programId": 1n,
         "repaidAmount": 0n,
@@ -2274,6 +2287,7 @@ Array [
         "interestRateSecondary": 200000000n,
         "lateFeeAmount": 0n,
         "outstandingBalance": 0n,
+        "penaltyBalance": 0n,
         "penaltyInterestRate": 500000000n,
         "programId": 1n,
         "repaidAmount": 100020000n,
@@ -2399,6 +2413,7 @@ Array [
         "interestRateSecondary": 200000000n,
         "lateFeeAmount": 0n,
         "outstandingBalance": 100020000n,
+        "penaltyBalance": 100020000n,
         "penaltyInterestRate": 500000000n,
         "programId": 1n,
         "repaidAmount": 0n,
@@ -2645,6 +2660,7 @@ Array [
         "interestRateSecondary": 200000000n,
         "lateFeeAmount": 115353144n,
         "outstandingBalance": 0n,
+        "penaltyBalance": 0n,
         "penaltyInterestRate": 500000000n,
         "programId": 1n,
         "repaidAmount": 7059610000n,
