@@ -179,17 +179,18 @@ const ERROR_NAME_ALREADY_CONFIGURED = "AlreadyConfigured";
 const ERROR_NAME_ARRAY_LENGTH_MISMATCH = "ArrayLengthMismatch";
 const ERROR_NAME_CONTRACT_ADDRESS_INVALID = "ContractAddressInvalid";
 const ERROR_NAME_DURATION_ARRAY_INVALID = "DurationArrayInvalid";
+const ERROR_NAME_INAPPROPRIATE_DURATION_IN_PERIODS = "InappropriateLoanDuration";
+const ERROR_NAME_INAPPROPRIATE_INTEREST_RATE = "InappropriateInterestRate";
+const ERROR_NAME_INSTALLMENT_COUNT_EXCESS = "InstallmentCountExcess";
+const ERROR_NAME_INVALID_AMOUNT = "InvalidAmount";
+const ERROR_NAME_IMPLEMENTATION_ADDRESS_INVALID = "ImplementationAddressInvalid";
 const ERROR_NAME_LOAN_ALREADY_FROZEN = "LoanAlreadyFrozen";
 const ERROR_NAME_LOAN_ALREADY_REPAID = "LoanAlreadyRepaid";
 const ERROR_NAME_LOAN_ID_EXCESS = "LoanIdExcess";
 const ERROR_NAME_LOAN_NOT_EXIST = "LoanNotExist";
 const ERROR_NAME_LOAN_NOT_FROZEN = "LoanNotFrozen";
 const ERROR_NAME_LOAN_TYPE_UNEXPECTED = "LoanTypeUnexpected";
-const ERROR_NAME_INAPPROPRIATE_DURATION_IN_PERIODS = "InappropriateLoanDuration";
-const ERROR_NAME_INAPPROPRIATE_INTEREST_RATE = "InappropriateInterestRate";
-const ERROR_NAME_INSTALLMENT_COUNT_EXCESS = "InstallmentCountExcess";
-const ERROR_NAME_INVALID_AMOUNT = "InvalidAmount";
-const ERROR_NAME_IMPLEMENTATION_ADDRESS_INVALID = "ImplementationAddressInvalid";
+const ERROR_NAME_PENALTY_INTEREST_RATE_BELOW_PRIMARY = "PenaltyInterestRateBelowPrimary";
 const ERROR_NAME_PROGRAM_CREDIT_LINE_NOT_CONFIGURED = "ProgramCreditLineNotConfigured";
 const ERROR_NAME_PROGRAM_LIQUIDITY_POOL_NOT_CONFIGURED = "ProgramLiquidityPoolNotConfigured";
 const ERROR_NAME_PROGRAM_ID_EXCESS = "ProgramIdExcess";
@@ -4340,6 +4341,12 @@ describe("Contract 'LendingMarket': base tests", () => {
         [oldPenaltyInterestRate],
       );
 
+      if (oldPenaltyInterestRate < INTEREST_RATE_PRIMARY || newPenaltyInterestRate < INTEREST_RATE_PRIMARY) {
+        const interestRatePrimary = Math.min(oldPenaltyInterestRate, newPenaltyInterestRate);
+        await proveTx(marketViaAdmin.updateLoanInterestRatePrimary(loan.id, interestRatePrimary));
+        loan.state.interestRatePrimary = interestRatePrimary;
+      }
+
       loan.state.penaltyInterestRate = newPenaltyInterestRate;
 
       await expect(marketViaAdmin.updateLoanPenaltyInterestRate(loan.id, newPenaltyInterestRate))
@@ -4358,7 +4365,7 @@ describe("Contract 'LendingMarket': base tests", () => {
 
       it("Increases from non-zero", async () => {
         await executeAndCheck({
-          oldPenaltyInterestRate: 1,
+          oldPenaltyInterestRate: INTEREST_RATE_PRIMARY,
           newPenaltyInterestRate: Number(maxUintForBits(32)),
         });
       });
@@ -4419,7 +4426,7 @@ describe("Contract 'LendingMarket': base tests", () => {
           .withArgs(stranger.address, ADMIN_ROLE);
       });
 
-      it("The provide new penalty interest rate balance equals the previous one", async () => {
+      it("The provide new penalty interest rate equals the previous one", async () => {
         const { marketViaAdmin, ordinaryLoan: loan } = await setUpFixture(deployLendingMarketAndTakeLoans);
         const zeroPenaltyInterestRate = 0;
         const nonZeroPenaltyInterestRate = Number(maxUintForBits(32));
@@ -4432,6 +4439,14 @@ describe("Contract 'LendingMarket': base tests", () => {
         await proveTx(marketViaAdmin.updateLoanPenaltyInterestRate(loan.id, nonZeroPenaltyInterestRate));
         await expect(marketViaAdmin.updateLoanPenaltyInterestRate(loan.id, nonZeroPenaltyInterestRate))
           .to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_ALREADY_CONFIGURED);
+      });
+
+      it("The provide new penalty interest rate is less than the primary one", async () => {
+        const { marketViaAdmin, ordinaryLoan: loan } = await setUpFixture(deployLendingMarketAndTakeLoans);
+        const wrongPenaltyInterestRate = loan.state.interestRatePrimary - 1;
+
+        await expect(marketViaAdmin.updateLoanPenaltyInterestRate(loan.id, wrongPenaltyInterestRate))
+          .to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_PENALTY_INTEREST_RATE_BELOW_PRIMARY);
       });
 
       it("The provide new penalty interest rate is greater than 32-bit unsigned integer", async () => {

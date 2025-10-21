@@ -728,6 +728,13 @@ interface ILendingMarketErrors {
 
     /// @dev Thrown when the provided tracked timestamp is invalid, e.g. it is earlier than the loan start timestamp.
     error TrackedTimestampInvalid();
+
+    /**
+     * @dev Thrown when the penalty interest rate is less than the primary interest rate.
+     *
+     * See details about conditions for the penalty interest rate in the comments for the {Loan} struct.
+     */
+    error PenaltyInterestRateBelowPrimary();
 }
 
 /**

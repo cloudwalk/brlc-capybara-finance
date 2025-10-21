@@ -53,6 +53,16 @@ library Loan {
      *   the tracked balance is replaced by the formula:
      *   `trackedBalance = principal * (1 + penaltyInterestRate) ^ durationInPeriods - repaidAmount - discountAmount`,
      *   where `principal = borrowedAmount + addonAmount`.
+     * - The penalty interest rate must noy be lower than the primary interest rate.
+     *   Otherwise, with large values of `(repaidAmount + discountAmount)`, the new tracked balance for an overdue loan
+     *   may become negative, according to the formula above. Example:
+     *   - `principal = 100`;
+     *   - `penaltyInterestRate = 2%`;
+     *   - `interestRatePrimary = 1%`;
+     *   - `durationInPeriods = 10`;
+     *   - at the due date: `trackedBalance = 100 * (1 + 2%) ^ 10 = 122`;
+     *   - at the due date: `repaidAmount = 120`;
+     *   - after the replacement at the due date: `trackedBalance = 100 * (1 + 1%) ^ 10 - 120 = 110 - 120 = -10`.
      * - There is another possible formula for the tracked balance replacement:
      *   `trackedBalance = (principal - repaidAmount - discountAmount) * (1 + penaltyInterestRate) ^ durationInPeriods`
      *   but it creates an exploit opportunity in the case of non-zero primary rate. An example:

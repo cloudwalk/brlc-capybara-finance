@@ -30,7 +30,17 @@
     * a. When a loan is taken with a non-zero `penaltyInterestRate` value.
     * b. When the `penaltyInterestRate` value of an ongoing sub-loan is changed by the `updateLoanPenaltyInterestRate()` function.
 
-8. Note. There is another possible formula for the tracked balance overriding: `trackedBalance = (principal - repaidAmount - discountAmount) * (1 + penaltyInterestRate) ^ durationInPeriods`.
+8. Additional checks have been added to ensure that the penalty interest rate is not lower than the primary interest rate. 
+   Without these checks, the new tracked balance of an overdue loan may become negative. Example:
+    * `principal = 100`;
+    * `penaltyInterestRate = 2%`;
+    * `interestRatePrimary = 1%`;
+    * `durationInPeriods = 10`;
+    * at the due date: `trackedBalance = 100 * (1 + 2%) ^ 10 = 122`;
+    * at the due date: `repaidAmount = 120`;
+    * after the balance replacement at the due date: `trackedBalance = 100 * (1 + 1%) ^ 10 - 120 = 110 - 120 = -10`.
+
+9. Note. There is another possible formula for the tracked balance overriding: `trackedBalance = (principal - repaidAmount - discountAmount) * (1 + penaltyInterestRate) ^ durationInPeriods`.
    But it creates an exploit opportunity in the case of non-zero primary rate. An example:
     * the borrower repays the principal before the loan is overdue, but not the primary interest rate;
     * the borrower waits until the loan is overdue;

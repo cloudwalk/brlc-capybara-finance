@@ -445,6 +445,8 @@ contract LendingMarket is
         Loan.State storage loan = _loans[loanId];
         _checkIfLoanOngoing(loan);
 
+        // IMPORTANT! If you remove this check, make sure the new interest rate does not exceed the penalty one.
+        // See details about conditions for the penalty interest rate in the comments for the {Loan} struct.
         if (newInterestRate >= loan.interestRatePrimary) {
             revert InappropriateInterestRate();
         }
@@ -806,6 +808,9 @@ contract LendingMarket is
         uint256 oldPenaltyInterestRate = loan.penaltyInterestRate;
         if (newPenaltyInterestRate == oldPenaltyInterestRate) {
             revert Error.AlreadyConfigured();
+        }
+        if (newPenaltyInterestRate < loan.interestRatePrimary) {
+            revert PenaltyInterestRateBelowPrimary();
         }
 
         emit LoanPenaltyInterestRateUpdated(loanId, newPenaltyInterestRate, oldPenaltyInterestRate);
