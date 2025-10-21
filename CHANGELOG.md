@@ -20,17 +20,24 @@
 
 4. The new `penaltyInterestRate` field has been added at the end of the `Loan.PreviewExtended` structure.
 
-5. The new `takeInstallmentLoan()` function has been introduced to take installment loans with the `penaltyInterestRate` values.
+5. The new `penaltyBalance` field has been added at the end of the `Loan.PreviewExtended` structure.
+   The new field is determined during the call of the appropriate view functions as follows:
+    * if the `penaltyInterestRate` field is zero then the `penaltyBalance` field is zero as well;
+    * if the `trackedBalance` field is zero then the `penaltyBalance` field is zero as well;
+    * if the loan is overdue then `penaltyBalance` field equals to the `trackedBalance` field;
+    * otherwise, the `penaltyBalance` field is calculated using the formula: `penaltyBalance = principal * (1 + penaltyInterestRate) ^ periodsSinceStart - repaidAmount - discountAmount`, where `principal = borrowedAmount + addonAmount` and `periodsSinceStart` is the integer number of periods passed from the loan start timestamp to the preview timestamp.
+
+6. The new `takeInstallmentLoan()` function has been introduced to take installment loans with the `penaltyInterestRate` values.
    It is expected that the new function will be used in all cases.
    The existing `takeInstallmentLoanFor()` function will be removed in the future.
 
-6. The new `updateLoanPenaltyInterestRate()` function has been added to update the `penaltyInterestRate`  value of a sub-loan.
+7. The new `updateLoanPenaltyInterestRate()` function has been added to update the `penaltyInterestRate`  value of a sub-loan.
 
-7. The new `LoanPenaltyInterestRateUpdated` event has been added. It is emitted in the following cases:
+8. The new `LoanPenaltyInterestRateUpdated` event has been added. It is emitted in the following cases:
     * a. When a loan is taken with a non-zero `penaltyInterestRate` value.
     * b. When the `penaltyInterestRate` value of an ongoing sub-loan is changed by the `updateLoanPenaltyInterestRate()` function.
 
-8. Additional checks have been added to ensure that the penalty interest rate is not lower than the primary interest rate. 
+9. Additional checks have been added to ensure that the penalty interest rate is not lower than the primary interest rate. 
    Without these checks, the new tracked balance of an overdue loan may become negative. Example:
     * `principal = 100`;
     * `penaltyInterestRate = 2%`;
@@ -40,14 +47,14 @@
     * at the due date: `repaidAmount = 120`;
     * after the balance replacement at the due date: `trackedBalance = 100 * (1 + 1%) ^ 10 - 120 = 110 - 120 = -10`.
 
-9. Additional checks have been added to ensure that the duration of loans with a non-zero penalty interest rate cannot be changed directly or indirectly (through freezing and unfreezing) until the loan is overdue.
+10. Additional checks have been added to ensure that the duration of loans with a non-zero penalty interest rate cannot be changed directly or indirectly (through freezing and unfreezing) until the loan is overdue.
 Because the new duration affects the application of the penalty interest rate of the loan.
 Those checks can be overcome in emergency cases like:
     * first set the penalty interest rate of the loan to zero,
     * then execute the protected operation (e.g. update the duration or freeze the loan),
     * then set the penalty interest rate back to the original value or a corrected one.
 
-10. Note. There is another possible formula for the tracked balance overriding: `trackedBalance = (principal - repaidAmount - discountAmount) * (1 + penaltyInterestRate) ^ durationInPeriods`.
+11. Note. There is another possible formula for the tracked balance overriding: `trackedBalance = (principal - repaidAmount - discountAmount) * (1 + penaltyInterestRate) ^ durationInPeriods`.
    But it creates an exploit opportunity in the case of non-zero primary rate. An example:
     * the borrower repays the principal before the loan is overdue, but not the primary interest rate;
     * the borrower waits until the loan is overdue;
