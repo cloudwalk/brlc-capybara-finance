@@ -55,9 +55,10 @@ library Loan {
      *   where `principal = borrowedAmount + addonAmount`.
      * - There is another possible formula for the tracked balance replacement:
      *   `trackedBalance = (principal - repaidAmount - discountAmount) * (1 + penaltyInterestRate) ^ durationInPeriods`
-     *   but it creates an exploit opportunity when the borrower repays almost everything before the loan is overdue
-     *   (e.g., expect one cent), then waits until the loan is overdue, and then gets a tiny tracked balance
-     *   after the penalty interest rate is applied.
+     *   but it creates an exploit opportunity in the case of non-zero primary rate. An example:
+     *   - the borrower repays the principal before the loan is overdue, but not the primary interest rate;
+     *   - the borrower waits until the loan is overdue;
+     *   - the borrower gets the zero tracked balance after the penalty interest rate is applied.
      */
     struct State {
         // Slot1

@@ -31,10 +31,10 @@
     * b. When the `penaltyInterestRate` value of an ongoing sub-loan is changed by the `updateLoanPenaltyInterestRate()` function.
 
 8. Note. There is another possible formula for the tracked balance overriding: `trackedBalance = (principal - repaidAmount - discountAmount) * (1 + penaltyInterestRate) ^ durationInPeriods`.
-   But it creates an exploit opportunity as follows:
-    * the borrower repays almost everything before the loan is overdue (e.g., except one cent);
+   But it creates an exploit opportunity in the case of non-zero primary rate. An example:
+    * the borrower repays the principal before the loan is overdue, but not the primary interest rate;
     * the borrower waits until the loan is overdue;
-    * the borrower gets a tiny tracked balance after the penalty interest rate is applied.
+    * the borrower gets the zero tracked balance after the penalty interest rate is applied.
 
 ## Migration
 
