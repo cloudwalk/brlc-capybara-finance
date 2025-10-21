@@ -388,8 +388,10 @@ contract LendingMarket is
         if (loan.freezeTimestamp != 0) {
             revert LoanAlreadyFrozen();
         }
+        uint256 timestamp = _blockTimestamp();
+        _checkPenaltyInterestRateBeforeDue(loan, timestamp);
 
-        loan.freezeTimestamp = _blockTimestamp().toUint32();
+        loan.freezeTimestamp = timestamp.toUint32();
 
         emit LoanFrozen(loanId);
     }
@@ -431,6 +433,7 @@ contract LendingMarket is
         if (newDurationInPeriods <= loan.durationInPeriods) {
             revert InappropriateLoanDuration();
         }
+        _checkPenaltyInterestRateBeforeDue(loan, loan.trackedTimestamp);
 
         emit LoanDurationUpdated(loanId, newDurationInPeriods, loan.durationInPeriods);
 
@@ -1030,6 +1033,17 @@ contract LendingMarket is
         }
         if (repaymentTimestamp < loan.startTimestamp) {
             revert RepaymentTimestampInvalid();
+        }
+    }
+
+    /**
+     * @dev Checks if the penalty interest rate is non-zero before the due date.
+     * @param loan The storage state of the loan.
+     * @param timestamp The timestamp to check.
+     */
+    function _checkPenaltyInterestRateBeforeDue(Loan.State storage loan, uint256 timestamp) internal view {
+        if (loan.penaltyInterestRate != 0 && timestamp < _getDueTimestamp(loan)) {
+            revert PenaltyInterestRateNonZeroBeforeDue();
         }
     }
 

@@ -40,7 +40,14 @@
     * at the due date: `repaidAmount = 120`;
     * after the balance replacement at the due date: `trackedBalance = 100 * (1 + 1%) ^ 10 - 120 = 110 - 120 = -10`.
 
-9. Note. There is another possible formula for the tracked balance overriding: `trackedBalance = (principal - repaidAmount - discountAmount) * (1 + penaltyInterestRate) ^ durationInPeriods`.
+9. Additional checks have been added to ensure that the duration of loans with a non-zero penalty interest rate cannot be changed directly or indirectly (through freezing and unfreezing) until the loan is overdue.
+Because the new duration affects the application of the penalty interest rate of the loan.
+Those checks can be overcome in emergency cases like:
+    * first set the penalty interest rate of the loan to zero,
+    * then execute the protected operation (e.g. update the duration or freeze the loan),
+    * then set the penalty interest rate back to the original value or a corrected one.
+
+10. Note. There is another possible formula for the tracked balance overriding: `trackedBalance = (principal - repaidAmount - discountAmount) * (1 + penaltyInterestRate) ^ durationInPeriods`.
    But it creates an exploit opportunity in the case of non-zero primary rate. An example:
     * the borrower repays the principal before the loan is overdue, but not the primary interest rate;
     * the borrower waits until the loan is overdue;

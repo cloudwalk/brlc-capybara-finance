@@ -191,6 +191,7 @@ const ERROR_NAME_LOAN_NOT_EXIST = "LoanNotExist";
 const ERROR_NAME_LOAN_NOT_FROZEN = "LoanNotFrozen";
 const ERROR_NAME_LOAN_TYPE_UNEXPECTED = "LoanTypeUnexpected";
 const ERROR_NAME_PENALTY_INTEREST_RATE_BELOW_PRIMARY = "PenaltyInterestRateBelowPrimary";
+const ERROR_NAME_PENALTY_INTEREST_RATE_NON_ZERO_BEFORE_DUE = "PenaltyInterestRateNonZeroBeforeDue";
 const ERROR_NAME_PROGRAM_CREDIT_LINE_NOT_CONFIGURED = "ProgramCreditLineNotConfigured";
 const ERROR_NAME_PROGRAM_LIQUIDITY_POOL_NOT_CONFIGURED = "ProgramLiquidityPoolNotConfigured";
 const ERROR_NAME_PROGRAM_ID_EXCESS = "ProgramIdExcess";
@@ -3902,10 +3903,29 @@ describe("Contract 'LendingMarket': base tests", () => {
   });
 
   describe("Function 'freeze()'", () => {
-    it("Executes as expected and emits the correct event", async () => {
+    it("Executes as expected and emits the correct event if the loan is not overdue", async () => {
       const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
       const { marketViaAdmin, ordinaryLoan: loan } = fixture;
       const expectedLoan = clone(fixture.ordinaryLoan);
+
+      const tx = marketViaAdmin.freeze(loan.id);
+      expectedLoan.state.freezeTimestamp = calculateTimestampWithOffset(await getTxTimestamp(tx));
+
+      const actualLoanStateAfterFreezing: LoanState = await marketViaAdmin.getLoanState(loan.id);
+      await expect(tx).to.emit(marketViaAdmin, EVENT_NAME_LOAN_FROZEN).withArgs(loan.id);
+      checkEquality(actualLoanStateAfterFreezing, expectedLoan.state);
+    });
+
+    it("Executes as expected if the loan has a non-zero penalty rate and is frozen after the due date", async () => {
+      const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
+      const { marketViaAdmin, ordinaryLoan: loan } = fixture;
+      const expectedLoan = clone(fixture.ordinaryLoan);
+
+      await proveTx(marketViaAdmin.updateLoanPenaltyInterestRate(expectedLoan.id, PENALTY_INTEREST_RATE));
+      expectedLoan.state.penaltyInterestRate = PENALTY_INTEREST_RATE;
+
+      // Set the current block timestamp after the due date
+      await increaseBlockTimestampToPeriodIndex(expectedLoan.startPeriod + expectedLoan.state.durationInPeriods + 1);
 
       const tx = marketViaAdmin.freeze(loan.id);
       expectedLoan.state.freezeTimestamp = calculateTimestampWithOffset(await getTxTimestamp(tx));
@@ -3958,6 +3978,17 @@ describe("Contract 'LendingMarket': base tests", () => {
 
       await expect(marketViaAdmin.freeze(loan.id))
         .to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_LOAN_ALREADY_FROZEN);
+    });
+
+    it("Is reverted if the loan has a non-zero penalty rate and is frozen not after the due date ", async () => {
+      const { marketViaAdmin, ordinaryLoan: loan } = await setUpFixture(deployLendingMarketAndTakeLoans);
+      await proveTx(marketViaAdmin.updateLoanPenaltyInterestRate(loan.id, PENALTY_INTEREST_RATE));
+
+      // Set the current block timestamp just at the due date
+      await increaseBlockTimestampToPeriodIndex(loan.startPeriod + loan.state.durationInPeriods);
+
+      await expect(marketViaAdmin.freeze(loan.id))
+        .to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_PENALTY_INTEREST_RATE_NON_ZERO_BEFORE_DUE);
     });
   });
 
@@ -4115,12 +4146,33 @@ describe("Contract 'LendingMarket': base tests", () => {
   });
 
   describe("Function 'updateLoanDuration()'", () => {
-    it("Executes as expected and emits the correct event", async () => {
+    it("Executes as expected and emits the correct event if the loan is not overdue", async () => {
       const { marketViaAdmin, ordinaryLoan } = await setUpFixture(deployLendingMarketAndTakeLoans);
       const expectedLoan: Loan = clone(ordinaryLoan);
       const newDuration = expectedLoan.state.durationInPeriods + 1;
       expectedLoan.state.durationInPeriods = newDuration;
 
+      await expect(marketViaAdmin.updateLoanDuration(expectedLoan.id, newDuration))
+        .to.emit(marketViaAdmin, EVENT_NAME_LOAN_DURATION_UPDATED)
+        .withArgs(expectedLoan.id, newDuration, DURATION_IN_PERIODS);
+      const actualLoanState = await marketViaAdmin.getLoanState(expectedLoan.id);
+      checkEquality(actualLoanState, expectedLoan.state);
+    });
+
+    it("Executes as expected if the loan is overdue and has a non-zero penalty rate", async () => {
+      const { marketViaAdmin, ordinaryLoan } = await setUpFixture(deployLendingMarketAndTakeLoans);
+      const expectedLoan: Loan = clone(ordinaryLoan);
+      const newDuration = expectedLoan.state.durationInPeriods + 10;
+
+      await proveTx(marketViaAdmin.updateLoanPenaltyInterestRate(expectedLoan.id, PENALTY_INTEREST_RATE));
+      expectedLoan.state.penaltyInterestRate = PENALTY_INTEREST_RATE;
+
+      // Make a discount to update the tracked timestamp after the due date
+      await increaseBlockTimestampToPeriodIndex(expectedLoan.startPeriod + expectedLoan.state.durationInPeriods + 1);
+      const tx = marketViaAdmin.discountLoanForBatch([expectedLoan.id], [ACCURACY_FACTOR]);
+      processDiscount(expectedLoan, { discountAmount: ACCURACY_FACTOR, discountTimestamp: await getTxTimestamp(tx) });
+
+      expectedLoan.state.durationInPeriods = newDuration;
       await expect(marketViaAdmin.updateLoanDuration(expectedLoan.id, newDuration))
         .to.emit(marketViaAdmin, EVENT_NAME_LOAN_DURATION_UPDATED)
         .withArgs(expectedLoan.id, newDuration, DURATION_IN_PERIODS);
@@ -4177,6 +4229,15 @@ describe("Contract 'LendingMarket': base tests", () => {
       newDuration -= 1;
       await expect(marketViaAdmin.updateLoanDuration(loan.id, newDuration))
         .to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_INAPPROPRIATE_DURATION_IN_PERIODS);
+    });
+
+    it("Is reverted if the loan has non-zero penalty interest rate before the due date", async () => {
+      const fixture = await setUpFixture(deployLendingMarketAndTakeLoans);
+      const { marketViaAdmin, ordinaryLoan: loan } = fixture;
+      await proveTx(marketViaAdmin.updateLoanPenaltyInterestRate(loan.id, PENALTY_INTEREST_RATE));
+
+      await expect(marketViaAdmin.updateLoanDuration(loan.id, DURATION_IN_PERIODS + 1))
+        .to.be.revertedWithCustomError(marketViaAdmin, ERROR_NAME_PENALTY_INTEREST_RATE_NON_ZERO_BEFORE_DUE);
     });
 
     it("Is reverted if the new duration is greater than 32-bit unsigned integer", async () => {
