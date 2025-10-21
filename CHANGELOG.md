@@ -5,7 +5,7 @@
 1. The previous penalized balance logic has been replaced with the penalty interest rate one.
    Now starting an installment loan of several sub-loans, you can provide the `penaltyInterestRate` values for each sub-loan. 
    The provided penalty rates that will be used to override the `trackedBalance` field when a sub-loan is overdue,
-   according to the formula: `trackedBalance = principal * (1 + penaltyInterestRate) ^ durationInPeriods - repaidAmount - discountAmount`.
+   according to the formula: `trackedBalance = principal * (1 + penaltyInterestRate) ^ durationInPeriods - repaidAmount - discountAmount`, where `principal = borrowedAmount + addonAmount`.
    The overriding of `trackedBalance` is being happened before calculating the late fee and before applying 
    the secondary rate for days after the due one. If `penaltyInterestRate=0` for a sub-loan the new logic is not used.
 
@@ -29,6 +29,12 @@
 7. The new `LoanPenaltyInterestRateUpdated` event has been added. It is emitted in the following cases:
     * a. When a loan is taken with a non-zero `penaltyInterestRate` value.
     * b. When the `penaltyInterestRate` value of an ongoing sub-loan is changed by the `updateLoanPenaltyInterestRate()` function.
+
+8. Note. There is another possible formula for the tracked balance overriding: `trackedBalance = (principal - repaidAmount - discountAmount) * (1 + penaltyInterestRate) ^ durationInPeriods`.
+   But it creates an exploit opportunity as follows:
+    * the borrower repays almost everything before the loan is overdue (e.g., except one cent);
+    * the borrower waits until the loan is overdue;
+    * the borrower gets a tiny tracked balance after the penalty interest rate is applied.
 
 ## Migration
 

@@ -51,10 +51,13 @@ library Loan {
      * - The zero value means that the penalty interest rate logic is not applied.
      * - If the penalty interest rate is not zero and the loan is overdue then
      *   the tracked balance is replaced by the formula:
-     *   `trackedBalance = principal * (1 + penaltyInterestRate) ^ durationInPeriods - repaidAmount - discountAmount`
-     *
-     * TODO: consider another formula:
-     * `trackedBalance = (principal - repaidAmount - discountAmount) * (1 + penaltyInterestRate) ^ durationInPeriods`
+     *   `trackedBalance = principal * (1 + penaltyInterestRate) ^ durationInPeriods - repaidAmount - discountAmount`,
+     *   where `principal = borrowedAmount + addonAmount`.
+     * - There is another possible formula for the tracked balance replacement:
+     *   `trackedBalance = (principal - repaidAmount - discountAmount) * (1 + penaltyInterestRate) ^ durationInPeriods`
+     *   but it creates an exploit opportunity when the borrower repays almost everything before the loan is overdue
+     *   (e.g., expect one cent), then waits until the loan is overdue, and then gets a tiny tracked balance
+     *   after the penalty interest rate is applied.
      */
     struct State {
         // Slot1
