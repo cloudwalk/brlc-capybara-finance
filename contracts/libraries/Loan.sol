@@ -55,7 +55,7 @@ library Loan {
      *   where `principal = borrowedAmount + addonAmount`.
      * - The penalty interest rate must noy be lower than the primary interest rate.
      *   Otherwise, with large values of `(repaidAmount + discountAmount)`, the new tracked balance for an overdue loan
-     *   may become negative, according to the formula above. Example:
+     *   may become negative, according to the formula above. An example:
      *   - `principal = 100`;
      *   - `penaltyInterestRate = 2%`;
      *   - `interestRatePrimary = 1%`;
@@ -66,7 +66,7 @@ library Loan {
      * - There is another possible formula for the tracked balance replacement:
      *   `trackedBalance = (principal - repaidAmount - discountAmount) * (1 + penaltyInterestRate) ^ durationInPeriods`
      *   but it creates an exploit opportunity in the case of non-zero primary rate. An example:
-     *   - the borrower repays the principal before the loan is overdue, but not the primary interest rate;
+     *   - the borrower repays the principal before the loan is overdue, but not the primary interest;
      *   - the borrower waits until the loan is overdue;
      *   - the borrower gets the zero tracked balance after the penalty interest rate is applied.
      */
@@ -180,7 +180,7 @@ library Loan {
      * - The outstanding balance is the tracked balance rounded according to the accuracy factor with math rules.
      * - See notes about the penalty interest rate in the comments for the {Loan} struct.
      * - The `penaltyBalance` field is determined as follows:
-     *   - if the penalty interest rate is zero then the `penaltyBalance` field is zero as well;
+     *   - if the `penaltyInterestRate` field is zero then the `penaltyBalance` field is zero as well;
      *   - if the `trackedBalance` field is zero then the `penaltyBalance` field is zero as well;
      *   - if the loan is overdue then `penaltyBalance` fields equals to the `trackedBalance` field;
      *   - otherwise, the `penaltyBalance` field is calculated using the formula:

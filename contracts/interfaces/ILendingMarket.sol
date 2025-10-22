@@ -740,7 +740,7 @@ interface ILendingMarketErrors {
      * @dev Thrown when the penalty interest rate is non-zero before the due date.
      *
      * It protects from the situation when the loan duration is changed or can be potentially changed in the future,
-     * because the new duration affects the application of the penalty interest rate of the loan.
+     * because the new duration affects the application of the penalty interest rate for the loan.
      * See details about the application of the penalty interest rate in the comments for the {Loan} struct.
      *
      * If you are sure what you are doing, you can overcome this like:

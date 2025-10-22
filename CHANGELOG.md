@@ -4,7 +4,7 @@
 
 1. The previous penalized balance logic has been replaced with the penalty interest rate one.
    Now starting an installment loan of several sub-loans, you can provide the `penaltyInterestRate` values for each sub-loan. 
-   The provided penalty rates that will be used to override the `trackedBalance` field when a sub-loan is overdue,
+   The provided penalty rates will be used to override the `trackedBalance` field when a sub-loan is overdue,
    according to the formula: `trackedBalance = principal * (1 + penaltyInterestRate) ^ durationInPeriods - repaidAmount - discountAmount`, where `principal = borrowedAmount + addonAmount`.
    The overriding of `trackedBalance` is being happened before calculating the late fee and before applying 
    the secondary rate for days after the due one. If `penaltyInterestRate=0` for a sub-loan the new logic is not used.
@@ -38,7 +38,7 @@
     * b. When the `penaltyInterestRate` value of an ongoing sub-loan is changed by the `updateLoanPenaltyInterestRate()` function.
 
 9. Additional checks have been added to ensure that the penalty interest rate is not lower than the primary interest rate. 
-   Without these checks, the new tracked balance of an overdue loan may become negative. Example:
+   Without these checks, the new tracked balance of an overdue loan may become negative. An example:
     * `principal = 100`;
     * `penaltyInterestRate = 2%`;
     * `interestRatePrimary = 1%`;
@@ -48,14 +48,14 @@
     * after the balance replacement at the due date: `trackedBalance = 100 * (1 + 1%) ^ 10 - 120 = 110 - 120 = -10`.
 
 10. Additional checks have been added to ensure that the duration of loans with a non-zero penalty interest rate cannot be changed directly or indirectly (through freezing and unfreezing) until the loan is overdue.
-Because the new duration affects the application of the penalty interest rate of the loan.
-Those checks can be overcome in emergency cases like:
+    Because the new duration affects the application of the penalty interest rate for the loan.
+    Those checks can be overcome in emergency cases like:
     * first set the penalty interest rate of the loan to zero,
     * then execute the protected operation (e.g. update the duration or freeze the loan),
     * then set the penalty interest rate back to the original value or a corrected one.
 
 11. Note. There is another possible formula for the tracked balance overriding: `trackedBalance = (principal - repaidAmount - discountAmount) * (1 + penaltyInterestRate) ^ durationInPeriods`.
-   But it creates an exploit opportunity in the case of non-zero primary rate. An example:
+    But it creates an exploit opportunity in the case of non-zero primary rate. An example:
     * the borrower repays the principal before the loan is overdue, but not the primary interest rate;
     * the borrower waits until the loan is overdue;
     * the borrower gets the zero tracked balance after the penalty interest rate is applied.
