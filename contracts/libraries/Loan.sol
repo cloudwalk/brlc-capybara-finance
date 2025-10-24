@@ -57,8 +57,8 @@ library Loan {
      *   Otherwise, with large values of `(repaidAmount + discountAmount)`, the new tracked balance for an overdue loan
      *   may become negative, according to the formula above. An example:
      *   - `principal = 100`;
-     *   - `penaltyInterestRate = 2%`;
-     *   - `interestRatePrimary = 1%`;
+     *   - `interestRatePrimary = 2%`;
+     *   - `penaltyInterestRate = 1%`;
      *   - `durationInPeriods = 10`;
      *   - at the due date: `trackedBalance = 100 * (1 + 2%) ^ 10 = 122`;
      *   - at the due date: `repaidAmount = 120`;

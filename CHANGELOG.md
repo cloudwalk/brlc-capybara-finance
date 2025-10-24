@@ -40,8 +40,8 @@
 9. Additional checks have been added to ensure that the penalty interest rate is not lower than the primary interest rate. 
    Without these checks, the new tracked balance of an overdue loan may become negative. An example:
     * `principal = 100`;
-    * `penaltyInterestRate = 2%`;
-    * `interestRatePrimary = 1%`;
+    * `interestRatePrimary = 2%`;
+    * `penaltyInterestRate = 1%`;
     * `durationInPeriods = 10`;
     * at the due date: `trackedBalance = 100 * (1 + 2%) ^ 10 = 122`;
     * at the due date: `repaidAmount = 120`;
