@@ -173,7 +173,7 @@ contract LendingMarket is
         uint256[] calldata borrowedAmounts,
         uint256[] calldata addonAmounts,
         uint256[] calldata durationsInPeriods,
-        uint256[] calldata penalizedBalances
+        uint256[] calldata penaltyInterestRates
     ) external whenNotPaused onlyRole(ADMIN_ROLE) returns (uint256 firstInstallmentId, uint256 installmentCount) {
         (firstInstallmentId, installmentCount) = _takeInstallmentLoan(
             borrower,
@@ -182,7 +182,7 @@ contract LendingMarket is
             addonAmounts,
             durationsInPeriods
         );
-        _setPenalizedBalances(firstInstallmentId, installmentCount, penalizedBalances);
+        _setPenaltyInterestRates(firstInstallmentId, installmentCount, penaltyInterestRates);
     }
 
     /// @inheritdoc ILendingMarketPrimary
@@ -388,8 +388,10 @@ contract LendingMarket is
         if (loan.freezeTimestamp != 0) {
             revert LoanAlreadyFrozen();
         }
+        uint256 timestamp = _blockTimestamp();
+        _checkPenaltyInterestRateBeforeDue(loan, timestamp);
 
-        loan.freezeTimestamp = _blockTimestamp().toUint32();
+        loan.freezeTimestamp = timestamp.toUint32();
 
         emit LoanFrozen(loanId);
     }
@@ -431,6 +433,7 @@ contract LendingMarket is
         if (newDurationInPeriods <= loan.durationInPeriods) {
             revert InappropriateLoanDuration();
         }
+        _checkPenaltyInterestRateBeforeDue(loan, loan.trackedTimestamp);
 
         emit LoanDurationUpdated(loanId, newDurationInPeriods, loan.durationInPeriods);
 
@@ -445,6 +448,8 @@ contract LendingMarket is
         Loan.State storage loan = _loans[loanId];
         _checkIfLoanOngoing(loan);
 
+        // IMPORTANT! If you remove this check, make sure the new interest rate does not exceed the penalty one.
+        // See details about conditions for the penalty interest rate in the comments for the {Loan} struct.
         if (newInterestRate >= loan.interestRatePrimary) {
             revert InappropriateInterestRate();
         }
@@ -472,13 +477,13 @@ contract LendingMarket is
     }
 
     /// @inheritdoc ILendingMarketPrimary
-    function updateLoanPenalizedBalance(
+    function updateLoanPenaltyInterestRate(
         uint256 loanId, // Tools: prevent Prettier one-liner
         uint256 newInterestRate
     ) external whenNotPaused onlyRole(ADMIN_ROLE) {
         Loan.State storage loan = _loans[loanId];
         _checkIfLoanOngoing(loan);
-        _updateLoanPenalizedBalance(loanId, loan, newInterestRate);
+        _updateLoanPenaltyInterestRate(loanId, loan, newInterestRate);
     }
 
     // ------------------ View functions -------------------------- //
@@ -716,27 +721,22 @@ contract LendingMarket is
         return id;
     }
 
-    /// @dev Sets the penalized balances of loans internally.
-    function _setPenalizedBalances(
+    /// @dev Sets the penalty interest rates of loans internally.
+    function _setPenaltyInterestRates(
         uint256 startLoanId,
         uint256 loanCount,
-        uint256[] calldata penalizedBalances
+        uint256[] calldata penaltyInterestRates
     ) internal {
-        if (penalizedBalances.length != loanCount) {
+        if (penaltyInterestRates.length != loanCount) {
             revert Error.ArrayLengthMismatch();
         }
-        uint256 totalPenalizedBalance = 0;
         for (uint256 i = 0; i < loanCount; ++i) {
             uint256 loanId = startLoanId + i;
-            uint256 penalizedBalance = penalizedBalances[i];
+            uint256 penaltyInterestRate = penaltyInterestRates[i];
             Loan.State storage loan = _loans[loanId];
-            if (penalizedBalance != 0) {
-                _updateLoanPenalizedBalance(loanId, loan, penalizedBalance);
+            if (penaltyInterestRate != 0) {
+                _updateLoanPenaltyInterestRate(loanId, loan, penaltyInterestRate);
             }
-            totalPenalizedBalance += penalizedBalance;
-        }
-        if (totalPenalizedBalance != Rounding.roundMath(totalPenalizedBalance, Constants.ACCURACY_FACTOR)) {
-            revert TotalPenalizedBalanceUnrounded();
         }
     }
 
@@ -802,20 +802,23 @@ contract LendingMarket is
         emit LoanDiscounted(loanId, discountAmount, newTrackedBalance);
     }
 
-    /// @dev Updates the penalized balances of a loan internally.
-    function _updateLoanPenalizedBalance(
+    /// @dev Updates the penalty interest rate of a loan internally.
+    function _updateLoanPenaltyInterestRate(
         uint256 loanId, // Tools: prevent Prettier one-liner
         Loan.State storage loan,
-        uint256 newPenalizedBalance
+        uint256 newPenaltyInterestRate
     ) internal {
-        uint256 oldPenalizedBalance = loan.penalizedBalance;
-        if (newPenalizedBalance == oldPenalizedBalance) {
+        uint256 oldPenaltyInterestRate = loan.penaltyInterestRate;
+        if (newPenaltyInterestRate == oldPenaltyInterestRate) {
             revert Error.AlreadyConfigured();
         }
+        if (newPenaltyInterestRate < loan.interestRatePrimary) {
+            revert PenaltyInterestRateBelowPrimary();
+        }
 
-        emit LoanPenalizedBalanceUpdated(loanId, newPenalizedBalance, oldPenalizedBalance);
+        emit LoanPenaltyInterestRateUpdated(loanId, newPenaltyInterestRate, oldPenaltyInterestRate);
 
-        loan.penalizedBalance = newPenalizedBalance.toUint64();
+        loan.penaltyInterestRate = newPenaltyInterestRate.toUint32();
     }
 
     /**
@@ -1034,6 +1037,17 @@ contract LendingMarket is
     }
 
     /**
+     * @dev Checks if the penalty interest rate is non-zero before the due date.
+     * @param loan The storage state of the loan.
+     * @param timestamp The timestamp to check.
+     */
+    function _checkPenaltyInterestRateBeforeDue(Loan.State storage loan, uint256 timestamp) internal view {
+        if (loan.penaltyInterestRate != 0 && timestamp < _getDueTimestamp(loan)) {
+            revert PenaltyInterestRateNonZeroBeforeDue();
+        }
+    }
+
+    /**
      * @dev Calculates the tracked balance of a loan.
      * @param loan The storage state of the loan to calculate the tracked balance for.
      * @param timestamp The timestamp to calculate the tracked balance at.
@@ -1085,9 +1099,8 @@ contract LendingMarket is
                         Constants.INTEREST_RATE_FACTOR
                     );
                 } else {
-                    uint256 penalizedBalance = loan.penalizedBalance;
-                    if (penalizedBalance != 0) {
-                        trackedBalance = penalizedBalance - loan.repaidAmount - loan.discountAmount;
+                    if (loan.penaltyInterestRate != 0) {
+                        trackedBalance = _calculatePenaltyBalance(loan, loan.durationInPeriods);
                     } else {
                         trackedBalance = InterestMath.calculateTrackedBalance(
                             trackedBalance,
@@ -1114,6 +1127,21 @@ contract LendingMarket is
                 );
             }
         }
+    }
+
+    /// @dev Calculates the tracked balance of a loan at a given period using the penalty interest rate.
+    function _calculatePenaltyBalance(
+        Loan.State storage loan,
+        uint256 periodsSinceStart
+    ) internal view returns (uint256) {
+        uint256 principal = uint256(loan.borrowedAmount) + uint256(loan.addonAmount);
+        uint256 newTrackedBalance = InterestMath.calculateTrackedBalance(
+            principal,
+            periodsSinceStart,
+            loan.penaltyInterestRate,
+            Constants.INTEREST_RATE_FACTOR
+        );
+        return newTrackedBalance - uint256(loan.repaidAmount) - uint256(loan.discountAmount);
     }
 
     /**
@@ -1146,7 +1174,8 @@ contract LendingMarket is
         Loan.PreviewExtended memory preview;
         Loan.State storage loan = _loans[loanId];
 
-        preview.periodIndex = _periodIndex(timestamp, Constants.PERIOD_IN_SECONDS);
+        uint256 periodIndex = _periodIndex(timestamp, Constants.PERIOD_IN_SECONDS);
+        preview.periodIndex = periodIndex;
         (preview.trackedBalance, preview.lateFeeAmount) = _calculateTrackedBalance(loan, timestamp);
         preview.outstandingBalance = Rounding.roundMath(preview.trackedBalance, Constants.ACCURACY_FACTOR);
         preview.borrowedAmount = loan.borrowedAmount;
@@ -1165,7 +1194,16 @@ contract LendingMarket is
         preview.interestRateSecondary = loan.interestRateSecondary;
         preview.firstInstallmentId = loan.firstInstallmentId;
         preview.installmentCount = loan.installmentCount;
-        preview.penalizedBalance = loan.penalizedBalance;
+        preview.penaltyInterestRate = loan.penaltyInterestRate;
+        if (preview.penaltyInterestRate != 0 && preview.trackedBalance != 0) {
+            uint256 duePeriodIndex = _getDuePeriodIndex(loan);
+            if (periodIndex > duePeriodIndex) {
+                preview.penaltyBalance = preview.trackedBalance;
+            } else {
+                uint256 periodsSinceStart = loan.durationInPeriods - (duePeriodIndex - periodIndex);
+                preview.penaltyBalance = _calculatePenaltyBalance(loan, periodsSinceStart);
+            }
+        }
 
         return preview;
     }

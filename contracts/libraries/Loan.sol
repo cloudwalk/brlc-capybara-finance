@@ -42,15 +42,33 @@ library Loan {
      * - installmentCount ------- The total number of installments for sub-loans or zero for ordinary loans.
      * - lateFeeAmount ---------- The late fee amount of the loan or zero if the loan is not defaulted.
      * - discountAmount --------- The discount amount of the loan or zero if the loan is not discounted.
-     * - penalizedBalance ------- The penalized balance of the loan, can be zero, see notes below.
+     * - penaltyInterestRate ---- The penalty interest rate of the loan, can be zero, see notes below.
      *
-     * Notes about the penalized balance:
+     * Notes about the penalty interest rate:
      *
-     * - The penalized balance defines the balance of the loan that applies when the loan is overdue.
-     *   It is used for loans with a grace period or in similar cases.
-     * - The zero value means that the penalized balance logic is not applied.
-     * - If the penalized balance is not zero and the loan is overdue then the tracked balance is replaced by the formula:
-     *   `trackedBalance = penalizedBalance - repaidAmount - discountAmount`
+     * - The penalty interest rate defines the rate that will be retroactively applied when the loan is overdue.
+     *   It can be used for loans with a grace period or in similar cases.
+     * - The zero value means that the penalty interest rate logic is not applied.
+     * - If the penalty interest rate is not zero and the loan is overdue then
+     *   the tracked balance is replaced by the formula:
+     *   `trackedBalance = principal * (1 + penaltyInterestRate) ^ durationInPeriods - repaidAmount - discountAmount`,
+     *   where `principal = borrowedAmount + addonAmount`.
+     * - The penalty interest rate must noy be lower than the primary interest rate.
+     *   Otherwise, with large values of `(repaidAmount + discountAmount)`, the new tracked balance for an overdue loan
+     *   may become negative, according to the formula above. An example:
+     *   - `principal = 100`;
+     *   - `penaltyInterestRate = 2%`;
+     *   - `interestRatePrimary = 1%`;
+     *   - `durationInPeriods = 10`;
+     *   - at the due date: `trackedBalance = 100 * (1 + 2%) ^ 10 = 122`;
+     *   - at the due date: `repaidAmount = 120`;
+     *   - after the replacement at the due date: `trackedBalance = 100 * (1 + 1%) ^ 10 - 120 = 110 - 120 = -10`.
+     * - There is another possible formula for the tracked balance replacement:
+     *   `trackedBalance = (principal - repaidAmount - discountAmount) * (1 + penaltyInterestRate) ^ durationInPeriods`
+     *   but it creates an exploit opportunity in the case of non-zero primary rate. An example:
+     *   - the borrower repays the principal before the loan is overdue, but not the primary interest;
+     *   - the borrower waits until the loan is overdue;
+     *   - the borrower gets the zero tracked balance after the penalty interest rate is applied.
      */
     struct State {
         // Slot1
@@ -83,8 +101,8 @@ library Loan {
         // Slot 5
         uint64 lateFeeAmount;
         uint64 discountAmount;
-        uint64 penalizedBalance;
-        // uint64 __reserved;
+        uint32 penaltyInterestRate;
+        // uint96 __reserved;
     }
 
     /**
@@ -153,12 +171,25 @@ library Loan {
      * - interestRateSecondary -- The secondary interest rate of the loan.
      * - firstInstallmentId ----- The ID of the first installment for sub-loans or zero for ordinary loans.
      * - installmentCount ------- The total number of installments for sub-loans or zero for ordinary loans.
-     * - penalizedBalance ------- The penalized balance of the loan, see notes below.
+     * - penaltyInterestRate ---- The penalty interest rate of the loan, see notes below.
+     * - penaltyBalance --------- The tracked balance determined at the preview timestamp
+     *                            using the penalty interest rate, see notes below.
      *
      * Notes:
      *
      * - The outstanding balance is the tracked balance rounded according to the accuracy factor with math rules.
-     * - See notes about the penalized balance in the comments for the {Loan} struct.
+     * - See notes about the penalty interest rate in the comments for the {Loan} struct.
+     * - The `penaltyBalance` field is determined as follows:
+     *   - if the `penaltyInterestRate` field is zero then the `penaltyBalance` field is zero as well;
+     *   - if the `trackedBalance` field is zero then the `penaltyBalance` field is zero as well;
+     *   - if the loan is overdue then `penaltyBalance` fields equals to the `trackedBalance` field;
+     *   - otherwise, the `penaltyBalance` field is calculated using the formula:
+     *     ```
+     *     penaltyBalance = principal * (1 + penaltyInterestRate) ^ periodsSinceStart - repaidAmount - discountAmount
+     *     ```
+     *     where `principal = borrowedAmount + addonAmount` and `periodsSinceStart` is
+     *     the integer number of periods passed from the loan start timestamp to the preview timestamp.
+     * - The `penaltyBalance` field is not rounded according to the accuracy factor.
      */
     struct PreviewExtended {
         uint256 periodIndex;
@@ -180,7 +211,8 @@ library Loan {
         uint256 interestRateSecondary;
         uint256 firstInstallmentId;
         uint256 installmentCount;
-        uint256 penalizedBalance;
+        uint256 penaltyInterestRate;
+        uint256 penaltyBalance;
     }
 
     /**

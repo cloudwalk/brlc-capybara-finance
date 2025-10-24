@@ -111,7 +111,8 @@ interface LoanState {
   installmentCount: bigint;
   lateFeeAmount: bigint;
   discountAmount: bigint;
-  penalizedBalance: bigint;
+  penaltyInterestRate: bigint;
+  penaltyBalance: bigint;
 }
 
 interface Fixture {
@@ -193,7 +194,8 @@ const defaultLoanState: LoanState = {
   installmentCount: 0n,
   lateFeeAmount: 0n,
   discountAmount: 0n,
-  penalizedBalance: 0n,
+  penaltyInterestRate: 0n,
+  penaltyBalance: 0n,
 };
 
 // Events of the contracts under test
