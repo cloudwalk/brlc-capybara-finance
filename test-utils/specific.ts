@@ -8,6 +8,6 @@ export interface Version {
 
 export const EXPECTED_VERSION: Version = {
   major: 1,
-  minor: 21,
+  minor: 22,
   patch: 0,
 };
