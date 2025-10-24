@@ -1,4 +1,4 @@
-# Current version
+# v1.22.0
 
 ## Main changes
 
