@@ -42,6 +42,12 @@
       "txHash": "0x562bf7447493ab39633f4ab84810ec508bd4b510ca665529943437eb327997c8",
       "kind": "uups",
       "cw_tag": "liquidity_pool_brlc_3"
+    },
+    {
+      "address": "0x819f57d2b9B44c8fAbA7dD2393EFA59fF87f7Ea7",
+      "txHash": "0xb27867c346a28432aa2b59506edc27db0ecb15e574fdf692eb71300811b6b58d",
+      "kind": "uups",
+      "cw_tag": "credit_line_brlc_4"
     }
   ],
   "impls": {
