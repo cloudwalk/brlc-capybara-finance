@@ -356,11 +356,6 @@ contract LiquidityPool is
         if (oldTreasury == newTreasury) {
             revert LiquidityPool_AlreadyConfigured();
         }
-        if (newTreasury != address(0)) {
-            if (IERC20(_token).allowance(newTreasury, address(this)) == 0) {
-                revert LiquidityPool_OperationalTreasuryZeroAllowanceForPool();
-            }
-        }
         emit OperationalTreasuryChanged(newTreasury, oldTreasury);
         _operationalTreasury = newTreasury;
     }
