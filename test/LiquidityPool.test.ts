@@ -779,6 +779,15 @@ describe("Contract 'LiquidityPool'", () => {
       await expect(liquidityPool.withdraw(borrowableAmount, 1n))
         .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_AMOUNT_INVALID);
     });
+
+    it("Is reverted if the liquidity pool balance is not enough", async () => {
+      const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
+      // Make the pool token balance enough for the withdrawal
+      await proveTx(token.mint(getAddress(liquidityPool), WITHDRAWAL_AMOUNT - 1n));
+
+      await expect(liquidityPool.withdraw(WITHDRAWAL_AMOUNT, 0))
+        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_BALANCE_INSUFFICIENT);
+    });
   });
 
   describe("Function 'withdrawToOperationalTreasury()'", () => {
@@ -822,6 +831,15 @@ describe("Contract 'LiquidityPool'", () => {
 
       await expect(connect(liquidityPool, admin).withdrawToOperationalTreasury(0))
         .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_AMOUNT_INVALID);
+    });
+
+    it("Is reverted if the liquidity pool balance is not enough", async () => {
+      const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
+      // Make the pool token balance enough for the withdrawal
+      await proveTx(token.mint(getAddress(liquidityPool), WITHDRAWAL_AMOUNT - 1n));
+
+      await expect(connect(liquidityPool, admin).withdrawToOperationalTreasury(WITHDRAWAL_AMOUNT))
+        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_BALANCE_INSUFFICIENT);
     });
   });
 
@@ -883,6 +901,16 @@ describe("Contract 'LiquidityPool'", () => {
       await expect(connect(liquidityPool, admin).withdrawToWorkingTreasury(workingTreasuries[0].address, 0))
         .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_AMOUNT_INVALID);
     });
+
+    it("Is reverted if the liquidity pool balance is not enough", async () => {
+      const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
+      // Make the pool token balance enough for the withdrawal
+      await proveTx(token.mint(getAddress(liquidityPool), WITHDRAWAL_AMOUNT - 1n));
+
+      await expect(
+        connect(liquidityPool, admin).withdrawToWorkingTreasury(workingTreasuries[0].address, WITHDRAWAL_AMOUNT),
+      ).to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_BALANCE_INSUFFICIENT);
+    });
   });
 
   describe("Function 'withdrawToReserve()'", () => {
@@ -921,6 +949,15 @@ describe("Contract 'LiquidityPool'", () => {
 
       await expect(connect(liquidityPool, admin).withdrawToReserve(0))
         .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_AMOUNT_INVALID);
+    });
+
+    it("Is reverted if the liquidity pool balance is not enough", async () => {
+      const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
+      // Make the pool token balance enough for the withdrawal
+      await proveTx(token.mint(getAddress(liquidityPool), WITHDRAWAL_AMOUNT - 1n));
+
+      await expect(connect(liquidityPool, admin).withdrawToReserve(WITHDRAWAL_AMOUNT))
+        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_BALANCE_INSUFFICIENT);
     });
   });
 
