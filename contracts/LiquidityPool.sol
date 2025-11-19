@@ -3,7 +3,6 @@
 pragma solidity 0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
@@ -34,7 +33,6 @@ contract LiquidityPool is
     UUPSExtUpgradeable
 {
     using SafeERC20 for IERC20;
-    using SafeCast for uint256;
     using EnumerableSet for EnumerableSet.AddressSet;
 
     // ------------------ Constants ------------------------------- //
@@ -208,26 +206,16 @@ contract LiquidityPool is
         if (amount > type(uint64).max) {
             revert LiquidityPool_BalanceExcess();
         }
-        uint256 balance = _borrowableBalance;
-        unchecked {
-            balance += amount;
-        }
-        if (balance > type(uint64).max) {
-            revert LiquidityPool_BalanceExcess();
-        }
-        _borrowableBalance = uint64(balance);
+        // Note: Accounting removed - actual token balance is used instead
     }
 
     /// @inheritdoc ILiquidityPoolHooks
     function onBeforeLiquidityOut(uint256 amount) external whenNotPaused onlyRole(LIQUIDITY_OPERATOR_ROLE) {
-        uint256 balance = _borrowableBalance;
+        uint256 balance = IERC20(_token).balanceOf(address(this));
         if (amount > balance) {
             revert LiquidityPool_BalanceInsufficient();
         }
-        unchecked {
-            balance -= amount;
-        }
-        _borrowableBalance = uint64(balance);
+        // Note: Accounting removed - actual token balance is used instead
     }
 
     // ------------------ View functions -------------------------- //
@@ -249,7 +237,7 @@ contract LiquidityPool is
 
     /// @inheritdoc ILiquidityPoolPrimary
     function getBalances() external view returns (uint256, uint256) {
-        return (_borrowableBalance, _addonsBalance);
+        return (IERC20(_token).balanceOf(address(this)), 0);
     }
 
     /// @inheritdoc ILiquidityPoolPrimary
@@ -292,7 +280,6 @@ contract LiquidityPool is
 
         IERC20 underlyingToken = IERC20(_token);
 
-        _borrowableBalance += amount.toUint64();
         if (sender != address(this)) {
             underlyingToken.safeTransferFrom(sender, address(this), amount);
         }
@@ -314,11 +301,10 @@ contract LiquidityPool is
             revert LiquidityPool_AmountInvalid();
         }
 
-        if (_borrowableBalance < borrowableAmount) {
+        uint256 balance = IERC20(_token).balanceOf(address(this));
+        if (borrowableAmount > balance) {
             revert LiquidityPool_BalanceInsufficient();
         }
-
-        _borrowableBalance -= borrowableAmount.toUint64();
 
         if (recipient != address(this)) {
             IERC20(_token).safeTransfer(recipient, borrowableAmount);
