@@ -44,7 +44,6 @@ const ERROR_NAME_IMPLEMENTATION_ADDRESS_INVALID = "LiquidityPool_ImplementationA
 const ERROR_NAME_OPERATIONAL_TREASURY_ADDRESS_ZERO = "LiquidityPool_OperationalTreasuryAddressZero";
 const ERROR_NAME_OWNER_ADDRESS_ZERO = "LiquidityPool_OwnerAddressZero";
 const ERROR_NAME_RESCUE_TOKEN_ADDRESS_ZERO = "LiquidityPool_RescueTokenAddressZero";
-const ERROR_NAME_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST = "SafeCastOverflowedUintDowncast";
 const ERROR_NAME_SPENDER_ADDRESS_ZERO = "LiquidityPool_SpenderAddressZero";
 const ERROR_NAME_TOKEN_ADDRESS_ZERO = "LiquidityPool_TokenAddressZero";
 const ERROR_NAME_WORKING_TREASURY_ADDRESS_ZERO = "LiquidityPool_WorkingTreasuryAddressZero";
