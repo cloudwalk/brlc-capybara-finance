@@ -19,7 +19,14 @@ abstract contract LiquidityPoolStorage {
      */
     address internal _market;
 
-    /// @dev The borrowable balance of the liquidity pool.
+    /**
+     * @dev [DEPRECATED] The borrowable balance of the liquidity pool. Not in use since version 1.23.0.
+     *
+     * IMPORTANT! Deprecated since version 1.23.0. The actual token balance is now used instead.
+     *
+     * Previously, this variable tracked available liquidity for borrowers separately from the actual
+     * token balance. Now the contract uses the actual ERC20 token balance directly via balanceOf().
+     */
     uint64 internal _borrowableBalance;
 
     /**

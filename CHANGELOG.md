@@ -1,3 +1,31 @@
+## Main changes
+
+1. The liquidity pool now uses the actual ERC20 token balance directly instead of maintaining separate internal accounting for borrowable balance. This simplifies the contract logic and eliminates potential discrepancies between internal accounting and actual token holdings.
+
+2. The `_borrowableBalance` storage variable has been deprecated and is no longer used. The variable remains in storage for upgrade compatibility but is marked as deprecated in the code documentation. Previously, this variable tracked available liquidity separately from the actual token balance. Now the contract uses `IERC20(_token).balanceOf(address(this))` directly.
+
+3. The internal accounting operations in deposit and withdrawal functions have been removed:
+   * a. `onBeforeLiquidityIn()` no longer increments `_borrowableBalance`.
+   * b. `onBeforeLiquidityOut()` no longer decrements `_borrowableBalance`.
+   * c. All deposit functions (`deposit()`, `depositFromOperationalTreasury()`, `depositFromWorkingTreasury()`, `depositFromReserve()`) no longer update internal accounting.
+   * d. All withdrawal functions (`withdraw()`, `withdrawToOperationalTreasury()`, `withdrawToWorkingTreasury()`, `withdrawToReserve()`) now check against actual token balance instead of internal accounting.
+
+4. The `getBalances()` function has been updated to return the actual token balance and `0` for the addons balance (second return value).
+
+5. The `SafeCast` library import and usage have been removed since the contract no longer needs to downcast amounts to `uint64` for internal accounting.
+
+6. The 64-bit (`uint64`) limitation on deposit and withdrawal amounts has been removed. The contract now supports amounts up to `uint256` maximum, limited only by the underlying token's total supply.
+
+7. The operational treasury allowance check has been removed:
+   * a. The `setOperationalTreasury()` function no longer verifies that the operational treasury has approved the pool to transfer tokens.
+   * b. The `LiquidityPool_OperationalTreasuryZeroAllowanceForPool` error has been removed from the interface.
+
+8. This change improves the security model by using a single source of truth (the actual token balance) and eliminates the risk of internal accounting becoming out of sync with actual holdings.
+
+## Migration
+
+No special actions are required, just upgrade the deployed `LiquidityPool` smart-contracts. The deprecated `_borrowableBalance` storage variable will retain its last value but will no longer be used. All balance queries will automatically use the actual token balance after the upgrade.
+
 # v1.22.0
 
 ## Main changes

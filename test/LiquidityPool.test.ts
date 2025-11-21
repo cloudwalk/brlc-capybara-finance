@@ -42,10 +42,8 @@ const ERROR_NAME_BALANCE_INSUFFICIENT = "LiquidityPool_BalanceInsufficient";
 const ERROR_NAME_CONTRACT_ADDRESS_INVALID = "LiquidityPool_ContractAddressInvalid";
 const ERROR_NAME_IMPLEMENTATION_ADDRESS_INVALID = "LiquidityPool_ImplementationAddressInvalid";
 const ERROR_NAME_OPERATIONAL_TREASURY_ADDRESS_ZERO = "LiquidityPool_OperationalTreasuryAddressZero";
-const ERROR_NAME_OPERATIONAL_TREASURY_ZERO_ALLOWANCE_FOR_POOL = "LiquidityPool_OperationalTreasuryZeroAllowanceForPool";
 const ERROR_NAME_OWNER_ADDRESS_ZERO = "LiquidityPool_OwnerAddressZero";
 const ERROR_NAME_RESCUE_TOKEN_ADDRESS_ZERO = "LiquidityPool_RescueTokenAddressZero";
-const ERROR_NAME_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST = "SafeCastOverflowedUintDowncast";
 const ERROR_NAME_SPENDER_ADDRESS_ZERO = "LiquidityPool_SpenderAddressZero";
 const ERROR_NAME_TOKEN_ADDRESS_ZERO = "LiquidityPool_TokenAddressZero";
 const ERROR_NAME_WORKING_TREASURY_ADDRESS_ZERO = "LiquidityPool_WorkingTreasuryAddressZero";
@@ -387,13 +385,6 @@ describe("Contract 'LiquidityPool'", () => {
       await expect(liquidityPool.setOperationalTreasury(operationalTreasury.address))
         .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_ALREADY_CONFIGURED);
     });
-
-    it("Is reverted if the operational treasury has not provided an allowance for the pool", async () => {
-      const { liquidityPool } = await setUpFixture(deployLiquidityPool);
-
-      await expect(liquidityPool.setOperationalTreasury(operationalTreasury.address))
-        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_OPERATIONAL_TREASURY_ZERO_ALLOWANCE_FOR_POOL);
-    });
   });
 
   describe("Function 'registerWorkingTreasury()", () => {
@@ -608,15 +599,6 @@ describe("Contract 'LiquidityPool'", () => {
       await expect(liquidityPool.deposit(0))
         .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_AMOUNT_INVALID);
     });
-
-    it("Is reverted if the deposit amount is greater than 64-bit unsigned integer", async () => {
-      const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
-      const amount = maxUintForBits(64) + 1n;
-
-      await expect(liquidityPool.deposit(amount))
-        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST)
-        .withArgs(64, amount);
-    });
   });
 
   describe("Function 'depositFromOperationalTreasury()'", () => {
@@ -658,15 +640,6 @@ describe("Contract 'LiquidityPool'", () => {
 
       await expect(connect(liquidityPool, admin).depositFromOperationalTreasury(0))
         .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_AMOUNT_INVALID);
-    });
-
-    it("Is reverted if the deposit amount is greater than 64-bit unsigned integer", async () => {
-      const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
-      const amount = maxUintForBits(64) + 1n;
-
-      await expect(connect(liquidityPool, admin).depositFromOperationalTreasury(amount))
-        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST)
-        .withArgs(64, amount);
     });
   });
 
@@ -722,16 +695,6 @@ describe("Contract 'LiquidityPool'", () => {
       await expect(connect(liquidityPool, admin).depositFromWorkingTreasury(workingTreasury.address, 0))
         .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_AMOUNT_INVALID);
     });
-
-    it("Is reverted if the deposit amount is greater than 64-bit unsigned integer", async () => {
-      const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
-      const workingTreasury = workingTreasuries[0];
-      const amount = maxUintForBits(64) + 1n;
-
-      await expect(connect(liquidityPool, admin).depositFromWorkingTreasury(workingTreasury.address, amount))
-        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST)
-        .withArgs(64, amount);
-    });
   });
 
   describe("Function 'depositFromReserve()'", () => {
@@ -770,15 +733,6 @@ describe("Contract 'LiquidityPool'", () => {
 
       await expect(connect(liquidityPool, admin).depositFromReserve(0))
         .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_AMOUNT_INVALID);
-    });
-
-    it("Is reverted if the deposit amount is greater than 64-bit unsigned integer", async () => {
-      const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
-      const amount = maxUintForBits(64) + 1n;
-
-      await expect(connect(liquidityPool, admin).depositFromReserve(amount))
-        .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_SAFE_CAST_OVERFLOWED_UINT_DOWNCAST)
-        .withArgs(64, amount);
     });
   });
 
@@ -826,11 +780,10 @@ describe("Contract 'LiquidityPool'", () => {
         .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_AMOUNT_INVALID);
     });
 
-    it("Is reverted if the liquidity pool balance is enough but borrowable balance is not", async () => {
+    it("Is reverted if the liquidity pool balance is not enough", async () => {
       const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
       // Make the pool token balance enough for the withdrawal
-      await proveTx(token.mint(getAddress(liquidityPool), WITHDRAWAL_AMOUNT));
-      await proveTx(liquidityPool.deposit(WITHDRAWAL_AMOUNT - 1n));
+      await proveTx(token.mint(getAddress(liquidityPool), WITHDRAWAL_AMOUNT - 1n));
 
       await expect(liquidityPool.withdraw(WITHDRAWAL_AMOUNT, 0))
         .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_BALANCE_INSUFFICIENT);
@@ -880,11 +833,10 @@ describe("Contract 'LiquidityPool'", () => {
         .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_AMOUNT_INVALID);
     });
 
-    it("Is reverted if the liquidity pool balance is enough but borrowable balance is not", async () => {
+    it("Is reverted if the liquidity pool balance is not enough", async () => {
       const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
       // Make the pool token balance enough for the withdrawal
-      await proveTx(token.mint(getAddress(liquidityPool), WITHDRAWAL_AMOUNT));
-      await proveTx(liquidityPool.deposit(WITHDRAWAL_AMOUNT - 1n));
+      await proveTx(token.mint(getAddress(liquidityPool), WITHDRAWAL_AMOUNT - 1n));
 
       await expect(connect(liquidityPool, admin).withdrawToOperationalTreasury(WITHDRAWAL_AMOUNT))
         .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_BALANCE_INSUFFICIENT);
@@ -950,11 +902,10 @@ describe("Contract 'LiquidityPool'", () => {
         .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_AMOUNT_INVALID);
     });
 
-    it("Is reverted if the liquidity pool balance is enough but borrowable balance is not", async () => {
+    it("Is reverted if the liquidity pool balance is not enough", async () => {
       const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
       // Make the pool token balance enough for the withdrawal
-      await proveTx(token.mint(getAddress(liquidityPool), WITHDRAWAL_AMOUNT));
-      await proveTx(liquidityPool.deposit(WITHDRAWAL_AMOUNT - 1n));
+      await proveTx(token.mint(getAddress(liquidityPool), WITHDRAWAL_AMOUNT - 1n));
 
       await expect(
         connect(liquidityPool, admin).withdrawToWorkingTreasury(workingTreasuries[0].address, WITHDRAWAL_AMOUNT),
@@ -1000,11 +951,10 @@ describe("Contract 'LiquidityPool'", () => {
         .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_AMOUNT_INVALID);
     });
 
-    it("Is reverted if the liquidity pool balance is enough but borrowable balance is not", async () => {
+    it("Is reverted if the liquidity pool balance is not enough", async () => {
       const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
       // Make the pool token balance enough for the withdrawal
-      await proveTx(token.mint(getAddress(liquidityPool), WITHDRAWAL_AMOUNT));
-      await proveTx(liquidityPool.deposit(WITHDRAWAL_AMOUNT - 1n));
+      await proveTx(token.mint(getAddress(liquidityPool), WITHDRAWAL_AMOUNT - 1n));
 
       await expect(connect(liquidityPool, admin).withdrawToReserve(WITHDRAWAL_AMOUNT))
         .to.be.revertedWithCustomError(liquidityPool, ERROR_NAME_BALANCE_INSUFFICIENT);
@@ -1106,8 +1056,9 @@ describe("Contract 'LiquidityPool'", () => {
 
       await proveTx(connect(liquidityPool, liquidityOperator).onBeforeLiquidityIn(REPAYMENT_AMOUNT));
 
+      // Note: Hook no longer modifies balance - actual balance is used
       const actualBalances = await liquidityPool.getBalances();
-      expect(actualBalances[0]).to.eq(DEPOSIT_AMOUNT + REPAYMENT_AMOUNT);
+      expect(actualBalances[0]).to.eq(DEPOSIT_AMOUNT);
       expect(actualBalances[1]).to.eq(0n);
     });
 
@@ -1135,17 +1086,6 @@ describe("Contract 'LiquidityPool'", () => {
       await expect(connect(liquidityPool, liquidityOperator).onBeforeLiquidityIn(repaymentAmount))
         .to.revertedWithCustomError(liquidityPool, ERROR_NAME_BALANCE_EXCESS);
     });
-
-    it("Is reverted if there is an overflow in the borrowable balance", async () => {
-      const { liquidityPool } = await setUpFixture(deployAndConfigureLiquidityPool);
-      const depositAmount = maxUintForBits(64);
-      const repaymentAmount = 1n;
-      await proveTx(token.mint(owner.address, depositAmount));
-      await proveTx(liquidityPool.deposit(depositAmount));
-
-      await expect(connect(liquidityPool, liquidityOperator).onBeforeLiquidityIn(repaymentAmount))
-        .to.revertedWithCustomError(liquidityPool, ERROR_NAME_BALANCE_EXCESS);
-    });
   });
 
   describe("Function 'onBeforeLiquidityOut()'", () => {
@@ -1155,8 +1095,9 @@ describe("Contract 'LiquidityPool'", () => {
 
       await proveTx(connect(liquidityPool, liquidityOperator).onBeforeLiquidityOut(REPAYMENT_AMOUNT));
 
+      // Note: Hook no longer modifies balance - actual balance is used
       const actualBalances = await liquidityPool.getBalances();
-      expect(actualBalances[0]).to.eq(DEPOSIT_AMOUNT - REPAYMENT_AMOUNT);
+      expect(actualBalances[0]).to.eq(DEPOSIT_AMOUNT);
       expect(actualBalances[1]).to.eq(0n);
     });
 
