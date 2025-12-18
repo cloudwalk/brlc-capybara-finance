@@ -1,3 +1,5 @@
+# v1.23.0
+
 ## Main changes
 
 1. The liquidity pool now uses the actual ERC20 token balance directly instead of maintaining separate internal accounting for borrowable balance. This simplifies the contract logic and eliminates potential discrepancies between internal accounting and actual token holdings.
